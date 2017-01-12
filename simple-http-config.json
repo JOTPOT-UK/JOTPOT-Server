@@ -1,0 +1,31 @@
+{
+	
+	"otherProcesses": [],
+	
+	"dataPort": 500,
+	
+	"httpServers": [
+		
+		{
+			
+			"port": 80
+			
+		}
+		
+	],
+	"httpsServers": [],
+	
+	"redirectToHttps": [],
+	"canBeHttp": [],
+	
+	"hostAlias":{},
+	"hostRedirects":{},
+	
+	"addVarsByDefault": false,
+	"doVarsForIfNotByDefault": [],
+	
+	"cache": [],
+	
+	"errorTemplate": "errorTemp.jpt"
+	
+}
