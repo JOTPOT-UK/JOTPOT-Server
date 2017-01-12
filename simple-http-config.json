@@ -26,6 +26,8 @@
 	
 	"cache": [],
 	
-	"errorTemplate": "errorTemp.jpt"
+	"errorTemplate": "errorTemp.jpt",
+	
+	"defaultDomain": "localhost"
 	
 }

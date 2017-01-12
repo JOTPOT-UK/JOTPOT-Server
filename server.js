@@ -281,7 +281,7 @@ function getFile(file,callWithStats,transformPipe,pipeTo,callback) {
 				
 				console.log(`\tRequest took ${Date.now() - requestGotAt}ms to process.`) ;
 				
-				if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1 || this.ignoreList) {
+				if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 					
 					fs.createReadStream(file,{
 						
@@ -533,7 +533,7 @@ function handleRequest(req,resp) {
 		requestGotAt = timeRecieved ;
 		req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
 		
-		let host = req.headers.host || "www.jotpot.co.uk" ;
+		let host = req.headers.host || config.defaultDomain ;
 		
 		for (let doing in config.otherProcesses) {
 			

@@ -45,6 +45,8 @@
 	
 	"cache": ["www.example.com/commonly_visited_page.page","www.example.com/index.html"],
 	
-	"errorTemplate": "errorTemp.jpt"
+	"errorTemplate": "errorTemp.jpt",
+	
+	"defaultDomain": "www.your_main_domain.com"
 	
 }
