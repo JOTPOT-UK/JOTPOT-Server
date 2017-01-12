@@ -1,2 +1,2 @@
 # JOTPOT-Server
-I simple, fully customisable for Node.js.
+A simple, fully customisable for Node.js.
