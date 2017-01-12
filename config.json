@@ -1,16 +1,6 @@
 {
 	
-	"otherProcesses": [
-		
-		{
-			
-			"filename": "demo_extention_server.js",
-			"forwardUrls": ["localhost/demo_server_forward","localhost/k_den"],
-			"forwardPort": 180
-			
-		}
-		
-	],
+	"otherProcesses": [],
 	
 	"dataPort": 500,
 	
@@ -23,22 +13,18 @@
 		}
 		
 	],
-	"httpsServers": [
-		
-		
-		
-	],
+	"httpsServers": [],
 	
-	"redirectToHttps": ["www.this_host_must_be_https.com"],
-	"canBeHttp": ["/this_page_can_be_http_even_if_host_is_above"],
+	"redirectToHttps": [],
+	"canBeHttp": [],
 	
-	"hostAlias":{"www.the_same_as.com":"www.same_as_me.com","www.yoursite.uk":"www.yoursite.co.uk","www.but_not_redirect.com":"www.just_dir.com"},
-	"hostRedirects":{"www.this_domain_redirects_to.com":"www.this_domain.com","yoursite.com":"www.yoursite.com"},
+	"hostAlias":{},
+	"hostRedirects":{},
 	
 	"addVarsByDefault": false,
-	"doVarsForIfNotByDefault": ["sites/www.example.com/insert_vars_on_this_page_always","sites/www.cool_site.com/show_my_ip.html"],
+	"doVarsForIfNotByDefault": [],
 	
-	"cache": ["www.example.com/commonly_visited_page.page","www.example.com/index.html"],
+	"cache": [],
 	
 	"errorTemplate": "errorTemp.jpt"
 	
