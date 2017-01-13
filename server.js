@@ -675,7 +675,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,requestTime) {
 	try {
 		
 		requestTime = new Date(requestTime) ;
-		let varsToSend = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime()} ;
+		let varsToSend = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
 		
 		if (typeof pages[req.url] === "object") {
 			
