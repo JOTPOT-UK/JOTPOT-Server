@@ -18,6 +18,8 @@ let https = require("https") ;
 let fs = require("fs") ;
 let path = require("path") ;
 let zlib = require("zlib") ;
+let proc = require("./accounts.js") ;
+let externals = require("./externals") ;
 let {Transform,Readable} = require("stream") ;
 let cluster ;
 
@@ -62,7 +64,6 @@ vars.Global = new Object() ;
 
 //Setup accounts
 let allAccountSystems = new Array() ;
-let proc = require("./accounts.js") ;
 
 //Vars config
 let doVarsFor = ["error_page"].concat(config.doVarsForIfNotByDefault) ;
@@ -530,8 +531,15 @@ function handleRequest(req,resp) {
 	
 	try {
 		
+		if (externals.handles.request(req,resp)) {
+			
+			return true ;
+			
+		}
+		
 		let timeRecieved = Date.now() ;
 		requestGotAt = timeRecieved ;
+		req.orig_url = req.url ;
 		req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
 		
 		let host = req.headers.host || config.defaultDomain ;
@@ -574,6 +582,14 @@ function handleRequest(req,resp) {
 			resp.write("Redirecting you to " + ["http://","https://"][Number(req.overHttps)] + hostRedirects[host] + "...") ;
 			resp.end() ;
 			return ;
+			
+		}
+		
+		req.host = host ;
+		
+		if (externals.handles.fullrequest(req,resp)) {
+			
+			return true ;
 			
 		}
 		
@@ -794,6 +810,24 @@ module.exports = {
 	
 	init:(clusterGiven) => {
 		
+		externals.loadExt("./test-ext.js",{
+			
+			"pages": pages
+			
+		}) ;
+		
+		if (typeof externals.handles.request === "undefined") {
+			
+			externals.handles.request =_=>false ;
+			
+		}
+		
+		if (typeof externals.handles.fullrequest === "undefined") {
+			
+			externals.handles.fullrequest =_=>false ;
+			
+		}
+		
 		//Set up the HTTP servers
 		for (let doing in config.httpServers) {
 			
@@ -827,29 +861,3 @@ module.exports = {
 }
 
 let requestGotAt ;
-/*let requestGotAt, tempTime, tempTime2 ;
-function tS() {
-	
-	tempTime = Date.now() ;
-	
-}
-function tE() {
-	
-	return (Date.now() - tempTime) + " (" + (Date.now() - tempTime2) + ") <-----" ;
-	
-}
-function tSM() {
-	
-	tempTime = Date.now() ;
-	tempTime2 = Date.now() ;
-	
-}
-
-let logs = new Array() ;*/
-/*console.log = console.warn = console.info = (...args) => {
-	
-	//logs.push(args.join(" ")) ;
-	process.send(["log",args.join(" ")]) ;
-	
-}/**/
-//setInterval(_=>process.stdout.write(logs.join("\n")),20000) ;
