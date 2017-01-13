@@ -65,7 +65,7 @@ let allAccountSystems = new Array() ;
 let proc = require("./accounts.js") ;
 
 //Vars config
-let doVarsFor = config.doVarsForIfNotByDefault ;
+let doVarsFor = ["error_page"].concat(config.doVarsForIfNotByDefault) ;
 for (let doing in doVarsFor) {
 	
 	doVarsFor[doing] = path.normalize(doVarsFor[doing]) ;
