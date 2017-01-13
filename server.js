@@ -810,11 +810,20 @@ module.exports = {
 	
 	init:(clusterGiven) => {
 		
-		externals.loadExt("./test-ext.js",{
+		let currentDir = fs.readdirSync(process.cwd()) ;
+		for (let doing in currentDir) {
 			
-			"pages": pages
+			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
+				
+				externals.loadExt(currentDir[doing],{
+					
+					"pages": pages
+					
+				}) ;
+				
+			}
 			
-		}) ;
+		}
 		
 		if (typeof externals.handles.request === "undefined") {
 			

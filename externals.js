@@ -2,10 +2,24 @@ let fs = require("fs") ;
 let vm = require("vm") ;
 
 let handles = new Object() ;
+let handleOver = new Object() ;
 module.exports.handles = handles ;
-function handle(evt,func) {
+function handle(evt,func,allowOverwrite=true) {
+	
+	if (typeof handleOver[evt] === "undefined") {
+		
+		handleOver[evt] = allowOverwrite ;
+		
+	}
+	
+	else if (handleOver[evt] === false) {
+		
+		return false ;
+		
+	}
 	
 	handles[evt] = func ;
+	return true ;
 	
 }
 
