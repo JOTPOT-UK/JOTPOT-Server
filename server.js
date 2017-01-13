@@ -69,6 +69,7 @@ let doVarsFor = config.doVarsForIfNotByDefault ;
 for (let doing in doVarsFor) {
 	
 	doVarsFor[doing] = path.normalize(doVarsFor[doing]) ;
+	doVarsFor[doing] = path.join("sites",doVarsFor[doing]) ;
 	
 }
 let dontDoVarsFor = [] ;

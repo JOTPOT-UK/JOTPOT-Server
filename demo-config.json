@@ -41,7 +41,7 @@
 	"hostRedirects":{"www.this_domain_redirects_to.com":"www.this_domain.com","yoursite.com":"www.yoursite.com"},
 	
 	"addVarsByDefault": false,
-	"doVarsForIfNotByDefault": ["sites/www.example.com/insert_vars_on_this_page_always","sites/www.cool_site.com/show_my_ip.html"],
+	"doVarsForIfNotByDefault": ["www.example.com/insert_vars_on_this_page_always","www.cool_site.com/show_my_ip.html"],
 	
 	"cache": ["www.example.com/commonly_visited_page.page","www.example.com/index.html"],
 	
