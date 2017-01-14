@@ -1,14 +1,18 @@
 process.title = "JOTPOT Server 3" ;
 
+//Make the logs accually go to the logs.
 let logs = new Array() ;
 console.log = console.warn = (...args) => {
 	
 	logs.push(args.join(" ")) ;
 	
-}/**/
+}
 
+//Modules
 let fs = require("fs") ;
+let cluster = require("cluster") ;
 
+//Load the config
 let config ;
 if (fs.existsSync("config.json")) {
 	
@@ -44,16 +48,17 @@ else if (fs.existsSync("config.json")) {
 	
 }
 
-let cluster = require("cluster") ;
-//let net = require("net") ;
+//Get stuff ready for user systems
 let UIDs = new Array() ;
 let authedUsers = new Object() ;
 
+//If this is the master process.
 if (cluster.isMaster) {
 	
 	console.info("Loading JOTPOT Server.") ;
 	console.log("Loading JOTPOT Server.") ;
 	process.title = "JOTPOT Server 3" ;
+	//Function to create a new worker.
 	function newFork() {
 		
 		console.log("Creating a new worker.") ;
@@ -62,22 +67,28 @@ if (cluster.isMaster) {
 			
 			let toDo = args[0] ;
 			
+			//If the worker is logging somthing.
 			if (toDo[0] === "log") {
 				
+				//Add it to the loggs.
 				logs.push(toDo[1]) ;
 				
 			}
 			
+			//If it is an account action.
 			else if (toDo[0] === "proc") {
 				
+				//Update the workers users if needed.
 				if (toDo[1] === "get") {
 					
 					thisFork.send(["proc-update",authedUsers]) ;
 					
 				}
 				
+				//Add a new account system.
 				else if (toDo[1] === "new") {
 					
+					//If the account system does not already exist, create it.
 					if (typeof authedUsers[toDo[2]] === "undefined") {
 						
 						authedUsers[toDo[2]] = new Object() ;
@@ -93,14 +104,14 @@ if (cluster.isMaster) {
 					
 				}
 				
+				//Add a user as autherised to the account system.
 				else if (toDo[1] === "add") {
-					
-					//console.log(`Adding ${toDo[3]} as ${toDo[4]} to ${toDo[2]}`) ;
 					
 					let addTheUser =_=> {
 						
 						try {
 							
+							//Set the UID property of the account system as their username.
 							authedUsers[toDo[2]][toDo[3]] = toDo[4] ;
 							return true ;
 							
@@ -108,6 +119,7 @@ if (cluster.isMaster) {
 						
 						catch(err) {
 							
+							//Somthing gone wrong - posible not created yet.
 							console.warn(`Error ${err} occured while adding a user.\nRetrying in half a second.`) ;
 							setTimeout(addTheUser,500) ;
 							return false ;
@@ -117,10 +129,10 @@ if (cluster.isMaster) {
 					}
 					
 					return addTheUser() ;
-					return false ;
 					
 				}
 				
+				//User logged out.
 				else if (toDo[1] === "del") {
 					
 					delete authedUsers[toDo[2]][toDo[3]] ;
@@ -130,38 +142,56 @@ if (cluster.isMaster) {
 			}
 			
 		}) ;
+		//When a worker exits.
 		thisFork.on("exit",(workerClosed)=>{
 			
 			console.info("A worker died!!!") ;
 			console.log("A worker died!!!") ;
+			//Create a replacment.
 			newFork() ;
 			
 		}) ;
 		
 	}
 	
+	//Modules for master.
 	let os = require("os") ;
 	let cp = require("child_process") ;
 	let net = require("net") ;
+	
+	//Set up an array for storing the workers.
 	let workers = new Array() ;
 	let otherProcesses = new Array() ;
 	
-	for (let doing = 0 ; doing < os.cpus().length - 1 - config.otherProcesses.length ; doing++) {
+	//If there arn't enough CPU cores for all the required child processes, spawn a worker in anyway - but only 1.
+	if (1 > os.cpus().length - 1 - config.otherProcesses.length) {
 		
 		newFork() ;
 		
 	}
 	
+	else {
+		
+		//Create a worker for every core that is not being used by the master or another child process.
+		for (let doing = 0 ; doing < os.cpus().length - 1 - config.otherProcesses.length ; doing++) {
+			
+			newFork() ;
+			
+		}
+		
+	}
+	
+	//Spawn the other child processes.
 	for (let doing in config.otherProcesses) {
 		
 		otherProcesses.push(cp.fork(config.otherProcesses[doing].filename)) ;
 		
 	}
 	
-	//setInterval(_=>console.log(Object.keys(cluster.workers)),5000) ;
+	//Create a server to get the loggs.
 	net.createServer(s=>{
 	
-	s.on("data",d=>{
+		s.on("data",d=>{
 			
 			d = d.toString() ;
 			if (d === "getlogs") {
@@ -181,6 +211,7 @@ else {
 	
 	console.log("Worker " + cluster.worker.id + " loaded, starting up now...") ;
 	console.info("Worker " + cluster.worker.id + " loaded, starting up now...") ;
+	//Load the server module & init it.
 	require("./server.js").init(cluster) ;
 	console.log(`Worker ${cluster.worker.id} running.`) ;
 	console.info(`Worker ${cluster.worker.id} running.`) ;
