@@ -266,7 +266,7 @@ function forwardToOtherServer(req,resp,port) {
 
 //Pipes the file through the transform pipe into the main pipe.
 //Calls the callback with the first argument as a boolean - true if succeded, false if not.
-function getFile(file,callWithStats,transformPipe,pipeTo,callback) {
+function getFile(file,callWithStats/*,transformPipe*/,pipeTo,callback) {
 	
 	fs.stat(file,(err,stats) => {
 		
@@ -283,7 +283,7 @@ function getFile(file,callWithStats,transformPipe,pipeTo,callback) {
 				
 				console.log(`\tRequest took ${Date.now() - requestGotAt}ms to process.`) ;
 				
-				if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
+				/*if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 					
 					fs.createReadStream(file,{
 						
@@ -294,7 +294,7 @@ function getFile(file,callWithStats,transformPipe,pipeTo,callback) {
 					
 				}
 				
-				else {
+				else {*/
 					
 					fs.createReadStream(file,{
 						
@@ -303,7 +303,7 @@ function getFile(file,callWithStats,transformPipe,pipeTo,callback) {
 						
 					}).pipe(pipeTo) ;
 					
-				}
+				//}
 				
 				callback(true,"Erm") ;
 				
@@ -328,10 +328,48 @@ function sendFile(file,resp,customVars) {
 		
 		file = path.join("./sites/",file) ;
 		
-		let transformPipe = "none" ;
+		let mainPipe = "none" ;
+		let doingTransform = resp.pipeThrough.length - 1 ;
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 			
-			transformPipe = new addVars(file,customVars) ;
+			mainPipe = new addVars(file,customVars) ;
+			if (doingTransform > -1) {
+				
+				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+				doingTransform-- ;
+				
+			}
+			
+			while (doingTransform > -1) {
+				
+				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+				doingTransform-- ;
+				
+			}
+			
+			mainPipe.pipe(resp) ;
+			
+		}
+		
+		else if (doingTransform > -1) {
+			
+			mainPipe = resp.pipeThrough[doingTransform] ;
+			doingTransform-- ;
+			
+			while (doingTransform > -1) {
+				
+				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+				doingTransform-- ;
+				
+			}
+			
+			mainPipe.pipe(resp) ;
+			
+		}
+		
+		else {
+			
+			mainPipe = resp ;
 			
 		}
 		
@@ -356,7 +394,7 @@ function sendFile(file,resp,customVars) {
 			
 			return true ;
 			
-		},transformPipe,resp,(done,err) => {
+		},mainPipe,(done,err) => {
 			
 			resolve([done,err]) ;
 			
@@ -543,6 +581,10 @@ function handleRequest(req,resp) {
 		let user_ip_remote = req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
 		
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
+		
+		
+		resp.pipeThrough = new Array() ;
+		
 		if (externals.handles.request(req,resp)) {
 			
 			return true ;
