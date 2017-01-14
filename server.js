@@ -703,20 +703,25 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 				
 			}
 			
-			//If it is a cached file send it.
-			if (pages[req.url][0] === "cache") {
+			//Check that the page is still in the cache after a change.
+			if (typeof pages[req.url] === "object") {
 				
-				sendCache(req.url,pages[req.url][1],resp,varsToSend) ;
-				return true ;
-				
-			}
-			
-			//If it is a function, then execute the function & dont continute if it returns true.
-			else if (pages[req.url][0] === "func") {
-				
-				if (req.url,pages[req.url][1](req,resp)) {
+				//If it is a cached file send it.
+				if (pages[req.url][0] === "cache") {
 					
+					sendCache(req.url,pages[req.url][1],resp,varsToSend) ;
 					return true ;
+					
+				}
+				
+				//If it is a function, then execute the function & dont continute if it returns true.
+				else if (pages[req.url][0] === "func") {
+					
+					if (req.url,pages[req.url][1](req,resp)) {
+						
+						return true ;
+						
+					}
 					
 				}
 				
