@@ -1,6 +1,6 @@
 /*
 	
-	JOTPOT Server 3.
+	JOTPOT Server.
 	Copyright (c) Jacob O'Toole 2016-2017
 	
 */
@@ -10,9 +10,9 @@ console.log = console.warn = (...args) => {
 	
 	process.send(["log",args.join(" ")]) ;
 	
-}/**/
+}
 
-//Node modules
+//Modules
 let http = require("http") ;
 let https = require("https") ;
 let fs = require("fs") ;
@@ -23,6 +23,7 @@ let externals = require("./externals") ;
 let {Transform,Readable} = require("stream") ;
 let cluster ;
 
+//Load config
 let config ;
 if (fs.existsSync("config.json")) {
 	
@@ -111,7 +112,7 @@ class addVars extends Transform {
 			
 			let doPush = true ;
 			
-			/*if (doVarsDefault || doVarsFor.indexOf(this.path) !== -1 || this.ignoreList)*/ do {
+			do {
 				
 				if (data.indexOf(startOfVar) !== -1) {
 					
@@ -191,17 +192,12 @@ function getMimeType(file) {
 		
 		let ext = path.extname(file) ;
 		
+		//Give type HTML if there is no extention.
 		if (ext === "") {
 			
 			return "text/html" ;
 			
 		}
-		
-		/*else if (ext === ".gz" || ext === ".zz") {
-			
-			ext = path.extname(file.substring(0,file.length - 3)) ;
-			
-		}*/
 		
 		ext = ext.substring(1,ext.length) ;
 		
@@ -266,7 +262,7 @@ function forwardToOtherServer(req,resp,port) {
 
 //Pipes the file through the transform pipe into the main pipe.
 //Calls the callback with the first argument as a boolean - true if succeded, false if not.
-function getFile(file,callWithStats/*,transformPipe*/,pipeTo,callback) {
+function getFile(file,callWithStats,pipeTo,callback) {
 	
 	fs.stat(file,(err,stats) => {
 		
@@ -283,27 +279,13 @@ function getFile(file,callWithStats/*,transformPipe*/,pipeTo,callback) {
 				
 				console.log(`\tRequest took ${Date.now() - requestGotAt}ms to process.`) ;
 				
-				/*if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
+				//Pipe file to the pipe.
+				fs.createReadStream(file,{
 					
-					fs.createReadStream(file,{
-						
-						flags: 'r',
-						autoClose: true
-						
-					}).pipe(transformPipe).pipe(pipeTo) ;
+					flags: 'r',
+					autoClose: true
 					
-				}
-				
-				else {*/
-					
-					fs.createReadStream(file,{
-						
-						flags: 'r',
-						autoClose: true
-						
-					}).pipe(pipeTo) ;
-					
-				//}
+				}).pipe(pipeTo) ;
 				
 				callback(true,"Erm") ;
 				
@@ -326,20 +308,21 @@ function sendFile(file,resp,customVars) {
 	
 	try {
 		
+		//Look in the sites dir.
 		file = path.join("./sites/",file) ;
 		
+		
+		//Make a pipe to send it to.
 		let mainPipe = "none" ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
+		
+		//If we need to add vars.
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 			
+			//Vars go first.
 			mainPipe = new addVars(file,customVars) ;
-			if (doingTransform > -1) {
-				
-				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-				doingTransform-- ;
-				
-			}
 			
+			//Add the resp.pipeThrough
 			while (doingTransform > -1) {
 				
 				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
@@ -347,15 +330,19 @@ function sendFile(file,resp,customVars) {
 				
 			}
 			
+			//Then to the client.
 			mainPipe.pipe(resp) ;
 			
 		}
 		
+		//No vars, but still pipe.
 		else if (doingTransform > -1) {
 			
+			//Start at last thing
 			mainPipe = resp.pipeThrough[doingTransform] ;
 			doingTransform-- ;
 			
+			//Now do the rest
 			while (doingTransform > -1) {
 				
 				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
@@ -363,12 +350,14 @@ function sendFile(file,resp,customVars) {
 				
 			}
 			
+			//And guess what... The client!
 			mainPipe.pipe(resp) ;
 			
 		}
 		
 		else {
 			
+			//No pipes at all, so only to client.
 			mainPipe = resp ;
 			
 		}
@@ -381,11 +370,6 @@ function sendFile(file,resp,customVars) {
 				
 				"Content-Type": mime,
 				"Server": "JOTPOT Server 3",
-				
-				//Removed because it is now sent via chunked encoding:
-				/*"Content-Length": stats.size,
-				"Accept-Ranges": "bytes",*/
-				
 				
 				//Added because google does it :)
 				"status": 200
@@ -414,20 +398,21 @@ function sendCache(file,cache,resp,customVars,status=200) {
 	
 	try {
 		
+		//Look in the sites dir.
 		file = path.join("./sites/",file) ;
 		
+		
+		//Make a pipe to send it to.
 		let mainPipe = "none" ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
+		
+		//If we need to add vars.
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 			
+			//Vars go first.
 			mainPipe = new addVars(file,customVars) ;
-			if (doingTransform > -1) {
-				
-				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-				doingTransform-- ;
-				
-			}
 			
+			//Add the resp.pipeThrough
 			while (doingTransform > -1) {
 				
 				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
@@ -435,15 +420,19 @@ function sendCache(file,cache,resp,customVars,status=200) {
 				
 			}
 			
+			//Then to the client.
 			mainPipe.pipe(resp) ;
 			
 		}
 		
+		//No vars, but still pipe.
 		else if (doingTransform > -1) {
 			
+			//Start at last thing
 			mainPipe = resp.pipeThrough[doingTransform] ;
 			doingTransform-- ;
 			
+			//Now do the rest
 			while (doingTransform > -1) {
 				
 				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
@@ -451,27 +440,25 @@ function sendCache(file,cache,resp,customVars,status=200) {
 				
 			}
 			
+			//And guess what... The client!
 			mainPipe.pipe(resp) ;
 			
 		}
 		
 		else {
 			
+			//No pipes at all, so only to client.
 			mainPipe = resp ;
 			
 		}
 		
+		//Get the mime type.
 		let mime = getMimeType(file) ;
 		console.log(`\t200 OK.   ${file} (${mime}) loaded from cache.`) ;
 		resp.writeHead(status,{
 			
 			"Content-Type": mime,
 			"Server": "JOTPOT Server 3",
-			
-			//Removed because it is now sent via chunked encoding:
-			/*"Content-Length": stats.size,
-			"Accept-Ranges": "bytes",*/
-			
 			
 			//Added because google does it :)
 			"status": status
@@ -480,6 +467,7 @@ function sendCache(file,cache,resp,customVars,status=200) {
 		
 		console.log(`\tRequest took ${Date.now() - requestGotAt}ms to process.`) ;
 		
+		//Write the cached data & end.
 		mainPipe.write(cache) ;
 		mainPipe.end() ;
 		
@@ -509,8 +497,6 @@ function coughtError(err,resp) {
 
 let pages = {
 	
-	/*"/time?p" : ["file","/time_utc_plain"] ,
-	"/time?now" : ["file","/time_now_plain"] ,*/
 	"www.jotpot.co.uk/time?p": ["cache","$:::utctime:::$"],
 	"www.jotpot.co.uk/time?now": ["cache","$:::time:::$"],
 	"www.jotpot.co.uk/ip?p": ["cache","$:::user_ip:::$"],
@@ -605,20 +591,22 @@ function handleRequest(req,resp) {
 		let user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
 		let user_ip_remote = req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
 		
+		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
-		
-		
 		resp.pipeThrough = new Array() ;
 		
+		//Do request handle.
 		if (externals.handles.request(req,resp)) {
 			
 			return true ;
 			
 		}
 		
+		//Secure URL.
 		req.orig_url = req.url ;
 		req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
 		
+		//Check if we need to forward to another port.
 		for (let doing in config.otherProcesses) {
 			
 			if (config.otherProcesses[doing].forwardUrls.indexOf(host + req.url) !== -1) {
@@ -629,6 +617,7 @@ function handleRequest(req,resp) {
 			
 		}
 		
+		//Should we redirect to https.
 		if (req.overHttps === false && config.redirectToHttps.indexOf(host) !== -1 && config.canBeHttp.indexOf(req.url) === -1) {
 			
 			console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
@@ -640,12 +629,14 @@ function handleRequest(req,resp) {
 			
 		}
 		
+		//Is the host an alias
 		if (typeof config.hostAlias[host] !== "undefined") {
 			
 			host = config.hostAlias[host] ;
 			
 		}
 		
+		//Should we redirect to another host.
 		if (typeof config.hostRedirects[host] !== "undefined") {
 			
 			console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
@@ -657,16 +648,19 @@ function handleRequest(req,resp) {
 			
 		}
 		
+		//Handle for full request.
 		if (externals.handles.fullrequest(req,resp)) {
 			
 			return true ;
 			
 		}
 		
+		//Add host to URL
 		req.url = host + req.url ;
 		
 		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		
+		//If there are no account systems, then dont bother checking if the user has permission.
 		if (allAccountSystems.length === 0) {
 			
 			allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
@@ -674,14 +668,19 @@ function handleRequest(req,resp) {
 			
 		}
 		
+		
+		//Check the user is allowed to load the page.
 		let checkingSystem = 0 ;
 		
+		//Function to load next check.
 		let nextCheck =_=>{
 			
+			//Ask account system what to do.
 			allAccountSystems[checkingSystem].doAnything(req,resp).then(returned=>{
 				
 				let canAccess = returned[0] ;
 				
+				//No perms
 				if (canAccess === false) {
 					
 					if (returned[1] === "redirect") {
@@ -706,29 +705,35 @@ function handleRequest(req,resp) {
 					
 				}
 				
+				//Access is OK from this account system.
 				else if (canAccess === true) {
 					
+					//Next system
 					checkingSystem++ ;
 					if (checkingSystem >= allAccountSystems.length) {
 						
+						//The request is allowed...
 						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 						
 					}
 					
 					else {
 						
+						//Check the next.
 						nextCheck() ;
 						
 					}
 					
 				}
 				
+				//Dunnow ;)
 				else if (canAccess === null) {
 					
 					return ;
 					
 				}
 				
+				//Somthing has gone wrong, so play it safe & send a 401.
 				else {
 					
 					console.log(`\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
@@ -742,6 +747,7 @@ function handleRequest(req,resp) {
 			}).catch(err=>{coughtError(err,resp);console.log("Error trace: Error recieving account data.");}) ;
 			
 		} ;
+		//Check
 		nextCheck() ;
 		
 		return ;
@@ -757,22 +763,24 @@ function handleRequest(req,resp) {
 	
 }
 
+//Should be called when a request is allowed.
 function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 	
 	try {
 		
-		//requestTime = new Date(requestTime) ;
-		//let varsToSend = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
 		let varsToSend = resp.vars ;
 		
+		//Is cached or special page.
 		if (typeof pages[req.url] === "object") {
 			
+			//Is just page alias.
 			if (pages[req.url][0] === "file") {
 				
 				req.url = host + pages[req.url][1] ;
 				
 			}
 			
+			//If it is a cached file send it.
 			if (pages[req.url][0] === "cache") {
 				
 				sendCache(req.url,pages[req.url][1],resp,varsToSend) ;
@@ -780,9 +788,10 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 				
 			}
 			
+			//If it is a function, then execute the function & dont continute if it returns true.
 			else if (pages[req.url][0] === "func") {
 				
-				if (!req.url,pages[req.url][1](req,resp)) {
+				if (req.url,pages[req.url][1](req,resp)) {
 					
 					return true ;
 					
@@ -792,10 +801,13 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 			
 		}
 		
+		//Try the URL the user entered.
 		sendFile(req.url,resp,varsToSend).then(done=>{
 			
+			//If the file failed to send.
 			if (!done[0]) {
 				
+				//Try with .page extention.
 				return sendFile(`${req.url}.page`,resp,varsToSend);
 				
 			}
@@ -808,8 +820,10 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 			
 		}).then(done=>{
 			
+			//If the file failed to send.
 			if (!done[0]) {
 				
+				//Try the index.html.
 				return sendFile(path.join(req.url,"/index.html"),resp,varsToSend);
 				
 			}
@@ -822,8 +836,10 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 			
 		}).then(done=>{
 			
+			//If it still hasn't worked.
 			if (!done[0]) {
 				
+				//Get the error code.
 				let code = 500 ;
 				if (done[1].code === "EACCES") {
 					
@@ -835,6 +851,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 					code = 404 ;
 					
 				}
+				//And send the error.
 				return sendError(code,errorCodes[code],resp) ;
 				
 			}
@@ -879,11 +896,15 @@ allAccountSystems.push(realmsLogin) ;
 
 module.exports = {
 	
+	//Function to init the server.
 	init:(clusterGiven) => {
 		
+		//Load the extentions
 		let currentDir = fs.readdirSync(process.cwd()) ;
+		//Go through all the files in the cwd.
 		for (let doing in currentDir) {
 			
+			//If it is an extention, load it.
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 				
 				externals.loadExt(currentDir[doing],{
@@ -897,6 +918,7 @@ module.exports = {
 			
 		}
 		
+		//If the correct handes are not defined, create them.
 		if (typeof externals.handles.request === "undefined") {
 			
 			externals.handles.request =_=>false ;
