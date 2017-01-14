@@ -416,10 +416,48 @@ function sendCache(file,cache,resp,customVars,status=200) {
 		
 		file = path.join("./sites/",file) ;
 		
-		let transformPipe = "none" ;
+		let mainPipe = "none" ;
+		let doingTransform = resp.pipeThrough.length - 1 ;
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 			
-			transformPipe = new addVars(file,customVars) ;
+			mainPipe = new addVars(file,customVars) ;
+			if (doingTransform > -1) {
+				
+				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+				doingTransform-- ;
+				
+			}
+			
+			while (doingTransform > -1) {
+				
+				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+				doingTransform-- ;
+				
+			}
+			
+			mainPipe.pipe(resp) ;
+			
+		}
+		
+		else if (doingTransform > -1) {
+			
+			mainPipe = resp.pipeThrough[doingTransform] ;
+			doingTransform-- ;
+			
+			while (doingTransform > -1) {
+				
+				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+				doingTransform-- ;
+				
+			}
+			
+			mainPipe.pipe(resp) ;
+			
+		}
+		
+		else {
+			
+			mainPipe = resp ;
 			
 		}
 		
@@ -442,21 +480,8 @@ function sendCache(file,cache,resp,customVars,status=200) {
 		
 		console.log(`\tRequest took ${Date.now() - requestGotAt}ms to process.`) ;
 		
-		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
-			
-			transformPipe.pipe(resp) ;
-			
-			transformPipe.write(cache) ;
-			transformPipe.end() ;
-			
-		}
-		
-		else {
-			
-			resp.write(cache) ;
-			resp.end() ;
-			
-		}
+		mainPipe.write(cache) ;
+		mainPipe.end() ;
 		
 	}
 	
