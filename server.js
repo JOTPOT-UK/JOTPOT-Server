@@ -531,14 +531,16 @@ function handleRequest(req,resp) {
 	
 	try {
 		
+		let timeRecieved = Date.now() ;
+		requestGotAt = timeRecieved ;
+		let requestTime = new Date(timeRecieved) ;
+		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
 		if (externals.handles.request(req,resp)) {
 			
 			return true ;
 			
 		}
 		
-		let timeRecieved = Date.now() ;
-		requestGotAt = timeRecieved ;
 		req.orig_url = req.url ;
 		req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
 		
@@ -687,12 +689,13 @@ function handleRequest(req,resp) {
 	
 }
 
-function allowedRequest(host,req,resp,user_ip,user_ip_remote,requestTime) {
+function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 	
 	try {
 		
-		requestTime = new Date(requestTime) ;
-		let varsToSend = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
+		//requestTime = new Date(requestTime) ;
+		//let varsToSend = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
+		let varsToSend = resp.vars ;
 		
 		if (typeof pages[req.url] === "object") {
 			
@@ -817,7 +820,8 @@ module.exports = {
 				
 				externals.loadExt(currentDir[doing],{
 					
-					"pages": pages
+					"pages": pages,
+					"vars": vars
 					
 				}) ;
 				
