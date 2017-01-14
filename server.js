@@ -531,12 +531,17 @@ function handleRequest(req,resp) {
 	
 	try {
 		
+		//Get time stuff.
 		let timeRecieved = Date.now() ;
 		requestGotAt = timeRecieved ;
+		let requestTime = new Date(timeRecieved) ;
+		
+		//For vars
 		let host = req.headers.host || config.defaultDomain ;
+		req.host = host ;
 		let user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
 		let user_ip_remote = req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
-		let requestTime = new Date(timeRecieved) ;
+		
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
 		if (externals.handles.request(req,resp)) {
 			
@@ -584,8 +589,6 @@ function handleRequest(req,resp) {
 			return ;
 			
 		}
-		
-		req.host = host ;
 		
 		if (externals.handles.fullrequest(req,resp)) {
 			
