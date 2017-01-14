@@ -63,6 +63,9 @@ else if (fs.existsSync("config.json")) {
 let vars = new Object ;
 vars.Global = new Object() ;
 
+//Set up cache
+let pages = new Object() ;
+
 //Setup accounts
 let allAccountSystems = new Array() ;
 
@@ -495,86 +498,6 @@ function coughtError(err,resp) {
 	
 }
 
-let pages = {
-	
-	"www.jotpot.co.uk/time?p": ["cache","$:::utctime:::$"],
-	"www.jotpot.co.uk/time?now": ["cache","$:::time:::$"],
-	"www.jotpot.co.uk/ip?p": ["cache","$:::user_ip:::$"],
-	"www.jotpot.co.uk/": ["file","/index.html"],
-	"www.jotpot.co.uk/new-troubleshooter-case": ["func",function (req,resp) {
-		
-		if (req.method.toLowerCase() !== "post") {
-			
-			sendError(405,"You need to make a post reqest to create a new case.",resp) ;
-			
-		}
-		
-		else {
-			
-			resp.writeHead(200,{"Content-Type":"text/plain"}) ;
-			req.on("data",(pData) => {
-				
-				var caseNumber ;
-				fs.readFile("./currentcase.dat",(err,fData) => {
-					
-					if (err) {
-						
-						sendError(500,"No idea, do you really think I can be bothered to make a debug for this?<br>If you really care, this is error 1:*** where I cant be bothered to give you the star bits because you probably dont need them.",resp) ;
-						return false ;
-						
-					}
-					
-					caseNumber = parseInt(fData.toString()) + 1 ;
-					
-					fs.writeFile("./currentcase.dat",caseNumber.toString(),(err) => {
-						
-						if (err) {
-							
-							sendError(500,"No idea, do you really think I can be bothered to make a debug for this?<br>If you really care, this is error 2:*** where I cant be bothered to give you the star bits because you probably dont need them.",resp) ;
-							return false ;
-							
-						}
-						
-						fs.writeFile("./currentcase.dat",caseNumber.toString(),(err) => {
-							
-							if (err) {
-								
-								sendError(500,"No idea, do you really think I can be bothered to make a debug for this?<br>If you really care, this is error 3:*** where I cant be bothered to give you the star bits because you probably dont need them.",resp) ;
-								return false ;
-								
-							}
-							
-							fs.appendFile("./sites/www.jotpot.co.uk/tCases.txt",`\r\nCase ${caseNumber}:\r\n${pData.toString()}\r\n\r\n`,(err) => {
-								
-								if (err) {
-									
-									sendError(500,"No idea, do you really think I can be bothered to make a debug for this?<br>If you really care, this is error 4:*** where I cant be bothered to give you the star bits because you probably dont need them.",resp) ;
-									return false ;
-									
-								}
-								
-								resp.writeHead(200,{"Content-Type":"text/plain","Case":String(caseNumber)}) ;
-								resp.end("Your case has been saved succesfully.") ;
-								return true ;
-								
-							}) ;
-							
-						}) ;
-						
-					}) ;
-					
-				}) ;
-				
-			}) ;
-			return true ;
-			
-		}
-		return true ;
-		
-	}]
-	
-} ;
-
 //Function to handle http requests.
 function handleRequest(req,resp) {
 	
@@ -907,12 +830,19 @@ module.exports = {
 			//If it is an extention, load it.
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 				
-				externals.loadExt(currentDir[doing],{
+				let currentLoad = externals.loadExt(currentDir[doing],{
 					
 					"pages": pages,
 					"vars": vars
 					
 				}) ;
+				
+				if (currentLoad.loaded) {
+					
+					pages = currentLoad.serverObj.pages ;
+					vars = currentLoad.serverObj.vars ;
+					
+				}
 				
 			}
 			

@@ -46,7 +46,7 @@ module.exports.loadExt = (file,serverObj) => {
 			filename: file + "fun"
 			
 		})(require,serverObj,console,setTimeout,setInterval) ;
-		return serverObj ;
+		return {"loaded":true,"serverObj":serverObj} ;
 		
 	}
 	catch(err) {
