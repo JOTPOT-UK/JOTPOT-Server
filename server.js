@@ -533,6 +533,9 @@ function handleRequest(req,resp) {
 		
 		let timeRecieved = Date.now() ;
 		requestGotAt = timeRecieved ;
+		let host = req.headers.host || config.defaultDomain ;
+		let user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
+		let user_ip_remote = req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
 		let requestTime = new Date(timeRecieved) ;
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
 		if (externals.handles.request(req,resp)) {
@@ -544,8 +547,6 @@ function handleRequest(req,resp) {
 		req.orig_url = req.url ;
 		req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
 		
-		let host = req.headers.host || config.defaultDomain ;
-		
 		for (let doing in config.otherProcesses) {
 			
 			if (config.otherProcesses[doing].forwardUrls.indexOf(host + req.url) !== -1) {
@@ -555,9 +556,6 @@ function handleRequest(req,resp) {
 			}
 			
 		}
-		
-		let user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
-		let user_ip_remote = req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
 		
 		if (req.overHttps === false && config.redirectToHttps.indexOf(host) !== -1 && config.canBeHttp.indexOf(req.url) === -1) {
 			
