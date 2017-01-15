@@ -5,6 +5,8 @@
 	
 */
 
+//Version 1.0.0
+
 //Console is now YAY!!!
 console.log = console.warn = (...args) => {
 	
@@ -372,7 +374,7 @@ function sendFile(file,resp,customVars) {
 			resp.writeHead(200,{
 				
 				"Content-Type": mime,
-				"Server": "JOTPOT Server 3",
+				"Server": "JOTPOT Server",
 				
 				//Added because google does it :)
 				"status": 200
@@ -461,7 +463,7 @@ function sendCache(file,cache,resp,customVars,status=200) {
 		resp.writeHead(status,{
 			
 			"Content-Type": mime,
-			"Server": "JOTPOT Server 3",
+			"Server": "JOTPOT Server",
 			
 			//Added because google does it :)
 			"status": status

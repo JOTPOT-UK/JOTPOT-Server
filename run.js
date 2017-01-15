@@ -1,3 +1,13 @@
+/*
+	
+	JOTPOT Server.
+	Copyright (c) Jacob O'Toole 2016-2017
+	
+*/
+
+//Version 1.0.0
+
+
 process.title = "JOTPOT Server 3" ;
 
 //Make the logs accually go to the logs.

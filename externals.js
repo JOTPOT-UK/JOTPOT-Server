@@ -1,3 +1,13 @@
+/*
+	
+	JOTPOT Server.
+	Copyright (c) Jacob O'Toole 2016-2017
+	
+*/
+
+//Version 1.0.0
+
+
 let fs = require("fs") ;
 let vm = require("vm") ;
 
