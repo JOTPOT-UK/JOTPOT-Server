@@ -144,7 +144,6 @@ class addVars extends Transform {
 							
 							let toReplace = `\\$\\:\\:\\:${varsKeys[doing]}\\:\\:\\:\\$` ;
 							let replaceWith = String(this.extraVars[varsKeys[doing]]) ;
-							//console.log(`Replacing ${toReplace} with ${replaceWith}.`) ;
 							dataString = dataString.replace(new RegExp(toReplace,"g"),replaceWith) ;
 							
 						}
@@ -547,7 +546,7 @@ function handleRequest(req,resp) {
 			
 			console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
 			console.log(`\t302 Found.   Redirecting to https://${host}${req.url}.`) ;
-			resp.writeHead(302,{"Content-Type":"text/plain","location":"https://" + host + req.url}) ;
+			resp.writeHead(301,{"Content-Type":"text/plain","location":"https://" + host + req.url}) ;
 			resp.write("Redirecting you to our secure site...") ;
 			resp.end() ;
 			return ;
@@ -566,8 +565,8 @@ function handleRequest(req,resp) {
 			
 			console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
 			console.log(`\t302 Found.   Redirecting to ${config.hostRedirects[host]}.`) ;
-			resp.writeHead(302,{"Content-Type":"text/plain","location":["http://","https://"][Number(req.overHttps)] + hostRedirects[host]}) ;
-			resp.write("Redirecting you to " + ["http://","https://"][Number(req.overHttps)] + hostRedirects[host] + "...") ;
+			resp.writeHead(301,{"Content-Type":"text/plain","location":["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host]}) ;
+			resp.write("Redirecting you to " + ["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host] + "...") ;
 			resp.end() ;
 			return ;
 			
