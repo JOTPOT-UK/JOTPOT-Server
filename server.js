@@ -846,7 +846,8 @@ module.exports = {
 				let currentLoad = externals.loadExt(currentDir[doing],{
 					
 					"pages": pages,
-					"vars": vars
+					"vars": vars,
+					"sendError":sendError
 					
 				}) ;
 				
