@@ -572,15 +572,22 @@ function handleRequest(req,resp) {
 			
 		}
 		
+		//Add host to URL
+		req.url = host + req.url ;
+		
+		//Page alias?
+		if (typeof config.pageAlias[req.url] !== "undefined") {
+			
+			req.url = config.pageAlias[req.url] ;
+			
+		}
+		
 		//Handle for full request.
 		if (externals.handles.fullrequest(req,resp)) {
 			
 			return true ;
 			
 		}
-		
-		//Add host to URL
-		req.url = host + req.url ;
 		
 		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		

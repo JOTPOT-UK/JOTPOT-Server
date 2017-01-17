@@ -18,8 +18,9 @@
 	"redirectToHttps": [],
 	"canBeHttp": [],
 	
-	"hostAlias":{},
 	"hostRedirects":{},
+	"hostAlias":{},
+	"pageAlias":{},
 	
 	"addVarsByDefault": false,
 	"doVarsForIfNotByDefault": [],
