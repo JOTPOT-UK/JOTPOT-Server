@@ -847,7 +847,7 @@ module.exports = {
 					
 					"pages": pages,
 					"vars": vars,
-					"sendError":(...eArgs)=>sendError(eArgs)
+					"sendError":(...eArgs)=>sendError(...eArgs)
 					
 				}) ;
 				
