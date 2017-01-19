@@ -86,6 +86,15 @@ let startOfVar = new Buffer("$::") ;
 let endOfVar = new Buffer("::$") ;
 
 //Error file
+if (!fs.existsSync(config.errorTemplate)) {
+	
+	console.warn("Error template file does not exist.") ;
+	console.info("Error template file does not exist.") ;
+	console.warn("Exiting") ;
+	console.info("Exiting") ;
+	process.exit() ;
+	
+}
 let errorFile = fs.readFileSync(config.errorTemplate).toString() ;
 let errorCodes = new Object() ;
 errorCodes[403] = "Sorry, however you are not permitted to access this file." ;
