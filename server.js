@@ -25,7 +25,7 @@ let externals = require("./externals") ;
 let {Transform,Readable} = require("stream") ;
 let cluster ;
 
-//Load config
+//Load the config
 let config ;
 if (fs.existsSync("config.json")) {
 	
@@ -51,7 +51,7 @@ if (fs.existsSync("config.json")) {
 	
 }
 
-else if (fs.existsSync("config.json")) {
+else {
 	
 	console.warn("Config file does not exist.") ;
 	console.info("Config file does not exist.") ;

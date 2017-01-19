@@ -48,7 +48,7 @@ if (fs.existsSync("config.json")) {
 	
 }
 
-else if (fs.existsSync("config.json")) {
+else {
 	
 	console.warn("Config file does not exist.") ;
 	console.info("Config file does not exist.") ;
