@@ -5,7 +5,7 @@
 	
 */
 
-//Version 1.0.0
+//Version 1.0.1
 
 //Console is now YAY!!!
 console.log = console.warn = (...args) => {
