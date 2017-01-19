@@ -20,7 +20,7 @@ let https = require("https") ;
 let fs = require("fs") ;
 let path = require("path") ;
 let zlib = require("zlib") ;
-let proc = require("./accounts.js") ;
+let proc = require("./accounts") ;
 let externals = require("./externals") ;
 let {Transform,Readable} = require("stream") ;
 let cluster ;

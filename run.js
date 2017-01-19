@@ -222,7 +222,7 @@ else {
 	console.log("Worker " + cluster.worker.id + " loaded, starting up now...") ;
 	console.info("Worker " + cluster.worker.id + " loaded, starting up now...") ;
 	//Load the server module & init it.
-	require("./server.js").init(cluster) ;
+	require("./server").init(cluster) ;
 	console.log(`Worker ${cluster.worker.id} running.`) ;
 	console.info(`Worker ${cluster.worker.id} running.`) ;
 	
