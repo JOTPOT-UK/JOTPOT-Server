@@ -582,6 +582,8 @@ function handleRequest(req,resp) {
 		}
 		
 		//Add host to URL
+		req.accualHost = req.host ;
+		req.host = host ;
 		req.path = req.url ;
 		req.url = host + req.url ;
 		
