@@ -582,6 +582,7 @@ function handleRequest(req,resp) {
 		}
 		
 		//Add host to URL
+		req.path = req.url ;
 		req.url = host + req.url ;
 		
 		//Page alias?
