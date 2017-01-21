@@ -862,7 +862,7 @@ module.exports = {
 					"sendError":(...eArgs)=>sendError(...eArgs),
 					"createAccountSystem":(args) => {
 						
-						allAccountSystems.push(new proc(
+						let creatingAcc = new proc(
 							
 							args.name,
 							args.db,
@@ -874,7 +874,8 @@ module.exports = {
 							args.regURL,
 							args.regPage
 							
-						)) ;
+						) ;
+						allAccountSystems.push(creatingAcc) ;
 						
 					}
 					
