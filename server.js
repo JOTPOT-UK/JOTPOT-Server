@@ -859,7 +859,24 @@ module.exports = {
 					
 					"pages": pages,
 					"vars": vars,
-					"sendError":(...eArgs)=>sendError(...eArgs)
+					"sendError":(...eArgs)=>sendError(...eArgs),
+					"createAccountSystem":(args) => {
+						
+						allAccountSystems.push(new proc(
+							
+							args.name,
+							args.db,
+							args.pages,
+							args.loginURL,
+							args.loginPage,
+							args.logoutURL,
+							args.logoutPage,
+							args.regURL,
+							args.regPage
+							
+						)) ;
+						
+					}
 					
 				}) ;
 				
