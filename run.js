@@ -209,6 +209,11 @@ if (cluster.isMaster) {
 				s.write(logs.join("\n")) ;
 				
 			}
+			else if (d === "reload") {
+				
+				process.exit() ;
+				
+			}
 			
 		}) ;
 		
