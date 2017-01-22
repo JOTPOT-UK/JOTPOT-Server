@@ -70,7 +70,7 @@ function makeNewUID(req,resp) {
 
 class proc {
 	
-	constructor (name,db,pages,login,loginPage,logout,logoutPage,reg,regPage) {
+	constructor (name,db,pages,pagesEx,login,loginPage,logout,logoutPage,reg,regPage) {
 		
 		this.accounts = JSON.parse(fs.readFileSync(db).toString()) ;
 		this.pages = new Array() ;
@@ -107,6 +107,7 @@ class proc {
 		this.doAnything = this.doAnything.bind(this) ;
 		loggedIn[name] = new Object() ;
 		this.ID = name ;
+		this.pagesEx = pagesEx ;
 		process.send(["proc","new",name]) ;
 		
 	}
@@ -117,7 +118,7 @@ class proc {
 			
 			let page = req.url ;
 			
-			if (typeof this.specialPagesP[page] !== "undefined") {
+			if (typeof this.specialPagesP[page] !== "undefined" || this.pagesEx.indexOf(page) !== -1) {
 				
 				resolve([true]) ;
 				return ;

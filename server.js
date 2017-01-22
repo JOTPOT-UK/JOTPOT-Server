@@ -867,6 +867,7 @@ module.exports = {
 							args.name,
 							args.db,
 							args.pages,
+							args.exclude,
 							args.loginURL,
 							args.loginPage,
 							args.logoutURL,
