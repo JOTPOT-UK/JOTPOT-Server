@@ -90,14 +90,20 @@ if (cluster.isMaster) {
 			
 			else if (toDo[0] === "gv") {
 				
-				process.send("gv",toDo[1],vars[toDo[1]]) ;
+				if (typeof vars[toDo[1]] === "undefined") {
+					
+					thisFork.send(["fv",toDo[1]]) ;
+					
+				}
+				
+				thisFork.send(["gv",toDo[1],vars[toDo[1]]]) ;
 				
 			}
 			
 			else if (toDo[0] === "sv") {
 				
 				vars[toDo[1]] = toDo[2] ;
-				process.send("sv",toDo[1]) ;
+				thisFork.send(["sv",toDo[1]]) ;
 				
 			}
 			

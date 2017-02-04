@@ -49,6 +49,12 @@ process.on("message",m=>{
 		
 	}
 	
+	else if (m[0] === "fv") {
+		
+		varEvt.emit("got " + m[1],void(0)) ;
+		
+	}
+	
 }) ;
 
 module.exports.loadExt = (file,serverObj) => {
@@ -68,7 +74,7 @@ module.exports.loadExt = (file,serverObj) => {
 	serverObj.handle = handle ;
 	serverObj.getGlobal = varTG => {
 		
-		return new Promise(_=>{
+		return new Promise(resolve=>{
 			
 			varEvt.once("got " + varTG,d=>{
 				
@@ -83,7 +89,7 @@ module.exports.loadExt = (file,serverObj) => {
 	
 	serverObj.setGlobal = (varTS,val) => {
 		
-		return new Promise(_=>{
+		return new Promise(resolve=>{
 			
 			varEvt.once("set " + varTS,_=>resolve()) ;
 			process.send("sv",varTS,val) ;

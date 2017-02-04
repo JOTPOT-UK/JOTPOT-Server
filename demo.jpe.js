@@ -1,6 +1,5 @@
 server.handle("request",(req,resp)=>{
 	
-	console.info(server.globals) ;
 	console.info("Got it") ;
 	if (req.url === "/Hello_World") {
 		
@@ -9,6 +8,7 @@ server.handle("request",(req,resp)=>{
 		return true ;
 		
 	}
+	server.getGlobal("hello_world").then(console.info) ;
 	return false ;
 	
 }) ;
