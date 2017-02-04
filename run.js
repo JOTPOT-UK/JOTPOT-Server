@@ -69,6 +69,8 @@ if (cluster.isMaster) {
 	console.log("Loading JOTPOT Server.") ;
 	process.title = "JOTPOT Server 3" ;
 	
+	let vars = new Object() ;
+	
 	//Function to create a new worker.
 	function newFork() {
 		
@@ -83,6 +85,12 @@ if (cluster.isMaster) {
 				
 				//Add it to the loggs.
 				logs.push(toDo[1]) ;
+				
+			}
+			
+			else if (toDo[0] === "gv") {
+				
+				process.send("gv",toDo[1],vars[toDo[1]]) ;
 				
 			}
 			
