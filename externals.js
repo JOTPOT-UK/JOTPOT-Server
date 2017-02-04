@@ -92,7 +92,7 @@ module.exports.loadExt = (file,serverObj) => {
 		return new Promise(resolve=>{
 			
 			varEvt.once("set " + varTS,_=>resolve()) ;
-			process.send("sv",varTS,val) ;
+			process.send(["sv",varTS,val]) ;
 			
 		}) ;
 		

@@ -8,7 +8,12 @@ server.handle("request",(req,resp)=>{
 		return true ;
 		
 	}
-	server.getGlobal("hello_world").then(console.info) ;
+	server.getGlobal("hello_world").then(d=>{
+		
+		console.info(d) ;
+		server.setGlobal("hello_world","test") ;
+		
+	}) ;
 	return false ;
 	
 }) ;
