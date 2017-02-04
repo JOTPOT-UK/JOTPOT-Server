@@ -1,5 +1,6 @@
 server.handle("request",(req,resp)=>{
 	
+	console.info(server.globals) ;
 	console.info("Got it") ;
 	if (req.url === "/Hello_World") {
 		

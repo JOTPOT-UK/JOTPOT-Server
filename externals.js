@@ -10,6 +10,7 @@
 
 let fs = require("fs") ;
 let vm = require("vm") ;
+let events = require("events") ;
 
 let handles = new Object() ;
 let handleOver = new Object() ;
@@ -33,6 +34,17 @@ function handle(evt,func,allowOverwrite=true) {
 	
 }
 
+let gotVar = new events() ;
+process.on("message",m=>{
+	
+	if (m[0] === "gv") {
+		
+		gotVar.emit(m[1],m[2]) ;
+		
+	}
+	
+}) ;
+
 module.exports.loadExt = (file,serverObj) => {
 	
 	if (!fs.existsSync(file)) {
@@ -48,6 +60,20 @@ module.exports.loadExt = (file,serverObj) => {
 	}
 	
 	serverObj.handle = handle ;
+	serverObj.getGlobal = varTG => {
+		
+		return new Promise(_=>{
+			
+			process.once(varTG,d=>{
+				
+				resolve(d) ;
+				
+			});
+			process.send(["gv",varTG]) ;
+			
+		}) ;
+		
+	} ;
 	let source = `(function(require,server,console,setTimeout,setInterval){${fs.readFileSync(file).toString()}});` ;
 	try {
 		

@@ -68,6 +68,7 @@ if (cluster.isMaster) {
 	console.info("Loading JOTPOT Server.") ;
 	console.log("Loading JOTPOT Server.") ;
 	process.title = "JOTPOT Server 3" ;
+	
 	//Function to create a new worker.
 	function newFork() {
 		
