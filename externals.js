@@ -34,12 +34,18 @@ function handle(evt,func,allowOverwrite=true) {
 	
 }
 
-let gotVar = new events() ;
+let varEvt = new events() ;
 process.on("message",m=>{
 	
 	if (m[0] === "gv") {
 		
-		gotVar.emit(m[1],m[2]) ;
+		varEvt.emit("got " + m[1],m[2]) ;
+		
+	}
+	
+	else if (m[0] === "sv") {
+		
+		varEvt.emit("set " + m[1]) ;
 		
 	}
 	
@@ -64,7 +70,7 @@ module.exports.loadExt = (file,serverObj) => {
 		
 		return new Promise(_=>{
 			
-			process.once(varTG,d=>{
+			varEvt.once("got " + varTG,d=>{
 				
 				resolve(d) ;
 				
@@ -74,6 +80,18 @@ module.exports.loadExt = (file,serverObj) => {
 		}) ;
 		
 	} ;
+	
+	serverObj.setGlobal = (varTS,val) => {
+		
+		return new Promise(_=>{
+			
+			varEvt.once("set " + varTS,_=>resolve()) ;
+			process.send("sv",varTS,val) ;
+			
+		}) ;
+		
+	} ;
+	
 	let source = `(function(require,server,console,setTimeout,setInterval){${fs.readFileSync(file).toString()}});` ;
 	try {
 		

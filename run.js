@@ -94,6 +94,13 @@ if (cluster.isMaster) {
 				
 			}
 			
+			else if (toDo[0] === "sv") {
+				
+				vars[toDo[1]] = toDo[2] ;
+				process.send("sv",toDo[1]) ;
+				
+			}
+			
 			//If it is an account action.
 			else if (toDo[0] === "proc") {
 				
