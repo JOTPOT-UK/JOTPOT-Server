@@ -1,0 +1,26 @@
+{
+  "name": "jotpot-server",
+  "version": "1.0.2",
+  "description": "A simple, fully customisable server for Node.js.",
+  "main": "run.js",
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0",
+    "start": "node run.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JOTPOT-Server/JOTPOT-Server.git"
+  },
+  "keywords": [
+    "server",
+    "jotpot",
+    "node",
+    "js"
+  ],
+  "author": "Jacob O'Toole",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/JOTPOT-Server/JOTPOT-Server/issues"
+  },
+  "homepage": "https://www.jotpot.co.uk/server"
+}
