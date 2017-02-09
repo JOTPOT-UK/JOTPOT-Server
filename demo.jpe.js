@@ -33,3 +33,9 @@ server.handle("fullrequest",(req,resp)=>{
 	return false ;
 	
 }) ;
+
+server.handle("request",(req,resp)=>{
+	
+	console.info("This also gets triggered!") ;
+	
+}) ;

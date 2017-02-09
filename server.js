@@ -529,7 +529,8 @@ function handleRequest(req,resp) {
 		resp.pipeThrough = new Array() ;
 		
 		//Do request handle.
-		if (externals.handles.request(req,resp)) {
+		//if (externals.handles.request(req,resp)) {
+		if (externals.doEvt("request",req,resp)) {
 			
 			return true ;
 			
@@ -595,7 +596,8 @@ function handleRequest(req,resp) {
 		}
 		
 		//Handle for full request.
-		if (externals.handles.fullrequest(req,resp)) {
+		//if (externals.handles.fullrequest(req,resp)) {
+		if (externals.doEvt("fullrequest",req,resp)) {
 			
 			return true ;
 			
@@ -894,7 +896,7 @@ module.exports = {
 		}
 		
 		//If the correct handes are not defined, create them.
-		if (typeof externals.handles.request === "undefined") {
+		/*if (typeof externals.handles.request === "undefined") {
 			
 			externals.handles.request =_=>false ;
 			
@@ -904,7 +906,7 @@ module.exports = {
 			
 			externals.handles.fullrequest =_=>false ;
 			
-		}
+		}*/
 		
 		//Set up the HTTP servers
 		for (let doing in config.httpServers) {

@@ -29,8 +29,42 @@ function handle(evt,func,allowOverwrite=true) {
 		
 	}
 	
-	handles[evt] = func ;
+	if (typeof handles[evt] === "undefined") {
+		
+		handles[evt] = [func] ;
+		
+	}
+	
+	else {
+		
+		handles.push(func) ;
+		
+	}
+	
+	//handles[evt] = func ;
 	return true ;
+	
+}
+
+function doEvt(evt,...args) {
+	
+	if (typeof handles[evt] === "undefined") {
+		
+		return false ;
+		
+	}
+	
+	let rv = false ;
+	for (let doing in handles[evt]) {
+		
+		if (handles[evt][doing](...args)) {
+			
+			rv = true ;
+			
+		}
+		
+	}
+	return rv ;
 	
 }
 
