@@ -46,7 +46,7 @@ function handle(evt,func,allowOverwrite=true) {
 	
 }
 
-function doEvt(evt,...args) {
+module.exports.doEvt = function (evt,...args) {
 	
 	if (typeof handles[evt] === "undefined") {
 		
