@@ -37,7 +37,7 @@ function handle(evt,func,allowOverwrite=true) {
 	
 	else {
 		
-		handles.push(func) ;
+		handles[evt].push(func) ;
 		
 	}
 	
