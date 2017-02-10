@@ -713,6 +713,13 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 	
 	try {
 		
+		//Do allowed request handle.
+		if (externals.doEvt("allowedrequest",req,resp)) {
+			
+			return true ;
+			
+		}
+		
 		let varsToSend = resp.vars ;
 		
 		//Is cached or special page.
