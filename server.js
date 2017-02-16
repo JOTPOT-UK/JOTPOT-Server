@@ -942,6 +942,8 @@ module.exports = {
 		//Get the cluster module of parent.
 		cluster = clusterGiven ;
 		vars.Global["thread_id"] = cluster.worker.id ;
+		
+		externals.doEvt("ready") ;
 
 	}
 
