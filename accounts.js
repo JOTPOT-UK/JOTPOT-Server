@@ -107,7 +107,24 @@ class proc {
 		this.doAnything = this.doAnything.bind(this) ;
 		loggedIn[name] = new Object() ;
 		this.ID = name ;
-		this.pagesEx = pagesEx ;
+		//this.pagesEx = pagesEx ;
+		this.pagesEx = new Array() ;
+		this.pagesExS = new Array() ;
+		for (let doing in pagesEx) {
+			
+			if (pagesEx[doing].lastIndexOf("*") === pagesEx[doing].length - 1) {
+				
+				this.pagesExS.push(pagesEx[doing].substring(0,pagesEx[doing].length - 1)) ;
+				
+			}
+			
+			else {
+				
+				this.pagesEx.push(pagesEx[doing]) ;
+				
+			}
+			
+		}
 		process.send(["proc","new",name]) ;
 		
 	}
@@ -122,6 +139,17 @@ class proc {
 				
 				resolve([true]) ;
 				return ;
+				
+			}
+			
+			for (let doing in this.pagesExS) {
+				
+				if (page.indexOf(this.pagesExS[doing]) === 0) {
+					
+					resolve([true]) ;
+					return ;
+					
+				}
 				
 			}
 			
@@ -142,16 +170,20 @@ class proc {
 					
 				}
 				
-				if (isAuthed) {for (let doing in this.starts) {
+				if (isAuthed) {
 					
-					if (page.indexOf(this.starts[doing]) === 0) {
+					for (let doing in this.starts) {
 						
-						isAuthed = false ;
-						break ;
+						if (page.indexOf(this.starts[doing]) === 0) {
+							
+							isAuthed = false ;
+							break ;
+							
+						}
 						
 					}
-					
-				}}
+				
+				}
 				
 				if (isAuthed) {
 					
