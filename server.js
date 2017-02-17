@@ -930,7 +930,7 @@ module.exports = {
 		//Set up the HTTPS servers
 		for (let doing in config.httpsServers) {
 			
-			https.createServer({pfx:fs.readFileSync("server.pfx"),passphrase:"JpotjpotKEY1!",key:fs.readFileSync("key.key"),ca:fs.readFileSync("inter.cer")},(req,resp) => {
+			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
 				
 				req.overHttps = true ;
 				handleRequest(req,resp) ;
