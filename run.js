@@ -80,7 +80,7 @@ if (cluster.isMaster) {
 		//If it is an extention, load it.
 		if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 			
-			let currentLoad = externals.loadMasterExt(currentDir[doing],{}) ;
+			let currentLoad = externals.loadMasterExt(currentDir[doing],{},vars) ;
 			
 		}
 		
@@ -258,6 +258,8 @@ if (cluster.isMaster) {
 	
 	console.info("Master up, all threads spawned.") ;
 	console.log("Master up, all threads spawned.") ;
+	
+	externals.doEvt("ready") ;
 		
 }
 else {

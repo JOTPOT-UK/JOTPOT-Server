@@ -250,8 +250,8 @@ module.exports.loadExt = (file,serverObj) => {
 	
 }
 
-//Function to load an extention in master mode. Similar to loadExt.
-module.exports.loadMasterExt = (file,serverObj) => {
+//Function to load an extention in master mode. Similar to loadExt. vars arg is vars object for seting and getting globals.
+module.exports.loadMasterExt = (file,serverObj,vars) => {
 	
 	//If the extention doesn't exist...
 	if (!fs.existsSync(file)) {
