@@ -21,6 +21,7 @@ console.log = console.warn = (...args) => {
 //Modules
 let fs = require("fs") ;
 let cluster = require("cluster") ;
+let externals = require("./externals") ;
 
 //Load the config
 let config ;
