@@ -1,12 +1,18 @@
 if (server.isMaster) {
 	
 	console.info("Master extention loading!!!") ;
+	server.setGlobal("set_in_master","Hello :)").then(_=>{
+		
+		server.getGlobal("set_in_master").then(d=>console.info(d)) ;
+		
+	}) ;
 	
 }
 
 else {
 	
 	console.info("Worker extention loading!!!") ;
+	server.getGlobal("set_in_master").then(d=>console.info("Getting the global set in master resolved:",d)) ;
 	server.handle("request",(req,resp)=>{
 		
 		console.info("Got it") ;
