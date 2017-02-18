@@ -1,41 +1,52 @@
-server.handle("request",(req,resp)=>{
+if (server.isMaster) {
 	
-	console.info("Got it") ;
-	if (req.url === "/Hello_World") {
+	console.info("Master extention loading!!!") ;
+	
+}
+
+else {
+	
+	console.info("Worker extention loading!!!") ;
+	server.handle("request",(req,resp)=>{
 		
-		resp.writeHead(200) ;
-		resp.end("YAY") ;
-		return true ;
-		
-	}
-	server.getGlobal("hello_world").then(d=>{
-		
-		console.info(d) ;
-		server.setGlobal("hello_world","test") ;
+		console.info("Got it") ;
+		if (req.url === "/Hello_World") {
+			
+			resp.writeHead(200) ;
+			resp.end("YAY") ;
+			return true ;
+			
+		}
+		server.getGlobal("hello_world").then(d=>{
+			
+			console.info(d) ;
+			server.setGlobal("hello_world","test") ;
+			
+		}) ;
+		return false ;
 		
 	}) ;
-	return false ;
-	
-}) ;
 
-server.handle("fullrequest",(req,resp)=>{
-	
-	console.info("Got it - full") ;
-	console.info(req.orig_url) ;
-	console.info(req.url) ;
-	if (req.url === "/hello_world_yay") {
+	server.handle("fullrequest",(req,resp)=>{
 		
-		resp.writeHead(200) ;
-		resp.end("YAY 2.0") ;
-		return true ;
+		console.info("Got it - full") ;
+		console.info(req.orig_url) ;
+		console.info(req.url) ;
+		if (req.url === "/hello_world_yay") {
+			
+			resp.writeHead(200) ;
+			resp.end("YAY 2.0") ;
+			return true ;
+			
+		}
+		return false ;
 		
-	}
-	return false ;
-	
-}) ;
+	}) ;
 
-server.handle("request",(req,resp)=>{
+	server.handle("request",(req,resp)=>{
+		
+		console.info("This also gets triggered!") ;
+		
+	}) ;
 	
-	console.info("This also gets triggered!") ;
-	
-}) ;
+}

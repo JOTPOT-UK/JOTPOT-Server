@@ -72,6 +72,20 @@ if (cluster.isMaster) {
 	
 	let vars = new Object() ;
 	
+	//Load the extentions
+	let currentDir = fs.readdirSync(process.cwd()) ;
+	//Go through all the files in the cwd.
+	for (let doing in currentDir) {
+		
+		//If it is an extention, load it.
+		if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
+			
+			let currentLoad = externals.loadMasterExt(currentDir[doing],{}) ;
+			
+		}
+		
+	}
+	
 	//Function to create a new worker.
 	function newFork() {
 		
@@ -241,23 +255,6 @@ if (cluster.isMaster) {
 		}) ;
 		
 	}).listen(config.dataPort || 500) ;
-	
-	
-	//Load the extentions
-	let currentDir = fs.readdirSync(process.cwd()) ;
-	//Go through all the files in the cwd.
-	for (let doing in currentDir) {
-		
-		//If it is an extention, load it.
-		if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
-			
-			let currentLoad = externals.loadMasterExt(currentDir[doing],{}) ;
-			
-		}
-		
-	}
-	
-	
 	
 	console.info("Master up, all threads spawned.") ;
 	console.log("Master up, all threads spawned.") ;
