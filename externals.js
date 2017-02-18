@@ -184,6 +184,9 @@ module.exports.loadExt = (file,serverObj) => {
 		
 	}
 	
+	//Just, dissapointing...
+	serverObj.isMaster = false ;
+	
 	//Add the handle function to the serverObj
 	serverObj.handle = handle ;
 	
@@ -218,6 +221,78 @@ module.exports.loadExt = (file,serverObj) => {
 			process.send(["sv",varTS,val]) ;
 			
 		}) ;
+		
+	} ;
+	
+	//Wrap the source
+	let source = `(function(require,server,console,setTimeout,setInterval){${fs.readFileSync(file).toString()}});` ;
+	
+	//To catch so ther server doesn't go down if the extention fails to load.
+	try {
+		
+		//Run it with the required arguments
+		vm.runInNewContext(source,{},{
+			
+			filename: file + "fun"
+			
+		})(require,serverObj,console,setTimeout,setInterval) ;
+		
+		//So, it loaded...
+		return {"loaded":true,"serverObj":serverObj} ;
+		
+	}
+	catch(err) {
+		
+		//Somthing went wrong:
+		return {"loaded":false,"error":err} ;
+		
+	}
+	
+}
+
+//Function to load an extention in master mode. Similar to loadExt.
+module.exports.loadMasterExt = (file,serverObj) => {
+	
+	//If the extention doesn't exist...
+	if (!fs.existsSync(file)) {
+		
+		//We don't load with the error "Not found"
+		return {"loaded":false,"error":"Not found"} ;
+		
+	}
+	
+	//Ah, but if it isn't a file:
+	if (!fs.statSync(file).isFile()) {
+		
+		//We don't load with the error "Not file"
+		return {"loaded":false,"error":"Not file"} ;
+		
+	}
+	
+	//This is the MASTER!!!
+	serverObj.isMaster = true ;
+	
+	//Add the handle function to the serverObj
+	serverObj.handle = handle ;
+	
+	//Functiom to set a global variable. 1 arg is var name to get.
+	serverObj.getGlobal = varTG => {
+		
+		return new Promise(resolve=>{
+			
+			//Resolve instantly, because it is master, there are no async events to do :(
+			resolve(vars[varTG]) ;
+			
+		}) ;
+		
+	} ;
+	
+	//Function to set a variable. 1st arg is var name, second is value to set it to.
+	serverObj.setGlobal = (varTS,val) => {
+		
+		//set the value and resolve instantly, because it is master, there are no async events to do :(
+		vars[varTS] = val ;
+		resolve() ;
 		
 	} ;
 	
