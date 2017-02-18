@@ -56,31 +56,85 @@ function handle(evt,func,allowOverwrite=true) {
 
 module.exports.doEvt = function (evt,...args) {
 	
+	return new Promise((resolve,reject)=>{
+	
 	//If the event has no handles.
 	if (typeof handles[evt] === "undefined") {
 		
 		//Carry on
-		return false ;
+		resolve(false) ;
 		
 	}
 	
-	//Will return false if nothing returns true.
+	//Will resolve false if nothing returns true.
 	let rv = false ;
+	let totalPromises = 0 ;
+	
+	//Function to handle resolving promises
+	let handleResolved = (d) => {
+		
+		totalPromises-- ;
+		//If it is handled
+		if (d) {
+			
+			//Then we need to resolve true, but not yet.
+			rv = true ;
+			
+		}
+		
+		//If there aren't any pending promesses left, then resolve.
+		if (totalPromises === 0) {
+			
+			//resolve what we need to resolve.
+			resolve(rv) ;
+			
+		}
+		
+	}
 	
 	//Go through all the handles for the event.
 	for (let doing in handles[evt]) {
 		
-		//If it returns true
-		if (handles[evt][doing](...args)) {
+		//Call the handle
+		let val = handles[evt][doing](...args) ;
+		
+		//If it is falsey, then we cant check because it will error when we try to get .then.
+		if (!val) {
 			
-			//Then we should return true... But later
+			continue ;
+			
+		}
+		
+		//Is it a promise?
+		if (typeof val.then === "function") {
+			
+			//One more pending promise.
+			totalPromises++ ;
+			
+			//Set up the handleResolved function when it resolves.
+			val.then(handleResolved) ;
+			
+		}
+		
+		//If it returns true
+		else if (val) {
+			
+			//Then we should resolve true... But later
 			rv = true ;
 			
 		}
 		
 	}
-	//Return what we need to return.
-	return rv ;
+	
+	//If there aren't any pending promesses, then resolve.
+	if (totalPromises === 0) {
+		
+		//resolve what we need to resolve.
+		resolve(rv) ;
+		
+	}
+	
+	}) ;
 	
 }
 

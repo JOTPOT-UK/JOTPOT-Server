@@ -530,172 +530,15 @@ function handleRequest(req,resp) {
 		
 		//Do request handle.
 		//if (externals.handles.request(req,resp)) {
-		if (externals.doEvt("request",req,resp)) {
+		externals.doEvt("request",req,resp).then(d=>{
 			
-			return true ;
-			
-		}
-		
-		//Secure URL.
-		req.orig_url = req.url ;
-		req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
-		
-		//Check if we need to forward to another port.
-		for (let doing in config.otherProcesses) {
-			
-			if (config.otherProcesses[doing].forwardUrls.indexOf(host + req.url) !== -1) {
+			if (!d) {
 				
-				return forwardToOtherServer(req,resp,config.otherProcesses[doing].forwardPort) ;
+				handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
 				
 			}
 			
-		}
-		
-		//Should we redirect to https.
-		if (req.overHttps === false && config.redirectToHttps.indexOf(host) !== -1 && config.canBeHttp.indexOf(req.url) === -1) {
-			
-			console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
-			console.log(`\t302 Found.   Redirecting to https://${host}${req.url}.`) ;
-			resp.writeHead(301,{"Content-Type":"text/plain","location":"https://" + host + req.url}) ;
-			resp.write("Redirecting you to our secure site...") ;
-			resp.end() ;
-			return ;
-			
-		}
-		
-		//Is the host an alias
-		if (typeof config.hostAlias[host] !== "undefined") {
-			
-			host = config.hostAlias[host] ;
-			
-		}
-		
-		//Should we redirect to another host.
-		if (typeof config.hostRedirects[host] !== "undefined") {
-			
-			console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
-			console.log(`\t302 Found.   Redirecting to ${config.hostRedirects[host]}.`) ;
-			resp.writeHead(301,{"Content-Type":"text/plain","location":["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host] + req.url}) ;
-			resp.write("Redirecting you to " + ["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host] + req.url + "...") ;
-			resp.end() ;
-			return ;
-			
-		}
-		
-		//Add host to URL
-		req.accualHost = req.host ;
-		req.host = host ;
-		req.path = req.url ;
-		req.url = host + req.url ;
-		
-		//Page alias?
-		if (typeof config.pageAlias[req.url] !== "undefined") {
-			
-			req.url = config.pageAlias[req.url] ;
-			
-		}
-		
-		//Handle for full request.
-		//if (externals.handles.fullrequest(req,resp)) {
-		if (externals.doEvt("fullrequest",req,resp)) {
-			
-			return true ;
-			
-		}
-		
-		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
-		
-		//If there are no account systems, then dont bother checking if the user has permission.
-		if (allAccountSystems.length === 0) {
-			
-			allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
-			return true ;
-			
-		}
-		
-		
-		//Check the user is allowed to load the page.
-		let checkingSystem = 0 ;
-		
-		//Function to load next check.
-		let nextCheck =_=>{
-			
-			//Ask account system what to do.
-			allAccountSystems[checkingSystem].doAnything(req,resp).then(returned=>{
-				
-				let canAccess = returned[0] ;
-				
-				//No perms
-				if (canAccess === false) {
-					
-					if (returned[1] === "redirect") {
-						
-						console.log(`\t302 Found.   Redirecting to ${returned[2]}.`) ;
-						resp.writeHead(302,{"Content-Type":"text/plain",location:returned[2]}) ;
-						resp.write("Redirecting you to the login page.") ;
-						resp.end() ;
-						return ;
-						
-					}
-					
-					else {
-						
-						console.log(`\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
-						resp.writeHead(401,{"Content-Type":"text/plain"}) ;
-						resp.write("Nope.") ;
-						resp.end() ;
-						return false ;
-						
-					}
-					
-				}
-				
-				//Access is OK from this account system.
-				else if (canAccess === true) {
-					
-					//Next system
-					checkingSystem++ ;
-					if (checkingSystem >= allAccountSystems.length) {
-						
-						//The request is allowed...
-						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
-						
-					}
-					
-					else {
-						
-						//Check the next.
-						nextCheck() ;
-						
-					}
-					
-				}
-				
-				//Dunnow ;)
-				else if (canAccess === null) {
-					
-					return ;
-					
-				}
-				
-				//Somthing has gone wrong, so play it safe & send a 401.
-				else {
-					
-					console.log(`\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
-					resp.writeHead(401,{"Content-Type":"text/plain"}) ;
-					resp.write("Nope.") ;
-					resp.end() ;
-					return false ;
-					
-				}
-				
-			}).catch(err=>{coughtError(err,resp);console.log("Error trace: Error recieving account data.");}) ;
-			
-		} ;
-		//Check
-		nextCheck() ;
-		
-		return ;
+		}) ;
 		
 	}
 	
@@ -708,17 +551,206 @@ function handleRequest(req,resp) {
 	
 }
 
+function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) {
+	
+	//Secure URL.
+	req.orig_url = req.url ;
+	req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
+	
+	//Check if we need to forward to another port.
+	for (let doing in config.otherProcesses) {
+		
+		if (config.otherProcesses[doing].forwardUrls.indexOf(host + req.url) !== -1) {
+			
+			return forwardToOtherServer(req,resp,config.otherProcesses[doing].forwardPort) ;
+			
+		}
+		
+	}
+	
+	//Should we redirect to https.
+	if (req.overHttps === false && config.redirectToHttps.indexOf(host) !== -1 && config.canBeHttp.indexOf(req.url) === -1) {
+		
+		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
+		console.log(`\t302 Found.   Redirecting to https://${host}${req.url}.`) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":"https://" + host + req.url}) ;
+		resp.write("Redirecting you to our secure site...") ;
+		resp.end() ;
+		return ;
+		
+	}
+	
+	//Is the host an alias
+	if (typeof config.hostAlias[host] !== "undefined") {
+		
+		host = config.hostAlias[host] ;
+		
+	}
+	
+	//Should we redirect to another host.
+	if (typeof config.hostRedirects[host] !== "undefined") {
+		
+		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
+		console.log(`\t302 Found.   Redirecting to ${config.hostRedirects[host]}.`) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host] + req.url}) ;
+		resp.write("Redirecting you to " + ["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host] + req.url + "...") ;
+		resp.end() ;
+		return ;
+		
+	}
+	
+	//Add host to URL
+	req.accualHost = req.host ;
+	req.host = host ;
+	req.path = req.url ;
+	req.url = host + req.url ;
+	
+	//Page alias?
+	if (typeof config.pageAlias[req.url] !== "undefined") {
+		
+		req.url = config.pageAlias[req.url] ;
+		
+	}
+	
+	//Handle for full request.
+	//if (externals.handles.fullrequest(req,resp)) {
+	externals.doEvt("fullrequest",req,resp).then(d=>{
+		
+		if (!d) {
+			
+			handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
+			
+		}
+		
+	}) ;
+	
+}
+
+function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) {
+	
+	console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
+	
+	//If there are no account systems, then dont bother checking if the user has permission.
+	if (allAccountSystems.length === 0) {
+		
+		externals.doEvt("allowedrequest",req,resp).then(d=>{
+			
+			if (!d) {
+				
+				allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				
+			}
+			
+		}) ;
+		return true ;
+		
+	}
+	
+	
+	//Check the user is allowed to load the page.
+	let checkingSystem = 0 ;
+	
+	//Function to load next check.
+	let nextCheck =_=>{
+		
+		//Ask account system what to do.
+		allAccountSystems[checkingSystem].doAnything(req,resp).then(returned=>{
+			
+			let canAccess = returned[0] ;
+			
+			//No perms
+			if (canAccess === false) {
+				
+				if (returned[1] === "redirect") {
+					
+					console.log(`\t302 Found.   Redirecting to ${returned[2]}.`) ;
+					resp.writeHead(302,{"Content-Type":"text/plain",location:returned[2]}) ;
+					resp.write("Redirecting you to the login page.") ;
+					resp.end() ;
+					return ;
+					
+				}
+				
+				else {
+					
+					console.log(`\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
+					resp.writeHead(401,{"Content-Type":"text/plain"}) ;
+					resp.write("Nope.") ;
+					resp.end() ;
+					return false ;
+					
+				}
+				
+			}
+			
+			//Access is OK from this account system.
+			else if (canAccess === true) {
+				
+				//Next system
+				checkingSystem++ ;
+				if (checkingSystem >= allAccountSystems.length) {
+					
+					//The request is allowed...
+					externals.doEvt("allowedrequest",req,resp).then(d=>{
+						
+						if (!d) {
+							
+							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							
+						}
+						
+					}) ;
+					
+				}
+				
+				else {
+					
+					//Check the next.
+					nextCheck() ;
+					
+				}
+				
+			}
+			
+			//Dunnow ;)
+			else if (canAccess === null) {
+				
+				return ;
+				
+			}
+			
+			//Somthing has gone wrong, so play it safe & send a 401.
+			else {
+				
+				console.log(`\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
+				resp.writeHead(401,{"Content-Type":"text/plain"}) ;
+				resp.write("Nope.") ;
+				resp.end() ;
+				return false ;
+				
+			}
+			
+		}).catch(err=>{coughtError(err,resp);console.log("Error trace: Error recieving account data.");}) ;
+		
+	} ;
+	//Check
+	nextCheck() ;
+	
+	return ;
+	
+}
+
 //Should be called when a request is allowed.
 function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 	
 	try {
 		
 		//Do allowed request handle.
-		if (externals.doEvt("allowedrequest",req,resp)) {
+		/*if (externals.doEvt("allowedrequest",req,resp)) {
 			
 			return true ;
 			
-		}
+		}*/
 		
 		let varsToSend = resp.vars ;
 		
