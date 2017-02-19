@@ -185,7 +185,7 @@ if (cluster.isMaster) {
 					}
 					
 					//Set the var
-					vars[doTo[3]][toDo[1]] = toDo[2] ;
+					vars[toDo[3]][toDo[1]] = toDo[2] ;
 					
 				}
 				
