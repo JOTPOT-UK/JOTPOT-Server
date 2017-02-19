@@ -84,7 +84,7 @@ if (cluster.isMaster) {
 				
 				lock:externals.lock
 				
-			},vars) ;
+			},null,vars) ;
 			
 		}
 		

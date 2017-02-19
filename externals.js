@@ -166,7 +166,7 @@ process.on("message",m=>{
 }) ;
 
 //Function to load an extention. File is path to extention, and serverObj is the object that will be the base of the server variable.
-module.exports.loadExt = (file,serverObj) => {
+module.exports.loadExt = (file,serverObj,lock=null) => {
 	
 	//If the extention doesn't exist...
 	if (!fs.existsSync(file)) {
@@ -183,6 +183,17 @@ module.exports.loadExt = (file,serverObj) => {
 		return {"loaded":false,"error":"Not file"} ;
 		
 	}
+	
+	//If there is no lock
+	if (lock === null) {
+		
+		//Create a new one with no limits.
+		lock = new module.exports.lock() ;
+		
+	}
+	
+	//Save the origional server object.
+	const origServerObj = serverObj ;
 	
 	//Just, dissapointing...
 	serverObj.isMaster = false ;
@@ -224,6 +235,14 @@ module.exports.loadExt = (file,serverObj) => {
 		
 	} ;
 	
+	//Function for extention to load another extention.
+	serverObj.loadExt = (ePath,eLock=null) => {
+		
+		//Return their server object.
+		return module.exports.loadExt(ePath,origServerObj,eLock) ;
+		
+	}
+	
 	//Wrap the source
 	let source = `(function(require,server,console,setTimeout,setInterval){${fs.readFileSync(file).toString()}});` ;
 	
@@ -251,7 +270,7 @@ module.exports.loadExt = (file,serverObj) => {
 }
 
 //Function to load an extention in master mode. Similar to loadExt. vars arg is vars object for seting and getting globals.
-module.exports.loadMasterExt = (file,serverObj,vars) => {
+module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 	
 	//If the extention doesn't exist...
 	if (!fs.existsSync(file)) {
@@ -268,6 +287,17 @@ module.exports.loadMasterExt = (file,serverObj,vars) => {
 		return {"loaded":false,"error":"Not file"} ;
 		
 	}
+	
+	//If there is no lock
+	if (lock === null) {
+		
+		//Create a new one with no limits.
+		lock = new module.exports.lock() ;
+		
+	}
+	
+	//Save the origional server object.
+	const origServerObj = serverObj ;
 	
 	//This is the MASTER!!!
 	serverObj.isMaster = true ;
@@ -295,6 +325,14 @@ module.exports.loadMasterExt = (file,serverObj,vars) => {
 		resolve() ;
 		
 	} ;
+	
+	//Functino for extention to load another extention.
+	serverObj.loadExt = (ePath,eLock=null) => {
+		
+		//Return their server object.
+		return module.exports.loadMasterExt(ePath,origServerObj,eLock,vars) ;
+		
+	}
 	
 	//Wrap the source
 	let source = `(function(require,server,console,setTimeout,setInterval){${fs.readFileSync(file).toString()}});` ;
