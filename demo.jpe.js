@@ -86,3 +86,9 @@ else {
 	}) ;
 	
 }
+
+//Create a new lock, this will give the extention we will load it's own variable pool (that we can access).
+let demoLock = new server.lock("demo-lock") ;
+
+//Load an extention with our lock.
+server.loadExt("./locked-demo.js",demoLock) ;
