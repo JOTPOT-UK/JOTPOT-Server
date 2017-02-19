@@ -388,7 +388,7 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 
 module.exports.lock = class {
 	
-	constructor(vars=null,mode=0,hosts=[],) {
+	constructor(vars=null,mode=0,hosts=[]) {
 		
 		this.vars = vars ;
 		this.mode = mode ;
