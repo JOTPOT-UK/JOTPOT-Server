@@ -109,7 +109,8 @@ if (cluster.isMaster) {
 			
 			else if (toDo[0] === "gv") {
 				
-				//If there is a lock
+				
+				//If there isn't a lock
 				if (toDo[2] === null) {
 					
 					//If the var doesn't exist.
@@ -137,9 +138,10 @@ if (cluster.isMaster) {
 					if (typeof vars[toDo[2]] === "undefined") {
 						
 						//Set up an object for the vars.
-						vars[toDo] = new Object() ;
+						//vars[toDo[2]] = new Object() ;
+						
 						//Var cant exist, so dont send anything back.
-						thisFork.send(["fv",toDo[1]]) ;
+						thisFork.send(["fv",toDo[1]+"---lock"+toDo[2]]) ;
 						
 					}
 					
@@ -147,7 +149,7 @@ if (cluster.isMaster) {
 					else if (typeof vars[toDo[2]][toDo[1]] === "undefined") {
 						
 						//Dont sand anything back.
-						thisFork.send(["fv",toDo[1]]) ;
+						thisFork.send(["fv",toDo[1]+"---lock"+toDo[2]]) ;
 						
 					}
 					
@@ -155,7 +157,7 @@ if (cluster.isMaster) {
 					else {
 						
 						//Send it back.
-						thisFork.send(["gv",toDo[1],vars[toDo[1]]]) ;
+						thisFork.send(["gv",toDo[1]+"---lock"+toDo[2],vars[toDo[2]][toDo[1]]]) ;
 						
 					}
 					
@@ -170,6 +172,9 @@ if (cluster.isMaster) {
 					
 					//Send the var
 					vars[toDo[1]] = toDo[2] ;
+					
+					//Tell the worker it is set.
+					thisFork.send(["sv",toDo[1]]) ;
 					
 				}
 				
@@ -187,10 +192,10 @@ if (cluster.isMaster) {
 					//Set the var
 					vars[toDo[3]][toDo[1]] = toDo[2] ;
 					
+					//Tell the worker it is set.
+					thisFork.send(["sv",toDo[1]+"---lock"+toDo[3]]) ;
+					
 				}
-				
-				//Tell the worker it is set.
-				thisFork.send(["sv",toDo[1]]) ;
 				
 			}
 			

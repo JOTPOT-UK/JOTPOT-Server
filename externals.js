@@ -218,7 +218,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		return new Promise(resolve=>{
 			
 			//When we get the variable.
-			varEvt.once("got " + varTG,d=>{
+			varEvt.once("got " + varTG + (lock.vars===null?"":"---lock"+lock.vars) ,d=>{
 				
 				//Resolve with the contents
 				resolve(d) ;
@@ -238,7 +238,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		return new Promise(resolve=>{
 			
 			//When it is set, resolve
-			varEvt.once("set " + varTS,_=>resolve()) ;
+			varEvt.once("set " + varTS + (lock.vars===null?"":"---lock"+lock.vars) ,_=>resolve()) ;
 			//Tell the master to set it.
 			process.send(["sv",varTS,val,lock.vars]) ;
 			
@@ -354,23 +354,33 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 	//Function to set a variable. 1st arg is var name, second is value to set it to.
 	serverObj.setGlobal = (varTS,val) => {
 		
-		//set the value and resolve instantly, because it is master, there are no async events to do :(
-		
-		if (lock.vars === null) {
+		return new Promise(resolve=>{
 			
-			//No lock
-			vars[varTS] = val ;
+			//set the value and resolve instantly, because it is master, there are no async events to do :(
+			if (lock.vars === null) {
+				
+				//No lock
+				vars[varTS] = val ;
+				
+			}
 			
-		}
-		
-		else {
+			else {
+				
+				//With a lock.
+				
+				if (typeof vars[lock.vars] === "undefined") {
+					
+					vars[lock.vars] = new Object() ;
+					
+				}
+				
+				vars[lock.vars][varTS] = val ;
+				
+			}
 			
-			//With a lock.
-			vars[lock.vars][varTS] = val ;
+			resolve() ;
 			
-		}
-		
-		resolve() ;
+		}) ;
 		
 	} ;
 	
@@ -402,6 +412,7 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 	catch(err) {
 		
 		//Somthing went wrong:
+		console.info(err) ;
 		return {"loaded":false,"error":err} ;
 		
 	}

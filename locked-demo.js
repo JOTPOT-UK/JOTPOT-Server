@@ -22,7 +22,7 @@ server.getGlobal("set_in_master").then(d=>{
 		server.getGlobal("limited").then(d=>{
 			
 			//So we can access this, but not the globals from unlimited extentions.
-			console.info(d) ;
+			console.info("But when we get out own var:",d) ;
 			
 		}) ;
 		
