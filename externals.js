@@ -330,6 +330,8 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	catch(err) {
 		
 		//Somthing went wrong:
+		console.warn("Error loading extention:") ;
+		console.warn(err) ;
 		return {"loaded":false,"error":err} ;
 		
 	}
