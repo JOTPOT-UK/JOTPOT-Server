@@ -11,49 +11,70 @@
 let fs = require("fs") ;
 let Events = require("events") ;
 
+//Create the emitter.
 class NewEmitter extends Events {}
 const procUpdate = new NewEmitter() ;
+
+//Object for storing users.
 let loggedIn = new Object() ;
 
+//When we get a message
 process.on("message",toDo=>{
 	
+	//If it id for us.
 	if (toDo[0] === "proc-update") {
 		
+		//Update our object.
 		loggedIn = toDo[1] ;
+		//And emit an event to say we are up to date.
 		procUpdate.emit("update") ;
 		
 	}
 	
 }) ;
 
+//Gets a user ID from the request object.
 function getUserID(req) {
 	
+	//If there are no cookies.
 	if (typeof req.headers.cookie === "undefined") {
 		
+		//Then they have no ID.
 		return false ;
 		
 	}
 	
+	//Split their cookies up.
 	let cookieArray = req.headers.cookie.split("; ") ;
+	
+	//Object for storing cookies.
 	let cookies = new Object() ;
+	
+	//Go through each cookie.
 	for (let doing in cookieArray) {
 		
+		//Add it to the object.
 		cookies[cookieArray[doing].split("=")[0]] = cookieArray[doing].split("=")[1] ;
 		
 	}
 	
+	//If the JOTPOTUID cookie doesn't exist.
 	if (typeof cookies.JOTPOTUID === "undefined") {
 		
+		//Then they dont have one.
 		return false ;
 		
 	}
 	
+	//Otherwise, generate their ID.
 	return `${req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${cookies.JOTPOTUID}` ;
 	
 }
 
+//Function to create a new UID and add it to the set-cookie header.
 function makeNewUID(req,resp) {
 	
+	//Gen code...
 	let newUID = Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() ;
 	newUID *= 10e10 ;
 	newUID *= Math.random() * Math.random() * Math.random() ;
@@ -63,35 +84,54 @@ function makeNewUID(req,resp) {
 	newUID += Math.random() * 10e5 ;
 	newUID += Math.random() * 10e5 ;
 	newUID += Math.random() * 10e5 ;
+	
+	//Set their cookies.
 	resp.setHeader("Set-Cookie","JOTPOTUID=" + Math.round(newUID).toString(36)) ;
+	
+	//Return their ID.
 	return `${req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${newUID}` ; ;
 	
 }
 
+//Class for an account system.
 class proc {
 	
 	constructor (name,db,pages,pagesEx,login,loginPage,logout,logoutPage,reg,regPage) {
 		
+		//Grab the database as an object.
 		this.accounts = JSON.parse(fs.readFileSync(db).toString()) ;
+		
+		//Create the pages and starts array
 		this.pages = new Array() ;
 		this.starts = new Array() ;
+		
+		//Go through the pages.
 		for (let doing in pages) {
 			
+			//If it contains a wildcard at the end
 			if (pages[doing].lastIndexOf("*") === pages[doing].length - 1) {
 				
+				//It is a start (without the wildcard)
 				this.starts.push(pages[doing].substring(0,pages[doing].length - 1)) ;
 				
 			}
 			
+			//But if not
 			else {
 				
+				//It is a normal page
 				this.pages.push(pages[doing]) ;
 				
 			}
 			
 		}
+		
+		
+		//Create the special pages objects.
 		this.specialPages = new Object() ;
 		this.specialPagesP = new Object() ;
+		
+		//And fill them up.
 		this.specialPages[login] = "login" ;
 		this.specialPages[logout] = "logout" ;
 		this.specialPages[reg] = "reg" ;
@@ -104,48 +144,69 @@ class proc {
 		this.specialPagesP["loginPage"] = loginPage ;
 		this.specialPagesP["logoutPage"] = logoutPage ;
 		this.specialPagesP["regPage"] = regPage ;
+		
+		//Bind the doAnything function.
 		this.doAnything = this.doAnything.bind(this) ;
+		
+		//Create an object to store the usernames.
 		loggedIn[name] = new Object() ;
+		
+		//Set the ID
 		this.ID = name ;
-		//this.pagesEx = pagesEx ;
+		
+		
+		//Set up the pages objects.
 		this.pagesEx = new Array() ;
 		this.pagesExS = new Array() ;
+		
+		//Go through the pages argument.
 		for (let doing in pagesEx) {
 			
+			//If there is a wildcard at the end.
 			if (pagesEx[doing].lastIndexOf("*") === pagesEx[doing].length - 1) {
 				
+				//It is a start without the wildcard.
 				this.pagesExS.push(pagesEx[doing].substring(0,pagesEx[doing].length - 1)) ;
 				
 			}
 			
 			else {
 				
+				//Meh, normal page.
 				this.pagesEx.push(pagesEx[doing]) ;
 				
 			}
 			
 		}
+		
+		//Get the master process to set up a sync for it.
 		process.send(["proc","new",name]) ;
 		
 	}
 	
+	//Resolves true if the user has permission to access it from this system, false if not.
 	doAnything(req,resp) {
 		
 		return new Promise((resolve,regect) => {
 			
 			let page = req.url ;
 			
+			//If this doesn't protect it.
 			if (typeof this.specialPagesP[page] !== "undefined" || this.pagesEx.indexOf(page) !== -1) {
 				
+				//The user can access it.
 				resolve([true]) ;
 				return ;
 				
 			}
 			
+			//Go through the ends.
 			for (let doing in this.pagesExS) {
 				
+				//If excluded
 				if (page.indexOf(this.pagesExS[doing]) === 0) {
 					
+					//Then the user can access it.
 					resolve([true]) ;
 					return ;
 					
@@ -154,22 +215,27 @@ class proc {
 			}
 			
 			let shouldCheckBlock = true ;
+			
+			//If it is a special page, then we dont need to check.
 			if (typeof this.specialPages[page] !== "undefined" ) {
 				
 				shouldCheckBlock = false ;
 				
 			}
 			
+			//If we do need to checl.
 			if (shouldCheckBlock) {
 				
 				let isAuthed = true ;
 				
+				//If it is protected, the user is not authed.
 				if (this.pages.indexOf(page) !== -1) {
 					
 					isAuthed = false ;
 					
 				}
 				
+				//And the starts, but only if we need to.
 				if (isAuthed) {
 					
 					for (let doing in this.starts) {
@@ -185,6 +251,7 @@ class proc {
 				
 				}
 				
+				//If the user can still access it, then resolve true.
 				if (isAuthed) {
 					
 					resolve([true]) ;

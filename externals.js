@@ -212,12 +212,16 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	//Add the handle function to the serverObj
 	serverObj.handle = (evt,func) => {
 		
+		//If it is only allowed to handle cirton hosts.
 		if (lock.mode === 1) {
 			
+			//And it is trying to handle requests.
 			if (evt === "request" || evt === "fullrequest" || evt === "allowedrequest") {
 				
+				//Go through all the hosts it can access
 				for (let doing in lock.hosts) {
 					
+					//Handle the event, but only for the host.
 					handle(`${lock.hosts[doing]}/${evt}`,func) ;
 					
 				}
@@ -227,6 +231,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 			
 		}
 		
+		//We can just handle the event now.
 		handle(evt,func) ;
 		
 	} ;
