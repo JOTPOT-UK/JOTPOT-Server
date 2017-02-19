@@ -80,7 +80,11 @@ if (cluster.isMaster) {
 		//If it is an extention, load it.
 		if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 			
-			let currentLoad = externals.loadMasterExt(currentDir[doing],{},vars) ;
+			let currentLoad = externals.loadMasterExt(currentDir[doing],{
+				
+				lock:externals.lock
+				
+			},vars) ;
 			
 		}
 		

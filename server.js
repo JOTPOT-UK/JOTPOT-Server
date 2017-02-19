@@ -919,7 +919,8 @@ module.exports = {
 						) ;
 						allAccountSystems.push(creatingAcc) ;
 						
-					}
+					},
+					lock:externals.lock
 					
 				}) ;
 				
