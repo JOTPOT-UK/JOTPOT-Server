@@ -347,12 +347,15 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 					
 					//Resolve undefined because the var cant exist...
 					resolve(void(undefined)) ;
-					return ;
 					
 				}
 				
-				//Get var under the lock object.
-				resolve(vars[lock.vars][varTG]) ;
+				else {
+					
+					//Get var under the lock object.
+					resolve(vars[lock.vars][varTG]) ;
+					
+				}
 				
 			}
 			
