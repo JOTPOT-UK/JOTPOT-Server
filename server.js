@@ -530,13 +530,41 @@ function handleRequest(req,resp) {
 		
 		//Do request handle.
 		//if (externals.handles.request(req,resp)) {
+		let cont = true ;
+		let gotOtherPromise = false ;
 		externals.doEvt("request",req,resp).then(d=>{
 			
-			if (!d) {
+			if (d) {
+				
+				cont = false ;
+				
+			}
+			
+			if (gotOtherPromise && cont) {
 				
 				handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
 				
 			}
+			
+			gotOtherPromise = true ;
+			
+		})
+		
+		externals.doEvt(`${host}/request`).then(d=>{
+			
+			if (d) {
+				
+				cont = false ;
+				
+			}
+			
+			if (gotOtherPromise && cont) {
+				
+				handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
+				
+			}
+			
+			gotOtherPromise = true ;
 			
 		}) ;
 		
@@ -613,14 +641,42 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 	}
 	
 	//Handle for full request.
-	//if (externals.handles.fullrequest(req,resp)) {
+	
+	let cont = true ;
+	let gotOtherPromise = false ;
 	externals.doEvt("fullrequest",req,resp).then(d=>{
 		
-		if (!d) {
+		if (d) {
+			
+			cont = false ;
+			
+		}
+		
+		if (gotOtherPromise && cont) {
 			
 			handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
 			
 		}
+		
+		gotOtherPromise = true ;
+		
+	})
+	
+	externals.doEvt(`${host}/fullrequest`).then(d=>{
+		
+		if (d) {
+			
+			cont = false ;
+			
+		}
+		
+		if (gotOtherPromise && cont) {
+			
+			handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
+			
+		}
+		
+		gotOtherPromise = true ;
 		
 	}) ;
 	
@@ -633,15 +689,44 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 	//If there are no account systems, then dont bother checking if the user has permission.
 	if (allAccountSystems.length === 0) {
 		
+		let cont = true ;
+		let gotOtherPromise = false ;
 		externals.doEvt("allowedrequest",req,resp).then(d=>{
 			
-			if (!d) {
+			if (d) {
+				
+				cont = false ;
+				
+			}
+			
+			if (gotOtherPromise && cont) {
 				
 				allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 				
 			}
 			
+			gotOtherPromise = true ;
+			
+		})
+		
+		externals.doEvt(`${host}/allowedrequest`).then(d=>{
+			
+			if (d) {
+				
+				cont = false ;
+				
+			}
+			
+			if (gotOtherPromise && cont) {
+				
+				allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				
+			}
+			
+			gotOtherPromise = true ;
+			
 		}) ;
+		
 		return true ;
 		
 	}
@@ -691,13 +776,41 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 				if (checkingSystem >= allAccountSystems.length) {
 					
 					//The request is allowed...
+					let cont = true ;
+					let gotOtherPromise = false ;
 					externals.doEvt("allowedrequest",req,resp).then(d=>{
 						
-						if (!d) {
+						if (d) {
+							
+							cont = false ;
+							
+						}
+						
+						if (gotOtherPromise && cont) {
 							
 							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 							
 						}
+						
+						gotOtherPromise = true ;
+						
+					})
+					
+					externals.doEvt(`${host}/allowedrequest`).then(d=>{
+						
+						if (d) {
+							
+							cont = false ;
+							
+						}
+						
+						if (gotOtherPromise && cont) {
+							
+							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							
+						}
+						
+						gotOtherPromise = true ;
 						
 					}) ;
 					
