@@ -88,7 +88,8 @@ else {
 }
 
 //Create a new lock, this will give the extention we will load it's own variable pool (that we can access).
-let demoLock = new server.lock("demo-lock") ;
+//This extention will also only be able to recieve request events for localhost or example.com.
+let demoLock = new server.lock("demo-lock",1,["localhost","example.com"]) ;
 
 //Load an extention with our lock.
 server.loadExt("./locked-demo.js",demoLock) ;

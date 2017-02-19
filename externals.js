@@ -210,7 +210,26 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	serverObj.isMaster = false ;
 	
 	//Add the handle function to the serverObj
-	serverObj.handle = handle ;
+	serverObj.handle = (evt,func) => {
+		
+		if (lock.mode === 1) {
+			
+			if (evt === "request" || evt === "fullrequest" || evt === "allowedrequest") {
+				
+				for (let doing in lock.hosts) {
+					
+					handle(`${lock.hosts[doing]}/${evt}`,func) ;
+					
+				}
+				return ;
+				
+			}
+			
+		}
+		
+		handle(evt,func) ;
+		
+	} ;
 	
 	//Functiom to set a global variable. 1 arg is var name to get.
 	serverObj.getGlobal = varTG => {
@@ -460,6 +479,14 @@ module.exports.lock = class {
 			
 			throw "2nd argument (mode) must be 0, 1 or 2" ;
 			return false ;
+			
+		}
+		
+		if (mode === 2) {
+			
+			console.info("Lock mode 2 not yet supported, assuming mode 0.") ;
+			console.warn("Lock mode 2 not yet supported, assuming mode 0.") ;
+			mode = 0 ;
 			
 		}
 		

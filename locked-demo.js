@@ -8,6 +8,12 @@ else {
 	
 	console.info("Locked demo loaded as a worker, but limited is",server.limited) ;
 	
+	server.handle("request",_=>{
+		
+		console.info("Locked demo got the request!!!") ;
+		
+	}) ;
+	
 }
 
 server.getGlobal("set_in_master").then(d=>{
