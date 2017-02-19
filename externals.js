@@ -390,9 +390,58 @@ module.exports.lock = class {
 	
 	constructor(vars=null,mode=0,hosts=[]) {
 		
+		if (typeof vars !== "string" && vars !== null) {
+			
+			throw "First argument must be a string or null" ;
+			return false ;
+			
+		}
+		
+		if (typeof mode !== "number") {
+			
+			throw "2nd argument (mode) must be a number" ;
+			return false ;
+			
+		}
+		
+		else if (Math.round(mode) !== mode) {
+			
+			throw "2nd argument (mode) must be an integer." ;
+			return false ;
+			
+		}
+		
+		else if (mode < 0 || mode > 2) {
+			
+			throw "2nd argument (mode) must be 0, 1 or 2" ;
+			return false ;
+			
+		}
+		
 		this.vars = vars ;
 		this.mode = mode ;
 		if (mode > 0) {
+			
+			let hostValid = true ;
+			
+			if (typeof hosts !== "object") {
+				
+				hostValid = false ;
+				
+			}
+			
+			else if (typeof hosts[0] === "undefined") {
+				
+				hostValid = false ;
+				
+			}
+			
+			if (!hostValid) {
+				
+				throw "3rd argument must be an array containing at least one host, unless mode is 0" ;
+				return false ;
+				
+			}
 			
 			this.hosts = hosts ;
 			
