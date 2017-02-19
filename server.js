@@ -550,7 +550,7 @@ function handleRequest(req,resp) {
 			
 		})
 		
-		externals.doEvt(`${host}/request`).then(d=>{
+		externals.doEvt(`${host}/request`,req,resp).then(d=>{
 			
 			if (d) {
 				
@@ -662,7 +662,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 		
 	})
 	
-	externals.doEvt(`${host}/fullrequest`).then(d=>{
+	externals.doEvt(`${host}/fullrequest`,req,resp).then(d=>{
 		
 		if (d) {
 			
@@ -709,7 +709,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 			
 		})
 		
-		externals.doEvt(`${host}/allowedrequest`).then(d=>{
+		externals.doEvt(`${host}/allowedrequest`,req,resp).then(d=>{
 			
 			if (d) {
 				
@@ -796,7 +796,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 						
 					})
 					
-					externals.doEvt(`${host}/allowedrequest`).then(d=>{
+					externals.doEvt(`${host}/allowedrequest`,req,resp).then(d=>{
 						
 						if (d) {
 							
