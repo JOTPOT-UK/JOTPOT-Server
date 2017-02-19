@@ -165,7 +165,31 @@ if (cluster.isMaster) {
 			
 			else if (toDo[0] === "sv") {
 				
-				vars[toDo[1]] = toDo[2] ;
+				//If there isn't a lock
+				if (toDo[3] === null) {
+					
+					//Send the var
+					vars[toDo[1]] = toDo[2] ;
+					
+				}
+				
+				//There is a lock
+				else {
+					
+					//If there aren't any vars for this lock yet
+					if (typeof vars[toDo[3]] === "undefined") {
+						
+						//Create the lock object
+						vars[toDo[3]] = new Object() ;
+						
+					}
+					
+					//Set the var
+					vars[doTo[3]][toDo[1]] = toDo[2] ;
+					
+				}
+				
+				//Tell the worker it is set.
 				thisFork.send(["sv",toDo[1]]) ;
 				
 			}
