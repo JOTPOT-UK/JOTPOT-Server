@@ -225,7 +225,38 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 					handle(`${lock.hosts[doing]}/${evt}`,func) ;
 					
 				}
-				return ;
+				return true ;
+				
+			}
+			
+			else if (evt.indexOf("/") !== -1) {
+				
+				if (evt.lastIndexOf("/request") === evt.length - 8 || evt.lastIndexOf("/fullrequest") === evt.length - 12 || evt.lastIndexOf("/allowedrequest") === evt.length - 15) {
+					
+					let isViolation = true ;
+					//Go through all the hosts it can access
+					for (let doing in lock.hosts) {
+						
+						//If the event is for this host
+						if (evt === `${lock.hosts[doing]}/${evt.split("/")[evt.split("/").length-1]}`) {
+							
+							//Not a violation, we can stop checking now.
+							isViolation = false ;
+							break ;
+							
+						}
+						
+					}
+					
+					//If it is a violation
+					if (isViolation) {
+						
+						console.warn("Not allowed to handle event!") ;
+						return false ;
+						
+					}
+					
+				}
 				
 			}
 			
@@ -233,6 +264,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		
 		//We can just handle the event now.
 		handle(evt,func) ;
+		return true ;
 		
 	} ;
 	

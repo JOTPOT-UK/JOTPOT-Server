@@ -248,7 +248,7 @@ class proc {
 						}
 						
 					}
-				
+					
 				}
 				
 				//If the user can still access it, then resolve true.
