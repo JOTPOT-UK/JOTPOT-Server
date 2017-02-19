@@ -215,7 +215,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 			});
 			
 			//Send a request to the master process to get the variable.
-			process.send(["gv",varTG]) ;
+			process.send(["gv",varTG,lock.vars]) ;
 			
 		}) ;
 		
@@ -229,7 +229,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 			//When it is set, resolve
 			varEvt.once("set " + varTS,_=>resolve()) ;
 			//Tell the master to set it.
-			process.send(["sv",varTS,val]) ;
+			process.send(["sv",varTS,val,lock.vars]) ;
 			
 		}) ;
 		
@@ -311,7 +311,19 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 		return new Promise(resolve=>{
 			
 			//Resolve instantly, because it is master, there are no async events to do :(
-			resolve(vars[varTG]) ;
+			if (lock.vars === null) {
+				
+				//No lock so get var fromm root variables.
+				resolve(vars[varTG]) ;
+				
+			}
+			
+			else {
+				
+				//Get var under the lock object.
+				resolve(vars[lock.vars][varTG]) ;
+				
+			}
 			
 		}) ;
 		
@@ -321,7 +333,21 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 	serverObj.setGlobal = (varTS,val) => {
 		
 		//set the value and resolve instantly, because it is master, there are no async events to do :(
-		vars[varTS] = val ;
+		
+		if (lock.vars === null) {
+			
+			//No lock
+			vars[varTS] = val ;
+			
+		}
+		
+		else {
+			
+			//With a lock.
+			vars[lock.vars][varTS] = val ;
+			
+		}
+		
 		resolve() ;
 		
 	} ;

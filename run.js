@@ -109,13 +109,57 @@ if (cluster.isMaster) {
 			
 			else if (toDo[0] === "gv") {
 				
-				if (typeof vars[toDo[1]] === "undefined") {
+				//If there is a lock
+				if (toDo[2] === null) {
 					
-					thisFork.send(["fv",toDo[1]]) ;
+					//If the var doesn't exist.
+					if (typeof vars[toDo[1]] === "undefined") {
+						
+						//Dont send a value back.
+						thisFork.send(["fv",toDo[1]]) ;
+						
+					}
+					
+					//The var exists
+					else {
+						
+						//Send the value back from the root vars because there is no lock.
+						thisFork.send(["gv",toDo[1],vars[toDo[1]]]) ;
+						
+					}
 					
 				}
 				
-				thisFork.send(["gv",toDo[1],vars[toDo[1]]]) ;
+				//So there is a lock.
+				else {
+					
+					//If there are no vars for that lock yet.
+					if (typeof vars[toDo[2]] === "undefined") {
+						
+						//Set up an object for the vars.
+						vars[toDo] = new Object() ;
+						//Var cant exist, so dont send anything back.
+						thisFork.send(["fv",toDo[1]]) ;
+						
+					}
+					
+					//If the var doesn't exist.
+					else if (typeof vars[toDo[2]][toDo[1]] === "undefined") {
+						
+						//Dont sand anything back.
+						thisFork.send(["fv",toDo[1]]) ;
+						
+					}
+					
+					//Var exists
+					else {
+						
+						//Send it back.
+						thisFork.send(["gv",toDo[1],vars[toDo[1]]]) ;
+						
+					}
+					
+				}
 				
 			}
 			
