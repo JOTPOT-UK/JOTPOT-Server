@@ -190,6 +190,17 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
 		
+		//This extention is not limited
+		serverObj.limited = false ;
+		
+	}
+	
+	//LOCKED!!!
+	else {
+		
+		//Now we are locked
+		serverObj.limited = true ;
+		
 	}
 	
 	//Save the origional server object.
@@ -293,6 +304,17 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 		
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
+		
+		//This extention is not limited
+		serverObj.limited = false ;
+		
+	}
+	
+	//LOCKED!!!
+	else {
+		
+		//Now we are locked
+		serverObj.limited = true ;
 		
 	}
 	
