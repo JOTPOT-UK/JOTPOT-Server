@@ -93,6 +93,9 @@ function makeNewUID(req,resp) {
 	
 }
 
+module.exports.getUserID = getUserID ;
+module.exports.makeNewUID = makeNewUID ;
+
 //Class for an account system.
 class proc {
 	
@@ -182,6 +185,22 @@ class proc {
 		//Get the master process to set up a sync for it.
 		process.send(["proc","new",name]) ;
 		
+		Object.defineProperty(this,"users",{
+			
+			get: function () {
+				
+				return loggedIn[name] ;
+				
+			},
+			
+			set: function (v) {
+				
+				loggedIn[name] = v ;
+				
+			}
+			
+		}) ;
+		
 	}
 	
 	//Resolves true if the user has permission to access it from this system, false if not.
@@ -214,17 +233,17 @@ class proc {
 				
 			}
 			
-			let shouldCheckBlock = true ;
+			//let shouldCheckBlock = true ;
 			
 			//If it is a special page, then we dont need to check.
-			if (typeof this.specialPages[page] !== "undefined" ) {
+			//if (typeof this.specialPages[page] !== "undefined" ) {
 				
-				shouldCheckBlock = false ;
+				//shouldCheckBlock = false ;
 				
-			}
+			//}
 			
 			//If we do need to checl.
-			if (shouldCheckBlock) {
+			if (typeof this.specialPages[page] === "undefined") {
 				
 				let isAuthed = true ;
 				
@@ -261,12 +280,13 @@ class proc {
 				
 			}
 			
-			let user = getUserID(req) ;
+			let user = req.user || getUserID(req) ;
 			if (user === false) {
 				
 				user = makeNewUID(req,resp) ;
 				
 			}
+			req.user = user ;
 			
 			if (typeof this.specialPages[page] !== "undefined") {
 				
@@ -427,4 +447,4 @@ class proc {
 	
 }
 
-module.exports = proc ;
+module.exports.proc = proc ;

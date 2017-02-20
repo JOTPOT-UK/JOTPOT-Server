@@ -1016,7 +1016,7 @@ module.exports = {
 					"sendError":(...eArgs)=>sendError(...eArgs),
 					"createAccountSystem":(args) => {
 						
-						let creatingAcc = new proc(
+						let creatingAcc = new proc.proc(
 							
 							args.name,
 							args.db,
@@ -1031,9 +1031,22 @@ module.exports = {
 							
 						) ;
 						allAccountSystems.push(creatingAcc) ;
+						return creatingAcc ;
 						
 					},
-					lock:externals.lock
+					lock:externals.lock,
+					getUserID:(req,resp)=>{
+						
+						let userID = proc.getUserID(req) ;
+						if (userID) {
+							
+							return userID ;
+							
+						}
+						return makeNewUID(req,resp) ;
+						
+					},
+					getMimeType:(...args)=>getMimeType(...args)
 					
 				}) ;
 				
