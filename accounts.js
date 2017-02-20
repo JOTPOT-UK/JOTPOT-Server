@@ -99,7 +99,7 @@ module.exports.makeNewUID = makeNewUID ;
 //Class for an account system.
 class proc {
 	
-	constructor (name,db,pages,pagesEx,login,loginPage,logout,logoutPage,reg,regPage) {
+	constructor (name,db,pages,pagesEx,login,loginPage,logout,logoutPage,reg,regPage,loginRedirect) {
 		
 		//Grab the database as an object.
 		this.accounts = JSON.parse(fs.readFileSync(db).toString()) ;
@@ -147,6 +147,8 @@ class proc {
 		this.specialPagesP["loginPage"] = loginPage ;
 		this.specialPagesP["logoutPage"] = logoutPage ;
 		this.specialPagesP["regPage"] = regPage ;
+		
+		this.loginRedirect = loginRedirect || "/" ;
 		
 		//Bind the doAnything function.
 		this.doAnything = this.doAnything.bind(this) ;
@@ -394,7 +396,7 @@ class proc {
 				//resp.writeHead(200,{"Content-Type":"text/plain"}) ;
 				//resp.write("You are logged in...") ;
 				//resp.end() ;
-				resolve( [false,"redirect","/"]) ;
+				resolve( [false,"redirect",this.loginRedirect]) ;
 				
 			}
 			
