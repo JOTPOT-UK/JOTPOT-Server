@@ -99,7 +99,7 @@ module.exports.makeNewUID = makeNewUID ;
 //Class for an account system.
 class proc {
 	
-	constructor (name,db,pages,pagesEx,login,loginPage,logout,logoutPage,reg,regPage,loginRedirect) {
+	constructor (name,db,pages,pagesEx,login,loginPage,logout,logoutPage,reg,regPage,loginRedirect,https) {
 		
 		//Grab the database as an object.
 		this.accounts = JSON.parse(fs.readFileSync(db).toString()) ;
@@ -149,6 +149,20 @@ class proc {
 		this.specialPagesP["regPage"] = regPage ;
 		
 		this.loginRedirect = loginRedirect || "/" ;
+		
+		//If https is not defined
+		if (typeof https === "undefined") {
+			
+			this.https = false ;
+			
+		}
+		
+		else {
+			
+			this.https = https ;
+			
+		}
+		
 		
 		//Bind the doAnything function.
 		this.doAnything = this.doAnything.bind(this) ;
@@ -321,7 +335,7 @@ class proc {
 				
 				else {
 					
-					resolve([false,"redirect","http://" + this.specialPagesP["loginPage"]]) ;
+					resolve([false,"redirect",(this.https?"https://":"http://") + this.specialPagesP["loginPage"]]) ;
 					return ;
 					
 				}
@@ -385,7 +399,7 @@ class proc {
 				//resp.writeHead(200,{"Content-Type":"text/plain"}) ;
 				//resp.write("Incorrect username or password...") ;
 				//resp.end() ;
-				resolve([false,"redirect",this.specialPagesP.loginPage]) ;
+				resolve([false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.loginPage]) ;
 				
 			}
 			
@@ -396,21 +410,21 @@ class proc {
 				//resp.writeHead(200,{"Content-Type":"text/plain"}) ;
 				//resp.write("You are logged in...") ;
 				//resp.end() ;
-				resolve( [false,"redirect",this.loginRedirect]) ;
+				resolve( [false,"redirect",(this.https?"https://":"http://") + this.loginRedirect]) ;
 				
 			}
 			
 			if (typeof args.username === "undefined" || typeof args.password === "undefined") {
 				
 				sendIUOP() ;
-				resolve([false,"redirect",this.specialPagesP.loginPage]) ;
+				resolve([false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.loginPage]) ;
 				
 			}
 			
 			else if (typeof this.accounts[args.username] === "undefined") {
 				
 				sendIUOP() ;
-				resolve([false,"redirect",this.specialPagesP.loginPage]) ;
+				resolve([false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.loginPage]) ;
 				
 			}
 			
@@ -424,7 +438,7 @@ class proc {
 			else {
 				
 				sendIUOP() ;
-				resolve([false,"redirect",this.specialPagesP.loginPage]) ;
+				resolve([false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.loginPage]) ;
 				
 			}
 			
@@ -437,7 +451,7 @@ class proc {
 		
 		delete loggedIn[this.ID][user] ;
 		process.send(["proc","del",this.ID,user]) ;
-		return [false,"redirect",this.specialPagesP.logoutPage] ;
+		return [false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.logoutPage] ;
 		
 	}
 	
