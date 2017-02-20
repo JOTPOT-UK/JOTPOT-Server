@@ -1028,7 +1028,8 @@ module.exports = {
 							args.logoutPage,
 							args.regURL,
 							args.regPage,
-							args.loginRedirect
+							args.loginRedirect,
+							args.https
 							
 						) ;
 						allAccountSystems.push(creatingAcc) ;
