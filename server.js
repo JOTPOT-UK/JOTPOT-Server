@@ -1048,7 +1048,8 @@ module.exports = {
 						return makeNewUID(req,resp) ;
 						
 					},
-					getMimeType:(...args)=>getMimeType(...args)
+					getMimeType:(...args)=>getMimeType(...args),
+					config: config
 					
 				}) ;
 				
