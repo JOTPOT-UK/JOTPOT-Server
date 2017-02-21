@@ -313,25 +313,30 @@ if (cluster.isMaster) {
 	}
 	
 	//Create a server to get the loggs.
-	net.createServer(s=>{
 	
-		s.on("data",d=>{
-			
-			d = d.toString() ;
-			if (d === "getlogs") {
-				
-				s.write(logs.join("\n")) ;
-				
-			}
-			else if (d === "reload") {
-				
-				process.exit() ;
-				
-			}
-			
-		}) ;
+	if (config.dataPort > -1) {
 		
-	}).listen(config.dataPort || 500) ;
+		net.createServer(s=>{
+		
+			s.on("data",d=>{
+				
+				d = d.toString() ;
+				if (d === "getlogs") {
+					
+					s.write(logs.join("\n")) ;
+					
+				}
+				else if (d === "reload") {
+					
+					process.exit() ;
+					
+				}
+				
+			}) ;
+			
+		}).listen(config.dataPort || 500) ;
+		
+	}
 	
 	console.info("Master up, all threads spawned.") ;
 	console.log("Master up, all threads spawned.") ;
