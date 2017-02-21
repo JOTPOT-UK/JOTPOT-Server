@@ -521,8 +521,8 @@ function handleRequest(req,resp) {
 		//For vars
 		let host = req.headers.host || config.defaultDomain ;
 		req.host = host ;
-		let user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
-		let user_ip_remote = req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
+		let user_ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+		let user_ip_remote = (req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
@@ -1079,12 +1079,20 @@ module.exports = {
 		//Set up the HTTP servers
 		for (let doing in config.httpServers) {
 			
+			let options = new Object() ;
+			options.port = config.httpServers[doing].port ;
+			if (typeof config.httpServers[doing].host !== "undefined") {
+				
+				options.host = config.httpServers[doing].host ;
+				
+			}
+			
 			http.createServer((req,resp) => {
 				
 				req.overHttps = false ;
 				handleRequest(req,resp) ;
 				
-			}).listen(config.httpServers[doing].port) ;
+			}).listen(options) ;
 			
 		}
 		
