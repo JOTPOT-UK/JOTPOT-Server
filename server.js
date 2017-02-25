@@ -1049,7 +1049,14 @@ module.exports = {
 						
 					},
 					getMimeType:(...args)=>getMimeType(...args),
-					config: config
+					config: config,
+					getData: req=>{
+						
+						let data = new Array() ;
+						req.on("data",d=>data.push(d)) ;
+						return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+						
+					}
 					
 				}) ;
 				
