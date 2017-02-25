@@ -1045,7 +1045,7 @@ module.exports = {
 							return userID ;
 							
 						}
-						return makeNewUID(req,resp) ;
+						return proc.makeNewUID(req,resp) ;
 						
 					},
 					getMimeType:(...args)=>getMimeType(...args),
