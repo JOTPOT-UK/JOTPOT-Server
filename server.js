@@ -1080,11 +1080,11 @@ module.exports = {
 		//Set up the HTTP servers
 		for (let doing in config.httpServers) {
 			
-			let options = new Object() ;
-			options.port = config.httpServers[doing].port ;
+			let options = new Array() ;
+			options[0] = config.httpServers[doing].port ;
 			if (typeof config.httpServers[doing].host !== "undefined") {
 				
-				options.host = config.httpServers[doing].host ;
+				options[1] = config.httpServers[doing].host ;
 				
 			}
 			
@@ -1093,7 +1093,7 @@ module.exports = {
 				req.overHttps = false ;
 				handleRequest(req,resp) ;
 				
-			}).listen(options) ;
+			}).listen(...options) ;
 			
 		}
 		
