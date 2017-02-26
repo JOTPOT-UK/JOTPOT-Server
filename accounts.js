@@ -21,8 +21,20 @@ let loggedIn = new Object() ;
 //When we get a message
 process.on("message",toDo=>{
 	
+	if (toDo[0] === "proc-authed") {
+		
+		procUpdate.emit(`authed-${toDo[1]}-${toDo[2]}`,toDo[3]) ;
+		
+	}
+	
+	else if (toDo[0] === "proc-usn") {
+		
+		procUpdate.emit(`username-${toDo[1]}-${toDo[2]}`,[toDo[3],toDo[4]||""]) ;
+		
+	}
+	
 	//If it id for us.
-	if (toDo[0] === "proc-update") {
+	else if (toDo[0] === "proc-update") {
 		
 		//Update our object.
 		loggedIn = toDo[1] ;
@@ -366,11 +378,9 @@ class proc {
 			
 			procUpdate.once(`authed-${this.ID}-${user}`,rv=>{
 				
-				console.log("Got auth") ;
 				resolve(rv) ;
 				
 			}) ;
-			console.log("Sending off to get the auth status.") ;
 			process.send(["proc","authed",this.ID,user]) ;
 			
 			//if (typeof loggedIn[this.ID][user] === "undefined") {
@@ -406,6 +416,31 @@ class proc {
 		
 	}
 	
+	getUsername (user) {
+		
+		return new Promise((resolve,reject) => {
+			
+			procUpdate.once(`username-${this.ID}-${user}`,rv=>{
+				
+				if (rv[0]) {
+					
+					resolve(rv[1]) ;
+					
+				}
+				
+				else {
+					
+					reject() ;
+					
+				}
+				
+			}) ;
+			process.send(["proc","usn",this.ID,user]) ;
+			
+		}) ;
+		
+	}
+	
 	login (req,resp,user) {
 		
 		return new Promise((resolve,reject)=>{req.on("data",(d)=>{
@@ -436,12 +471,10 @@ class proc {
 				//resp.end() ;
 				procUpdate.once(`added-${user}`,_=>{
 					
-					console.log("Added") ;
 					resolve( [false,"redirect",(this.https?"https://":"http://") + this.loginRedirect]) ;
 					
 				}) ;
 				
-				console.log("Sending add") ;
 				process.send(["proc","add",this.ID,user,args.username]) ;
 				
 			} ;

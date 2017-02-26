@@ -205,14 +205,12 @@ if (cluster.isMaster) {
 				//Update the workers users if needed.
 				if (toDo[1] === "get") {
 					
-					console.log("Master is sending an update.") ;
 					thisFork.send(["proc-update",authedUsers]) ;
 					
 				}
 				
 				else if (toDo[1] === "authed") {
 					
-					console.log("Master is checking the auth.") ;
 					if (typeof authedUsers[toDo[2]][toDo[3]] !== "undefined") {
 						
 						thisFork.send(["proc-authed",toDo[2],toDo[3],true]) ;
@@ -222,6 +220,22 @@ if (cluster.isMaster) {
 					else {
 						
 						thisFork.send(["proc-authed",toDo[2],toDo[3],false]) ;
+						
+					}
+					
+				}
+				
+				else if (toDo[1] === "usn") {
+					
+					if (typeof authedUsers[toDo[2]][toDo[3]] !== "undefined") {
+						
+						thisFork.send(["proc-usn",toDo[2],toDo[3],true,authedUsers[toDo[2]][toDo[3]]]) ;
+						
+					}
+					
+					else {
+						
+						thisFork.send(["proc-usn",toDo[2],toDo[3],false]) ;
 						
 					}
 					
