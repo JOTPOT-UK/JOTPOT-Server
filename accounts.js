@@ -223,6 +223,7 @@ class proc {
 		}
 		
 		this.isAuthed = this.isAuthed.bind(this) ;
+		this.getUsername = this.getUsername.bind(this) ;
 		
 		//Get the master process to set up a sync for it.
 		process.send(["proc","new",name]) ;
