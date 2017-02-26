@@ -31,6 +31,18 @@ process.on("message",toDo=>{
 		
 	}
 	
+	else if (toDo[0] === "proc-added") {
+		
+		procUpdate.emit("added-"+toDo[1]) ;
+		
+	}
+	
+	else if (toDo[0] === "proc-deled") {
+		
+		procUpdate.emit("deled-"+toDo[1]) ;
+		
+	}
+	
 }) ;
 
 //Gets a user ID from the request object.
@@ -406,11 +418,16 @@ class proc {
 			let isLoggedIn =_=> {
 				
 				loggedIn[this.ID][user] = args.username ;
-				process.send(["proc","add",this.ID,user,args.username]) ;
 				//resp.writeHead(200,{"Content-Type":"text/plain"}) ;
 				//resp.write("You are logged in...") ;
 				//resp.end() ;
-				resolve( [false,"redirect",(this.https?"https://":"http://") + this.loginRedirect]) ;
+				procUpdate.once(`added-${user}`,_=>{
+					
+					resolve( [false,"redirect",(this.https?"https://":"http://") + this.loginRedirect]) ;
+					
+				}) ;
+				
+				process.send(["proc","add",this.ID,user,args.username]) ;
 				
 			}
 			
@@ -450,8 +467,14 @@ class proc {
 	logout (req,resp,user) {
 		
 		delete loggedIn[this.ID][user] ;
+		
+		procUpdate.once(`deled-${user}`,_=>{
+			
+			return [false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.logoutPage] ;
+			
+		}) ;
+		
 		process.send(["proc","del",this.ID,user]) ;
-		return [false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.logoutPage] ;
 		
 	}
 	

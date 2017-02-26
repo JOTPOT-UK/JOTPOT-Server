@@ -237,6 +237,7 @@ if (cluster.isMaster) {
 							
 							//Set the UID property of the account system as their username.
 							authedUsers[toDo[2]][toDo[3]] = toDo[4] ;
+							thisFork.send(["proc-added",toDo[3]]) ;
 							return true ;
 							
 						}
@@ -260,6 +261,7 @@ if (cluster.isMaster) {
 				else if (toDo[1] === "del") {
 					
 					delete authedUsers[toDo[2]][toDo[3]] ;
+							thisFork.send(["proc-deled",toDo[3]]) ;
 					
 				}
 				
