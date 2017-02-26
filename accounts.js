@@ -350,7 +350,7 @@ class proc {
 		
 		return new Promise((resolve,reject) => {
 			
-			if (typeof loggedIn[this.ID][user] === "undefined") {
+			//if (typeof loggedIn[this.ID][user] === "undefined") {
 				
 				process.send(["proc","get"]) ;
 				procUpdate.once("update",_=>{
@@ -369,13 +369,13 @@ class proc {
 					
 				}) ;
 				
-			}
+			/*}
 			
 			else {
 				
 				resolve(true) ;
 				
-			}
+			}*/
 			
 		}) ;
 		
