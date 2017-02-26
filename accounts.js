@@ -362,11 +362,20 @@ class proc {
 		
 		return new Promise((resolve,reject) => {
 			
+			procUpdate.once(`authed-${this.ID}-${user}`,rv=>{
+				
+				console.log("Got auth") ;
+				resolve(rv) ;
+				
+			}) ;
+			console.log("Sending off to get the auth status.") ;
+			process.send(["proc","authed",this.ID,user]) ;
+			
 			//if (typeof loggedIn[this.ID][user] === "undefined") {
 				
-				process.send(["proc","get"]) ;
-				procUpdate.once("update",_=>{
+				/*procUpdate.once("update",_=>{
 					
+					console.log("Got update") ;
 					if (typeof loggedIn[this.ID][user] === "undefined") {
 						
 						resolve(false) ;
@@ -380,6 +389,8 @@ class proc {
 					}
 					
 				}) ;
+				console.log("Sending off to get the update.") ;
+				process.send(["proc","get"]) ;*/
 				
 			/*}
 			
@@ -423,13 +434,15 @@ class proc {
 				//resp.end() ;
 				procUpdate.once(`added-${user}`,_=>{
 					
+					console.log("Added") ;
 					resolve( [false,"redirect",(this.https?"https://":"http://") + this.loginRedirect]) ;
 					
 				}) ;
 				
+				console.log("Sending add") ;
 				process.send(["proc","add",this.ID,user,args.username]) ;
 				
-			}
+			} ;
 			
 			if (typeof args.username === "undefined" || typeof args.password === "undefined") {
 				
@@ -448,7 +461,7 @@ class proc {
 			else if (this.accounts[args.username].password === args.password) {
 				
 				isLoggedIn() ;
-				resolve([true]) ;
+				//resolve([true]) ;
 				
 			}
 			
@@ -466,15 +479,19 @@ class proc {
 	
 	logout (req,resp,user) {
 		
-		delete loggedIn[this.ID][user] ;
-		
-		procUpdate.once(`deled-${user}`,_=>{
+		return new Promise(resolve=>{
 			
-			return [false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.logoutPage] ;
+			delete loggedIn[this.ID][user] ;
+			
+			procUpdate.once(`deled-${user}`,_=>{
+				
+				resolve([false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.logoutPage]) ;
+				
+			}) ;
+			
+			process.send(["proc","del",this.ID,user]) ;
 			
 		}) ;
-		
-		process.send(["proc","del",this.ID,user]) ;
 		
 	}
 	

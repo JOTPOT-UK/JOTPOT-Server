@@ -205,7 +205,25 @@ if (cluster.isMaster) {
 				//Update the workers users if needed.
 				if (toDo[1] === "get") {
 					
+					console.log("Master is sending an update.") ;
 					thisFork.send(["proc-update",authedUsers]) ;
+					
+				}
+				
+				else if (toDo[1] === "authed") {
+					
+					console.log("Master is checking the auth.") ;
+					if (typeof authedUsers[toDo[2]][toDo[3]] !== "undefined") {
+						
+						thisFork.send(["proc-authed",toDo[2],toDo[3],true]) ;
+						
+					}
+					
+					else {
+						
+						thisFork.send(["proc-authed",toDo[2],toDo[3],false]) ;
+						
+					}
 					
 				}
 				
@@ -237,6 +255,7 @@ if (cluster.isMaster) {
 							
 							//Set the UID property of the account system as their username.
 							authedUsers[toDo[2]][toDo[3]] = toDo[4] ;
+							console.log("OK, added") ;
 							thisFork.send(["proc-added",toDo[3]]) ;
 							return true ;
 							
@@ -261,7 +280,7 @@ if (cluster.isMaster) {
 				else if (toDo[1] === "del") {
 					
 					delete authedUsers[toDo[2]][toDo[3]] ;
-							thisFork.send(["proc-deled",toDo[3]]) ;
+					thisFork.send(["proc-deled",toDo[3]]) ;
 					
 				}
 				
