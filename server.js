@@ -19,7 +19,8 @@ let http = require("http") ;
 let https = require("https") ;
 let fs = require("fs") ;
 let path = require("path") ;
-let zlib = require("zlib") ;
+//let zlib = require("zlib") ;
+let purl = require("url").parse ;
 let proc = require("./accounts") ;
 let externals = require("./externals") ;
 let {Transform,Readable} = require("stream") ;
@@ -417,6 +418,7 @@ function sendCache(file,cache,resp,customVars,status=200) {
 		
 		//Make a pipe to send it to.
 		let mainPipe = "none" ;
+		resp.pipeThrough = [] ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
 		
 		//If we need to add vars.
@@ -521,6 +523,8 @@ function handleRequest(req,resp) {
 		//For vars
 		let host = req.headers.host || config.defaultDomain ;
 		req.host = host ;
+		req.fullurl = `http${req.overHttps?"s":""}://${host}:${req.port}${req.url}` ;
+		req.purl = purl(req.fullurl) ;
 		let user_ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 		let user_ip_remote = (req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 		
@@ -1036,8 +1040,8 @@ module.exports = {
 						return creatingAcc ;
 						
 					},
-					lock:externals.lock,
-					getUserID:(req,resp)=>{
+					"lock":externals.lock,
+					"getUserID":(req,resp)=>{
 						
 						let userID = proc.getUserID(req) ;
 						if (userID) {
@@ -1048,9 +1052,9 @@ module.exports = {
 						return proc.makeNewUID(req,resp) ;
 						
 					},
-					getMimeType:(...args)=>getMimeType(...args),
-					config: config,
-					getData: req=>{
+					"getMimeType":(...args)=>getMimeType(...args),
+					"config": config,
+					"getData": req=>{
 						
 						let data = new Array() ;
 						req.on("data",d=>data.push(d)) ;
@@ -1098,6 +1102,7 @@ module.exports = {
 			http.createServer((req,resp) => {
 				
 				req.overHttps = false ;
+				req.port = options[0] ;
 				handleRequest(req,resp) ;
 				
 			}).listen(...options) ;
@@ -1110,6 +1115,7 @@ module.exports = {
 			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
 				
 				req.overHttps = true ;
+				req.port = config.httpsServers[doing].port ;
 				handleRequest(req,resp) ;
 				
 			}).listen(config.httpsServers[doing].port) ;

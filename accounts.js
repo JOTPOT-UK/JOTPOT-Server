@@ -29,6 +29,7 @@ process.on("message",toDo=>{
 	
 	else if (toDo[0] === "proc-usn") {
 		
+		console.log("USN INCOMING!!!") ;
 		procUpdate.emit(`username-${toDo[1]}-${toDo[2]}`,[toDo[3],toDo[4]||""]) ;
 		
 	}
@@ -419,10 +420,12 @@ class proc {
 	
 	getUsername (user) {
 		
+		console.log("Getting username") ;
 		return new Promise((resolve,reject) => {
 			
 			procUpdate.once(`username-${this.ID}-${user}`,rv=>{
 				
+				console.log(rv) ;
 				if (rv[0]) {
 					
 					resolve(rv[1]) ;
@@ -431,11 +434,12 @@ class proc {
 				
 				else {
 					
-					reject() ;
+					resolve(false) ;
 					
 				}
 				
 			}) ;
+			console.log("Sent") ;
 			process.send(["proc","usn",this.ID,user]) ;
 			
 		}) ;

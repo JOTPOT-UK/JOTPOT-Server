@@ -229,12 +229,14 @@ if (cluster.isMaster) {
 					
 					if (typeof authedUsers[toDo[2]][toDo[3]] !== "undefined") {
 						
+						console.log("Res true") ;
 						thisFork.send(["proc-usn",toDo[2],toDo[3],true,authedUsers[toDo[2]][toDo[3]]]) ;
 						
 					}
 					
 					else {
 						
+						console.log("Res false") ;
 						thisFork.send(["proc-usn",toDo[2],toDo[3],false]) ;
 						
 					}
