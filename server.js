@@ -28,22 +28,37 @@ let cluster ;
 
 //Load the config
 let config ;
-if (fs.existsSync("config.json")) {
-	
-	config = fs.readFileSync("config.json").toString() ;
-	
-	try {
+
+function loadConfig() {
+
+	if (fs.existsSync("config.json")) {
 		
-		config = JSON.parse(config) ;
+		config = fs.readFileSync("config.json").toString() ;
+		
+		try {
+			
+			config = JSON.parse(config) ;
+			
+		}
+		
+		catch(err) {
+			
+			console.warn("Error parsing config.json!") ;
+			console.info("Error parsing config.json!") ;
+			console.warn(err) ;
+			console.info(err) ;
+			console.warn("Exiting") ;
+			console.info("Exiting") ;
+			process.exit() ;
+			
+		}
 		
 	}
-	
-	catch(err) {
+
+	else {
 		
-		console.warn("Error parsing config.json!") ;
-		console.info("Error parsing config.json!") ;
-		console.warn(err) ;
-		console.info(err) ;
+		console.warn("Config file does not exist.") ;
+		console.info("Config file does not exist.") ;
 		console.warn("Exiting") ;
 		console.info("Exiting") ;
 		process.exit() ;
@@ -51,16 +66,7 @@ if (fs.existsSync("config.json")) {
 	}
 	
 }
-
-else {
-	
-	console.warn("Config file does not exist.") ;
-	console.info("Config file does not exist.") ;
-	console.warn("Exiting") ;
-	console.info("Exiting") ;
-	process.exit() ;
-	
-}
+loadConfig() ;
 
 //Vars to add to files
 let vars = new Object ;
@@ -1060,7 +1066,8 @@ module.exports = {
 						req.on("data",d=>data.push(d)) ;
 						return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
 						
-					}
+					},
+					"reloadConfig":_=>loadConfig()
 					
 				}) ;
 				
