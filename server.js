@@ -593,7 +593,8 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 	
 	//Secure URL.
 	req.orig_url = req.url ;
-	req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
+	//req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
+	req.url = req.url.replace(/\.\./g,"") ;
 	
 	//Check if we need to forward to another port.
 	for (let doing in config.otherProcesses) {
