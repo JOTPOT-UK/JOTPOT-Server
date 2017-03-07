@@ -210,61 +210,67 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	serverObj.isMaster = false ;
 	
 	//Add the handle function to the serverObj
-	serverObj.handle = (evt,func) => {
+	serverObj.handle = (evts,func) => {
 		
-		//If it is only allowed to handle cirton hosts.
-		if (lock.mode === 1) {
+		for (let doing in evts) {
 			
-			//And it is trying to handle requests.
-			if (evt === "request" || evt === "fullrequest" || evt === "allowedrequest") {
-				
-				//Go through all the hosts it can access
-				for (let doing in lock.hosts) {
-					
-					//Handle the event, but only for the host.
-					handle(`${lock.hosts[doing]}/${evt}`,func) ;
-					
-				}
-				return true ;
-				
-			}
+			let svt = evts[doing] ;
 			
-			else if (evt.indexOf("/") !== -1) {
+			//If it is only allowed to handle cirton hosts.
+			if (lock.mode === 1) {
 				
-				if (evt.lastIndexOf("/request") === evt.length - 8 || evt.lastIndexOf("/fullrequest") === evt.length - 12 || evt.lastIndexOf("/allowedrequest") === evt.length - 15) {
+				//And it is trying to handle requests.
+				if (evt === "request" || evt === "fullrequest" || evt === "allowedrequest") {
 					
-					let isViolation = true ;
 					//Go through all the hosts it can access
 					for (let doing in lock.hosts) {
 						
-						//If the event is for this host
-						if (evt === `${lock.hosts[doing]}/${evt.split("/")[evt.split("/").length-1]}`) {
+						//Handle the event, but only for the host.
+						handle(`${lock.hosts[doing]}/${evt}`,func) ;
+						
+					}
+					continue ;
+					
+				}
+				
+				else if (evt.indexOf("/") !== -1) {
+					
+					if (evt.lastIndexOf("/request") === evt.length - 8 || evt.lastIndexOf("/fullrequest") === evt.length - 12 || evt.lastIndexOf("/allowedrequest") === evt.length - 15) {
+						
+						let isViolation = true ;
+						//Go through all the hosts it can access
+						for (let doing in lock.hosts) {
 							
-							//Not a violation, we can stop checking now.
-							isViolation = false ;
-							break ;
+							//If the event is for this host
+							if (evt === `${lock.hosts[doing]}/${evt.split("/")[evt.split("/").length-1]}`) {
+								
+								//Not a violation, we can stop checking now.
+								isViolation = false ;
+								break ;
+								
+							}
+							
+						}
+						
+						//If it is a violation
+						if (isViolation) {
+							
+							console.warn("Not allowed to handle event!") ;
+							continue ;
 							
 						}
 						
 					}
 					
-					//If it is a violation
-					if (isViolation) {
-						
-						console.warn("Not allowed to handle event!") ;
-						return false ;
-						
-					}
-					
 				}
 				
 			}
 			
+			//We can just handle the event now.
+			handle(evt,func) ;
+			continue ;
+			
 		}
-		
-		//We can just handle the event now.
-		handle(evt,func) ;
-		return true ;
 		
 	} ;
 	
