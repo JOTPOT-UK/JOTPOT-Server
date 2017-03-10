@@ -354,7 +354,17 @@ if (cluster.isMaster) {
 	if (config.dataPort > -1) {
 		
 		net.createServer(s=>{
-		
+			
+			if (typeof config.controlers === "object") {
+				
+				if (config.controlers.indexOf(s.remoteAddress) === -1) {
+					
+					s.write("No perms") ;
+					return ;
+					
+				}
+				
+			}
 			s.on("data",d=>{
 				
 				d = d.toString() ;

@@ -3,13 +3,14 @@
 	"otherProcesses": [],
 	
 	"dataPort": 501,
+	"controlers":["192.168.1.5"],
 	
 	"httpServers": [
 		
 		{
 			
 			"port": 1234,
-			"host": "127.0.0.20"
+			"host": "127.0.0.1"
 			
 		}
 		
