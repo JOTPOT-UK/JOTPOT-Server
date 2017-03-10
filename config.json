@@ -2,13 +2,14 @@
 	
 	"otherProcesses": [],
 	
-	"dataPort": 500,
+	"dataPort": 501,
 	
 	"httpServers": [
 		
 		{
 			
-			"port": 80
+			"port": 1234,
+			"host": "127.0.0.20"
 			
 		}
 		
