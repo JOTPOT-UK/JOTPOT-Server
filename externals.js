@@ -149,6 +149,15 @@ process.on("message",m=>{
 		
 	}
 	
+	
+	//Function called.
+	if (m[0] === "cf") {
+		
+		//Send of the event.
+		varEvt.emit("called " + m[1],m[2]) ;
+		
+	}
+	
 	//Set a var
 	else if (m[0] === "sv") {
 		
@@ -334,6 +343,26 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		
 	} ;
 	
+	//Function for worker to call a master function.
+	serverObj.callFunc = (toCall,...args) => {
+		
+		return new Promise(resolve=>{
+			
+			//OK, when it is called.
+			varEvt.once("called " + toCall + (lock.vars===null?"":"---lock"+lock.vars) ,d=>{
+				
+				//Lets reaolve.
+				resolve(d) ;
+				
+			});
+			
+			//Send of to call it.
+			process.send(["cf",toCall,lock.vars,args]) ;
+			
+		}) ;
+		
+	} ;
+	
 	//Functiom to set a global variable. 1 arg is var name to get.
 	serverObj.getGlobal = varTG => {
 		
@@ -405,7 +434,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 }
 
 //Function to load an extention in master mode. Similar to loadExt. vars arg is vars object for seting and getting globals.
-module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
+module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 	
 	//If the extention doesn't exist...
 	if (!fs.existsSync(file)) {
@@ -451,7 +480,43 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars) => {
 	//Add the handle function to the serverObj
 	serverObj.handle = handle ;
 	
-	//Functiom to set a global variable. 1 arg is var name to get.
+	//Function for master to set function that cal be called by workers.
+	serverObj.setFunc = (toSet,func) => {
+		
+		return new Promise(resolve=>{
+			
+			//If there is no lock...
+			if (lock.vars === null) {
+				
+				//Then just set the function.
+				funcs[toSet] = func ;
+				
+			}
+			
+			//But if there is a lock.
+			else {
+				
+				//And there are no functions for this lock/
+				if (typeof funcs[lock.vars] === "undefined") {
+					
+					//Create an object to put them in.
+					funcs[lock.vars] = new Object() ;
+					
+				}
+				
+				//And set the function.
+				funcs[lock.vars][toSet] = func ;
+				
+			}
+			
+			//All done, resolve instantly.
+			resolve() ;
+			
+		}) ;
+		
+	} ;
+	
+	//Function to set a global variable. 1 arg is var name to get.
 	serverObj.getGlobal = varTG => {
 		
 		return new Promise(resolve=>{

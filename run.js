@@ -71,6 +71,7 @@ if (cluster.isMaster) {
 	process.title = "JOTPOT Server 3" ;
 	
 	let vars = new Object() ;
+	let funcs = new Object() ;
 	
 	//Load the extentions
 	let currentDir = fs.readdirSync(process.cwd()) ;
@@ -84,7 +85,7 @@ if (cluster.isMaster) {
 				
 				lock:externals.lock
 				
-			},null,vars) ;
+			},null,vars,funcs) ;
 			
 		}
 		
@@ -104,6 +105,60 @@ if (cluster.isMaster) {
 				
 				//Add it to the loggs.
 				logs.push(toDo[1]) ;
+				
+			}
+			
+			//Call a function?
+			else if (toDo[0] === "cf") {
+				
+				//If there is no lock
+				if (toDo[2] === null) {
+					
+					//No exist?
+					if (typeof funcs[toDo[1]] === "undefined") {
+						
+						//Failed.
+						thisFork.send(["fc",toDo[1]]) ;
+						
+					}
+					
+					else {
+						
+						//Call and send result.
+						thisFork.send(["cf",toDo[1],funcs[toDo[1]](...toDo[3])]) ;
+						
+					}
+					
+				}
+				
+				//With a lock
+				else {
+					
+					//Lock doesn't exist.
+					if (typeof funcs[toDo[2]] === "undefined") {
+						
+						//Failed.
+						thisFork.send(["fc",toDo[1]+"---lock"+toDo[2]]) ;
+						
+					}
+					
+					//Func doesn't exist.
+					else if (typeof funcs[toDo[2]][toDo[1]] === "undefined") {
+						
+						//Failed.
+						thisFork.send(["fc",toDo[1]+"---lock"+toDo[2]]) ;
+						
+					}
+					
+					//YAY, lets gooooo
+					else {
+						
+						//Call and send result.
+						thisFork.send(["cf",toDo[1]+"---lock"+toDo[2],funcs[toDo[2]][toDo[1]](...toDo[3])]) ;
+						
+					}
+					
+				}
 				
 			}
 			
