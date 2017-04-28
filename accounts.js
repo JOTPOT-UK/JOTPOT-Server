@@ -29,7 +29,6 @@ process.on("message",toDo=>{
 	
 	else if (toDo[0] === "proc-usn") {
 		
-		console.log("USN INCOMING!!!") ;
 		procUpdate.emit(`username-${toDo[1]}-${toDo[2]}`,[toDo[3],toDo[4]||""]) ;
 		
 	}
@@ -385,47 +384,16 @@ class proc {
 			}) ;
 			process.send(["proc","authed",this.ID,user]) ;
 			
-			//if (typeof loggedIn[this.ID][user] === "undefined") {
-				
-				/*procUpdate.once("update",_=>{
-					
-					console.log("Got update") ;
-					if (typeof loggedIn[this.ID][user] === "undefined") {
-						
-						resolve(false) ;
-						
-					}
-					
-					else {
-						
-						resolve(true) ;
-						
-					}
-					
-				}) ;
-				console.log("Sending off to get the update.") ;
-				process.send(["proc","get"]) ;*/
-				
-			/*}
-			
-			else {
-				
-				resolve(true) ;
-				
-			}*/
-			
 		}) ;
 		
 	}
 	
 	getUsername (user) {
 		
-		console.log("Getting username") ;
 		return new Promise((resolve,reject) => {
 			
 			procUpdate.once(`username-${this.ID}-${user}`,rv=>{
 				
-				console.log(rv) ;
 				if (rv[0]) {
 					
 					resolve(rv[1]) ;
@@ -439,7 +407,6 @@ class proc {
 				}
 				
 			}) ;
-			console.log("Sent") ;
 			process.send(["proc","usn",this.ID,user]) ;
 			
 		}) ;
