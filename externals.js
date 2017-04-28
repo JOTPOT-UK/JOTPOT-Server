@@ -363,25 +363,50 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		
 	} ;
 	
-	//Functiom to set a global variable. 1 arg is var name to get.
-	serverObj.getGlobal = varTG => {
+	//Functiom to set a global variable. 1st arg is var name to get, seond is wether or not to mo
+	serverObj.getGlobal = (varTG,moding=false) => {
 		
 		return new Promise(resolve=>{
 			
 			//When we get the variable.
 			varEvt.once("got " + varTG + (lock.vars===null?"":"---lock"+lock.vars) ,d=>{
 				
-				//Resolve with the contents
-				resolve(d) ;
+                //If we are modding, resolve with the contents and a callack
+                if (moding) {
+                    
+                    resolve(d,val=>{
+                        
+                        return new Promise(resolve=>{
+                            
+                            //When it is set, resolve
+                            varEvt.once("set " + varTG + (lock.vars===null?"":"---lock"+lock.vars) ,_=>resolve()) ;
+                            //Tell the master to set it.
+                            process.send(["sv",varTG,val,lock.vars,true]) ;
+                            
+                        }) ;
+                        
+                    }) ;
+                    
+                }
+                
+                else {
+                    
+                    //Resolve with the contents only
+                    resolve(d) ;
+                    
+                }
 				
 			});
 			
 			//Send a request to the master process to get the variable.
-			process.send(["gv",varTG,lock.vars]) ;
+			process.send(["gv",varTG,lock.vars,moding]) ;
 			
 		}) ;
 		
 	} ;
+    
+    //Alias for server.getGlobal but sets moding to true
+    serverObj.modGlobal = v => serverObj.setGlobal(v,true) ;
 	
 	//Function to set a variable. 1st arg is var name, second is value to set it to.
 	serverObj.setGlobal = (varTS,val) => {
@@ -391,7 +416,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 			//When it is set, resolve
 			varEvt.once("set " + varTS + (lock.vars===null?"":"---lock"+lock.vars) ,_=>resolve()) ;
 			//Tell the master to set it.
-			process.send(["sv",varTS,val,lock.vars]) ;
+			process.send(["sv",varTS,val,lock.vars,false]) ;
 			
 		}) ;
 		

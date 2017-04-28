@@ -71,6 +71,39 @@ if (cluster.isMaster) {
 	process.title = "JOTPOT Server 3" ;
 	
 	let vars = new Object() ;
+	let modingVars = new Array() ;
+	let waitingForAvail = new Object() ;
+	
+	//Add the function to the que for v to be available
+	function whenAvail(v,func) {
+		
+		//If it isn't in the waiting list, call func imediatally
+		// and return false because there is no que
+		if (modingVars.indexOf(v) === -1) {
+			
+			func() ;
+			return false ;
+			
+		}
+		
+		//If not, add it to the waiting list for this variable
+		// and return true because there is a que
+		else {
+			
+			//But if the waiting list doesn't ecist, create it
+			if (typeof waitingForAvail[v] === "undefined") {
+				
+				waitingForAvail[v] = new Array() ;
+				
+			}
+			
+			waitingForAvail[v].push(func) ;
+			return true ;
+			
+		}
+		
+	}
+	
 	let funcs = new Object() ;
 	
 	//Load the extentions
@@ -164,91 +197,147 @@ if (cluster.isMaster) {
 			
 			else if (toDo[0] === "gv") {
 				
-				
-				//If there isn't a lock
-				if (toDo[2] === null) {
+				//Run when var is available
+				whenAvail(toDo[2]===null?toDo[1]:toDo[1]+"---lock"+toDo[2],_=>{
 					
-					//If the var doesn't exist.
-					if (typeof vars[toDo[1]] === "undefined") {
+					//If there isn't a lock
+					if (toDo[2] === null) {
 						
-						//Dont send a value back.
-						thisFork.send(["fv",toDo[1]]) ;
+						//If the var doesn't exist.
+						if (typeof vars[toDo[1]] === "undefined") {
+							
+							//Dont send a value back.
+							thisFork.send(["fv",toDo[1]]) ;
+							
+						}
+						
+						//The var exists
+						else {
+							
+							//Send the value back from the root vars because there is no lock.
+							thisFork.send(["gv",toDo[1],vars[toDo[1]]]) ;
+							
+						}
+						
+						//If we should wait, push the to waiting list
+						if (toDo[3]) {
+							
+							modingVars.push(toDo[1]) ;
+							
+						}
 						
 					}
 					
-					//The var exists
+					//So there is a lock.
 					else {
 						
-						//Send the value back from the root vars because there is no lock.
-						thisFork.send(["gv",toDo[1],vars[toDo[1]]]) ;
+						//If there are no vars for that lock yet.
+						if (typeof vars[toDo[2]] === "undefined") {
+							
+							//Set up an object for the vars.
+							//vars[toDo[2]] = new Object() ;
+							
+							//Var cant exist, so dont send anything back.
+							thisFork.send(["fv",toDo[1]+"---lock"+toDo[2]]) ;
+							
+						}
+						
+						//If the var doesn't exist.
+						else if (typeof vars[toDo[2]][toDo[1]] === "undefined") {
+							
+							//Dont sand anything back.
+							thisFork.send(["fv",toDo[1]+"---lock"+toDo[2]]) ;
+							
+						}
+						
+						//Var exists
+						else {
+							
+							//Send it back.
+							thisFork.send(["gv",toDo[1]+"---lock"+toDo[2],vars[toDo[2]][toDo[1]]]) ;
+							
+						}
+						
+						//If we should wait, push the to waiting list
+						if (toDo[3]) {
+							
+							modingVars.push(toDo[1]) ;
+							
+						}
 						
 					}
 					
-				}
-				
-				//So there is a lock.
-				else {
-					
-					//If there are no vars for that lock yet.
-					if (typeof vars[toDo[2]] === "undefined") {
-						
-						//Set up an object for the vars.
-						//vars[toDo[2]] = new Object() ;
-						
-						//Var cant exist, so dont send anything back.
-						thisFork.send(["fv",toDo[1]+"---lock"+toDo[2]]) ;
-						
-					}
-					
-					//If the var doesn't exist.
-					else if (typeof vars[toDo[2]][toDo[1]] === "undefined") {
-						
-						//Dont sand anything back.
-						thisFork.send(["fv",toDo[1]+"---lock"+toDo[2]]) ;
-						
-					}
-					
-					//Var exists
-					else {
-						
-						//Send it back.
-						thisFork.send(["gv",toDo[1]+"---lock"+toDo[2],vars[toDo[2]][toDo[1]]]) ;
-						
-					}
-					
-				}
+				}) ;
 				
 			}
 			
 			else if (toDo[0] === "sv") {
 				
-				//If there isn't a lock
-				if (toDo[3] === null) {
+				//Function to accualy set the variable
+				const go =_=> {
 					
-					//Send the var
-					vars[toDo[1]] = toDo[2] ;
-					
-					//Tell the worker it is set.
-					thisFork.send(["sv",toDo[1]]) ;
-					
-				}
-				
-				//There is a lock
-				else {
-					
-					//If there aren't any vars for this lock yet
-					if (typeof vars[toDo[3]] === "undefined") {
+					//If there isn't a lock
+					if (toDo[3] === null) {
 						
-						//Create the lock object
-						vars[toDo[3]] = new Object() ;
+						//Send the var
+						vars[toDo[1]] = toDo[2] ;
+						
+						//Tell the worker it is set.
+						thisFork.send(["sv",toDo[1]]) ;
 						
 					}
 					
-					//Set the var
-					vars[toDo[3]][toDo[1]] = toDo[2] ;
+					//There is a lock
+					else {
+						
+						//If there aren't any vars for this lock yet
+						if (typeof vars[toDo[3]] === "undefined") {
+							
+							//Create the lock object
+							vars[toDo[3]] = new Object() ;
+							
+						}
+						
+						//Set the var
+						vars[toDo[3]][toDo[1]] = toDo[2] ;
+						
+						//Tell the worker it is set.
+						thisFork.send(["sv",toDo[1]+"---lock"+toDo[3]]) ;
+						
+					}
 					
-					//Tell the worker it is set.
-					thisFork.send(["sv",toDo[1]+"---lock"+toDo[3]]) ;
+				} ;
+				
+				const varName = toDo[3]===null?toDo[1]:toDo[1]+"---lock"+toDo[3] ;
+				
+				//If we don't need to unlock
+				if (toDo[4]) {
+					
+					//Run when var is available
+					whenAvail(varName,go) ;
+					
+				}
+				
+				else {
+					
+					//Set the var first
+					go() ;
+					//Then remove it from the moding list
+					modingVars.splice(modingVars.indexOf(varName),1) ;
+					//For everything on the waiting list
+					while (waitingForAvail.length) {
+						
+						//Call the function and remove it from the array
+						waitingForAvail[varName].shift()() ;
+						
+						//If we are locked again, call no more
+						if (modingVars.indexOf(varName) > -1) {
+							
+							break ;
+							
+						}
+						
+					}
 					
 				}
 				
