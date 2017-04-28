@@ -214,7 +214,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	
 	//Save the origional server object.
 	let origServerObj = {} ;
-    Object.assign(origServerObj,serverObj) ;
+	Object.assign(origServerObj,serverObj) ;
 	
 	//Just, dissapointing...
 	serverObj.isMaster = false ;
@@ -372,30 +372,30 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 			//When we get the variable.
 			varEvt.once("got " + varTG + (lock.vars===null?"":"---lock"+lock.vars) ,d=>{
 				
-                //If we are modding, resolve with the contents and a callack
-                if (moding) {
-                    
-                    resolve(d,val=>{
-                        
-                        return new Promise(resolve=>{
-                            
-                            //When it is set, resolve
-                            varEvt.once("set " + varTG + (lock.vars===null?"":"---lock"+lock.vars) ,_=>resolve()) ;
-                            //Tell the master to set it.
-                            process.send(["sv",varTG,val,lock.vars,true]) ;
-                            
-                        }) ;
-                        
-                    }) ;
-                    
-                }
-                
-                else {
-                    
-                    //Resolve with the contents only
-                    resolve(d) ;
-                    
-                }
+				//If we are modding, resolve with the contents and a callack
+				if (moding) {
+					
+					resolve([d,val=>{
+						
+						return new Promise(resolve=>{
+							
+							//When it is set, resolve
+							varEvt.once("set " + varTG + (lock.vars===null?"":"---lock"+lock.vars) ,_=>resolve()) ;
+							//Tell the master to set it.
+							process.send(["sv",varTG,val,lock.vars,true]) ;
+							
+						}) ;
+						
+					}]) ;
+					
+				}
+				
+				else {
+					
+					//Resolve with the contents only
+					resolve(d) ;
+					
+				}
 				
 			});
 			
@@ -405,9 +405,9 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		}) ;
 		
 	} ;
-    
-    //Alias for server.getGlobal but sets moding to true
-    serverObj.modGlobal = v => serverObj.setGlobal(v,true) ;
+	
+	//Alias for server.getGlobal but sets moding to true
+	serverObj.modGlobal = v => serverObj.getGlobal(v,true) ;
 	
 	//Function to set a variable. 1st arg is var name, second is value to set it to.
 	serverObj.setGlobal = (varTS,val) => {
@@ -427,8 +427,8 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	serverObj.loadExt = (ePath,eLock=null) => {
 		
 		//Return their server object.
-        let newServerOb = new Object() ;
-        Object.assign(newServerOb,origServerObj) ;
+		let newServerOb = new Object() ;
+		Object.assign(newServerOb,origServerObj) ;
 		return module.exports.loadExt(ePath,newServerOb,eLock) ;
 		
 	}
@@ -617,8 +617,8 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 	serverObj.loadExt = (ePath,eLock=null) => {
 		
 		//Return their server object.
-        let newServerOb = new Object() ;
-        Object.assign(newServerOb,origServerObj) ;
+		let newServerOb = new Object() ;
+		Object.assign(newServerOb,origServerObj) ;
 		return module.exports.loadMasterExt(ePath,newServerOb,eLock,vars) ;
 		
 	}

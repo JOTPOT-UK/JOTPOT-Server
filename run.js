@@ -311,7 +311,7 @@ if (cluster.isMaster) {
 				const varName = toDo[3]===null?toDo[1]:toDo[1]+"---lock"+toDo[3] ;
 				
 				//If we don't need to unlock
-				if (toDo[4]) {
+				if (!toDo[4]) {
 					
 					//Run when var is available
 					whenAvail(varName,go) ;
