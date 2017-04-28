@@ -261,7 +261,7 @@ if (cluster.isMaster) {
 						//If we should wait, push the to waiting list
 						if (toDo[3]) {
 							
-							modingVars.push(toDo[1]) ;
+							modingVars.push(toDo[1]+"---lock"+toDo[2]) ;
 							
 						}
 						

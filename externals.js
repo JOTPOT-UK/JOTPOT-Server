@@ -213,7 +213,8 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	}
 	
 	//Save the origional server object.
-	const origServerObj = serverObj ;
+	let origServerObj = {} ;
+    Object.assign(origServerObj,serverObj) ;
 	
 	//Just, dissapointing...
 	serverObj.isMaster = false ;
@@ -426,7 +427,9 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	serverObj.loadExt = (ePath,eLock=null) => {
 		
 		//Return their server object.
-		return module.exports.loadExt(ePath,origServerObj,eLock) ;
+        let newServerOb = new Object() ;
+        Object.assign(newServerOb,origServerObj) ;
+		return module.exports.loadExt(ePath,newServerOb,eLock) ;
 		
 	}
 	
@@ -614,7 +617,9 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 	serverObj.loadExt = (ePath,eLock=null) => {
 		
 		//Return their server object.
-		return module.exports.loadMasterExt(ePath,origServerObj,eLock,vars) ;
+        let newServerOb = new Object() ;
+        Object.assign(newServerOb,origServerObj) ;
+		return module.exports.loadMasterExt(ePath,newServerOb,eLock,vars) ;
 		
 	}
 	
