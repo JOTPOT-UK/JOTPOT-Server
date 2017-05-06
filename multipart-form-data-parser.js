@@ -54,6 +54,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 	let data = Buffer.alloc(0) ;
 	let dataString = new String() ;
 	let endReady = false ;
+	let reqEnded = false ;
 	let output = new Object() ;
 	let stage = 0 ;
 	let fields = new Object() ;
@@ -102,7 +103,6 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 					if (typeof currentHeaders["content-disposition"] !== "undefined") {
 						
 						name = currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].substring(8,currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].length-1) ;
-						console.log(name) ;
 						
 					}
 					currentDataPipe = new Data(name,currentHeaders) ;
@@ -112,7 +112,6 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 				}
 				else {
 					
-					//console.log("Header:",thisBit) ;
 					thisBit = thisBit.split(": ") ;
 					currentHeaders[thisBit[0].toLowerCase()] = thisBit[1] ;
 					
@@ -140,10 +139,10 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 				dataString = "" ;
 				
 			}
-			console.log("Data:",thisData.toString()) ;
 			currentDataPipe.push(thisData) ;
 			if (!stage) {
 				
+				currentDataPipe.end() ;
 				return parseTick() ;
 				
 			}
@@ -154,16 +153,29 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 	} ;
 	req.on("data",d=>{
 		
-		//console.log(d.toString()) ;
 		data = Buffer.concat([data,d]) ;
 		dataString += d.toString() ;
 		endReady = parseTick() ;
-		if (endReady) {console.log("End ready")} ;
+		if (endReady && reqEnded) {
+			
+			resolve() ;
+			
+		}
 		
 	}) ;
 	req.on("end",_=>{
 		
-		resolve() ;
+		if (endReady) {
+			
+			resolve() ;
+			
+		}
+		
+		else {
+			
+			reqEnded = true ;
+			
+		}
 		
 	}) ;
 	
