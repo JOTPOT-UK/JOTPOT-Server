@@ -5,7 +5,7 @@
 	
 */
 
-//Version 1.0.1
+//Version 25A
 
 
 process.title = "JOTPOT Server 3" ;
@@ -21,7 +21,7 @@ console.log = console.warn = (...args) => {
 //Modules
 let fs = require("fs") ;
 let cluster = require("cluster") ;
-let externals = require("./externals") ;
+let externals = require("./externals.js") ;
 
 //Load the config
 let config ;
@@ -540,7 +540,7 @@ else {
 	console.log("Worker " + cluster.worker.id + " loaded, starting up now...") ;
 	console.info("Worker " + cluster.worker.id + " loaded, starting up now...") ;
 	//Load the server module & init it.
-	require("./server").init(cluster) ;
+	require("./server.js").init(cluster) ;
 	console.log(`Worker ${cluster.worker.id} running.`) ;
 	console.info(`Worker ${cluster.worker.id} running.`) ;
 	

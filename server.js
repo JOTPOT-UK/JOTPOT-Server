@@ -5,7 +5,7 @@
 	
 */
 
-//Version 1.0.1
+//Version 25A
 
 //Console is now YAY!!!
 console.log = console.warn = (...args) => {
@@ -21,8 +21,8 @@ let fs = require("fs") ;
 let path = require("path") ;
 //let zlib = require("zlib") ;
 let purl = require("url").parse ;
-let proc = require("./accounts") ;
-let externals = require("./externals") ;
+let proc = require("./accounts.js") ;
+let externals = require("./externals.js") ;
 let {Transform,Readable} = require("stream") ;
 let cluster ;
 
