@@ -7,12 +7,18 @@ class Data extends readable {
 		super() ;
 		this.name = name ;
 		this.headers = headers ;
+		this.setup = false ;
 		
 	}
 	
 	_read(s) {
 		
-		//console.log("Wait, am I supposed to do somthing?") ;
+		if (!this.setup && this.isPaused()) {
+			
+			this.setup = true ;
+			this.resume() ;
+			
+		}
 		
 	}
 	
@@ -66,7 +72,9 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 		if (dataString.indexOf(boundary) === 0 && stage === 0) {
 			
 			dataString = dataString.substring(boundary.length,dataString.length) ;
-			data = Buffer.from(dataString) ;
+			data = data.slice(boundaryB.length,data.length) ;
+			console.info("Headers---------------------") ;
+			console.info(dataString) ;
 			stage++ ;
 			newLineMade = false ;
 			return parseTick() ;
@@ -84,7 +92,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 				}
 				let thisBit = dataString.split("\r\n")[0] ;
 				dataString = dataString.substring(dataString.indexOf("\r\n")+2,dataString.length) ;
-				data = Buffer.from(dataString) ;
+				data = data.slice(data.indexOf(Buffer.from("\r\n"))+2,data.length) ;
 				if (thisBit === "--") {
 					
 					return true ;
@@ -98,11 +106,15 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 						continue ;
 						
 					}
+					console.info("Data-------------------------------") ;
+					console.info(dataString) ;
 					stage++ ;
 					let name = null ;
 					if (typeof currentHeaders["content-disposition"] !== "undefined") {
 						
-						name = currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].substring(8,currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].length-1) ;
+						name = currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0]
+																	.substring(8,
+																			   currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].length-1) ;
 						
 					}
 					currentDataPipe = new Data(name,currentHeaders) ;
@@ -126,9 +138,11 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 			let thisData ;
 			if (data.indexOf(boundaryB) !== -1) {
 				
-				thisData = data.slice(0,data.indexOf(boundaryB)) ;
+				thisData = data.slice(0,data.indexOf(boundaryB)-2) ;
 				data = data.slice(data.indexOf(boundaryB),data.length) ;
 				dataString = data.toString() ;
+				console.info("Reset-----------------------") ;
+				console.info(dataString) ;
 				stage = 0 ;
 				
 			}
@@ -142,7 +156,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 			currentDataPipe.push(thisData) ;
 			if (!stage) {
 				
-				currentDataPipe.end() ;
+				currentDataPipe.emit("end") ;
 				return parseTick() ;
 				
 			}
@@ -155,6 +169,16 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 		
 		data = Buffer.concat([data,d]) ;
 		dataString += d.toString() ;
+		/*parseTick().then(hi=>{
+			
+			endReady = hi ;
+			if (endReady && reqEnded) {
+				
+				resolve() ;
+				
+			}
+			
+		}) ;*/
 		endReady = parseTick() ;
 		if (endReady && reqEnded) {
 			
