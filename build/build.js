@@ -47,10 +47,93 @@ make("linux-x86","bash",["-c","./configure --dest-cpu x86 && make -j4"]) ;
 make("linux-arm","bash",["-c","./configure --dest-cpu arm && make -j4"]) ;
 make("linux-arm64","bash",["-c","./configure --dest-cpu arm64 && make -j4"]) ;
 
-fs.mkdirSync("../Release") ;
-fs.writeFileSync("../Release/jps-win-x64.exe",fs.readFileSync("./win-x64/build/Release/node.exe")) ;
-fs.writeFileSync("../Release/jps-win-x86.exe",fs.readFileSync("./win-x86/build/Release/node.exe")) ;
-fs.writeFileSync("../Release/jps-linux-x64",fs.readFileSync("./linux-x64/build/out/Release/node")) ;
-fs.writeFileSync("../Release/jps-linux-x86",fs.readFileSync("./linux-x86/build/out/Release/node")) ;
-fs.writeFileSync("../Release/jps-linux-arm",fs.readFileSync("./linux-arm/build/out/Release/node")) ;
-fs.writeFileSync("../Release/jps-linux-arm64",fs.readFileSync("./linux-arm64/build/out/Release/node")) ;
+try {
+	
+	fs.mkdirSync("../Release") ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
+
+try {
+	
+	fs.writeFileSync("../Release/jps-win-x64.exe",fs.readFileSync("./win-x64/build/Release/node.exe")) ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
+
+try {
+	
+	fs.writeFileSync("../Release/jps-win-x86.exe",fs.readFileSync("./win-x86/build/Release/node.exe")) ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
+
+try {
+	
+	fs.writeFileSync("../Release/jps-linux-x64",fs.readFileSync("./linux-x64/build/out/Release/node")) ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
+
+try {
+	
+	fs.writeFileSync("../Release/jps-linux-x86",fs.readFileSync("./linux-x86/build/out/Release/node")) ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
+
+try {
+	
+	fs.writeFileSync("../Release/jps-linux-arm",fs.readFileSync("./linux-arm/build/out/Release/node")) ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
+
+try {
+	
+	fs.writeFileSync("../Release/jps-linux-arm64",fs.readFileSync("./linux-arm64/build/out/Release/node")) ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
