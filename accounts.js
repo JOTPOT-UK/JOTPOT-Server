@@ -1,15 +1,35 @@
 /*
 	
-	JOTPOT Server.
-	Copyright (c) Jacob O'Toole 2016-2017
+	JOTPOT Server
+	Version 25C
+	
+	Copyright (c) 2016-2017 Jacob O'Toole
+	
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+	
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+	
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
 	
 */
-
-//Version 25A
 
 
 let fs = require("fs") ;
 let Events = require("events") ;
+
+let stamp = 0 ;
 
 //Create the emitter.
 class NewEmitter extends Events {}
@@ -23,7 +43,7 @@ process.on("message",toDo=>{
 	
 	if (toDo[0] === "proc-authed") {
 		
-		procUpdate.emit(`authed-${toDo[1]}-${toDo[2]}`,toDo[3]) ;
+		procUpdate.emit(`authed-${toDo[1]}-${toDo[2]}-${toDo[4]}`,toDo[3]) ;
 		
 	}
 	
@@ -375,14 +395,15 @@ class proc {
 	
 	isAuthed (user) {
 		
+		let thisStamp = stamp++ ;
 		return new Promise((resolve,reject) => {
 			
-			procUpdate.once(`authed-${this.ID}-${user}`,rv=>{
+			procUpdate.once(`authed-${this.ID}-${user}-${thisStamp}`,rv=>{
 				
 				resolve(rv) ;
 				
 			}) ;
-			process.send(["proc","authed",this.ID,user]) ;
+			process.send(["proc","authed",this.ID,user,thisStamp]) ;
 			
 		}) ;
 		
