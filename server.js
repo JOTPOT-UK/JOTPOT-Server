@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25C
+	Version 25D
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -159,7 +159,16 @@ class addVars extends Transform {
 						
 						let dataString = this.lastData + data.toString() ;
 						
-						let varsKeys = Object.keys(vars) ;
+						let varsKeys = Object.keys(this.extraVars) ;
+						for (let doing in varsKeys) {
+							
+							let toReplace = `\\$\\:\\:\\:${varsKeys[doing]}\\:\\:\\:\\$` ;
+							let replaceWith = String(this.extraVars[varsKeys[doing]]) ;
+							dataString = dataString.replace(new RegExp(toReplace,"g"),replaceWith) ;
+							
+						}
+						
+						varsKeys = Object.keys(vars) ;
 						for (let doingScope in varsKeys) {
 							
 							let innerVars = Object.keys(vars[varsKeys[doingScope]]) ;
@@ -173,15 +182,8 @@ class addVars extends Transform {
 							
 						}
 						
-						varsKeys = Object.keys(this.extraVars) ;
-						for (let doing in varsKeys) {
-							
-							let toReplace = `\\$\\:\\:\\:${varsKeys[doing]}\\:\\:\\:\\$` ;
-							let replaceWith = String(this.extraVars[varsKeys[doing]]) ;
-							dataString = dataString.replace(new RegExp(toReplace,"g"),replaceWith) ;
-							
-						}
 						data = dataString ;
+						
 						break ;
 						
 					}
@@ -1065,7 +1067,6 @@ module.exports = {
 						return creatingAcc ;
 						
 					},
-					"lock":externals.lock,
 					"getUserID":(req,resp)=>{
 						
 						let userID = proc.getUserID(req) ;

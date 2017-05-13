@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25C
+	Version 25D
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -211,6 +211,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		
 	}
 	
+	let wasThereALock = true ;
 	//If there is no lock
 	if (lock === null) {
 		
@@ -219,6 +220,8 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		
 		//This extention is not limited
 		serverObj.limited = false ;
+		
+		wasThereALock = false ;
 		
 	}
 	
@@ -441,18 +444,34 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		
 	} ;
 	
-	//Function for extention to load another extention.
-	serverObj.loadExt = (ePath,eLock=null) => {
+	//Only add if not locked extention.
+	if (!wasThereALock) {
 		
-		//Return their server object.
-		let newServerOb = new Object() ;
-		Object.assign(newServerOb,origServerObj) ;
-		return module.exports.loadExt(ePath,newServerOb,eLock) ;
+		//Function for extention to load another extention.
+		serverObj.loadExt = (ePath,eLock=null) => {
+			
+			//Return their server object.
+			let newServerOb = new Object() ;
+			Object.assign(newServerOb,origServerObj) ;
+			return module.exports.loadExt(ePath,newServerOb,eLock) ;
+			
+		}
+		
+		//Create a clone of the lock class to add to the server object.
+		serverObj.lock = class extends module.exports.lock {} ;
+		
+	}
+	
+	else {
+		
+		delete serverObj.vars ;
+		delete serverObj.config ;
+		delete serverObj.reloadConfig ;
 		
 	}
 	
 	//Wrap the source
-	let source = `(function(require,server,console,setTimeout,setInterval){${fs.readFileSync(file).toString()}});` ;
+	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
 	
 	//To catch so ther server doesn't go down if the extention fails to load.
 	try {
@@ -462,7 +481,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 			
 			filename: file + "fun"
 			
-		})(require,serverObj,console,setTimeout,setInterval) ;
+		})(require,serverObj,console,setTimeout,setInterval,setImmediate) ;
 		
 		//So, it loaded...
 		return {"loaded":true,"serverObj":serverObj} ;
@@ -498,6 +517,7 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 		
 	}
 	
+	let wasThereALock = true ;
 	//If there is no lock
 	if (lock === null) {
 		
@@ -506,6 +526,8 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 		
 		//This extention is not limited
 		serverObj.limited = false ;
+		
+		wasThereALock = false ;
 		
 	}
 	
@@ -631,18 +653,33 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 		
 	} ;
 	
-	//Functino for extention to load another extention.
-	serverObj.loadExt = (ePath,eLock=null) => {
+	//Only add if not locked extention
+	if (!wasThereALock) {
 		
-		//Return their server object.
-		let newServerOb = new Object() ;
-		Object.assign(newServerOb,origServerObj) ;
-		return module.exports.loadMasterExt(ePath,newServerOb,eLock,vars) ;
+		//Functino for extention to load another extention.
+		serverObj.loadExt = (ePath,eLock=null) => {
+			
+			//Return their server object.
+			let newServerOb = new Object() ;
+			Object.assign(newServerOb,origServerObj) ;
+			return module.exports.loadMasterExt(ePath,newServerOb,eLock,vars) ;
+			
+		}
+		
+		//Create a clone of the lock class to add to the server object.
+		serverObj.lock = class extends module.exports.lock {} ;
+		
+	}
+	
+	else {
+		
+		delete serverObj.config ;
+		delete serverObj.reloadConfig ;
 		
 	}
 	
 	//Wrap the source
-	let source = `(function(require,server,console,setTimeout,setInterval){${fs.readFileSync(file).toString()}});` ;
+	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
 	
 	//To catch so ther server doesn't go down if the extention fails to load.
 	try {
@@ -652,7 +689,7 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 			
 			filename: file + "fun"
 			
-		})(require,serverObj,console,setTimeout,setInterval) ;
+		})(require,serverObj,console,setTimeout,setInterval,setImmediate) ;
 		
 		//So, it loaded...
 		return {"loaded":true,"serverObj":serverObj} ;

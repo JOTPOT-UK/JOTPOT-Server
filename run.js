@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25C
+	Version 25D
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -26,7 +26,7 @@
 */
 
 
-process.title = "JOTPOT Server 3" ;
+process.title = "JOTPOT Server" ;
 
 //Make the logs accually go to the logs.
 let logs = new Array() ;
@@ -43,39 +43,45 @@ let externals = require("./externals.js") ;
 
 //Load the config
 let config ;
-if (fs.existsSync("config.json")) {
-	
-	config = fs.readFileSync("config.json").toString() ;
-	
-	try {
+
+function loadConfig() {
+
+	if (fs.existsSync("config.json")) {
 		
-		config = JSON.parse(config) ;
+		config = fs.readFileSync("config.json").toString() ;
+		
+		try {
+			
+			config = JSON.parse(config) ;
+			
+		}
+		
+		catch(err) {
+			
+			console.warn("Error parsing config.json!") ;
+			console.info("Error parsing config.json!") ;
+			console.warn(err) ;
+			console.info(err) ;
+			console.warn("Exiting") ;
+			console.info("Exiting") ;
+			process.exit() ;
+			
+		}
 		
 	}
-	
-	catch(err) {
+
+	else {
 		
-		console.warn("Error parsing config.json!") ;
-		console.info("Error parsing config.json!") ;
-		console.warn(err) ;
-		console.info(err) ;
+		console.warn("Config file does not exist.") ;
+		console.info("Config file does not exist.") ;
 		console.warn("Exiting") ;
 		console.info("Exiting") ;
 		process.exit() ;
 		
 	}
-	
-}
 
-else {
-	
-	console.warn("Config file does not exist.") ;
-	console.info("Config file does not exist.") ;
-	console.warn("Exiting") ;
-	console.info("Exiting") ;
-	process.exit() ;
-	
 }
+loadConfig() ;
 
 //Get stuff ready for user systems
 let UIDs = new Array() ;
@@ -134,7 +140,8 @@ if (cluster.isMaster) {
 			
 			let currentLoad = externals.loadMasterExt(currentDir[doing],{
 				
-				lock:externals.lock
+				"config": config,
+				"reloadConfig":_=>loadConfig()
 				
 			},null,vars,funcs) ;
 			
