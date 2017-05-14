@@ -1,17 +1,15 @@
-<html>
-<head>
-<title>
-JOTPOT Server Docs
-</title>
+<div ID="main-container">
 <style>
 	
-	body {
+	#main-container {
 		
 		font-family: Arial, Helvetica, sans-serif;
 		background-color: #fff;
 		color: #004;
+		padding: 8px;
 		padding-left: 20px;
 		padding-right: 50px;
+		text-align: right;
 		
 	}
 	
@@ -90,9 +88,8 @@ JOTPOT Server Docs
 	}
 	
 </style>
-</head>
-<body>
 <h1>JOTPOT Server Docs</h1>
+<a href="/server" style="float: right;" ID="the_link">JOTPOT Server Main Page</a>
 <div class="indent">
 <i>Please note that this page is still a work in progress, and is no where near complete. It may not look the best yet but the content should be good :)</i>
 <h2>The config.json file</h2>
@@ -227,5 +224,8 @@ ${formatObject("./req-docs.json")}
 ${formatObject("./resp-docs.json")}
 </div>
 </div>
-</body>
-</html>
+</div>
+<jp-data-title>JOTPOT Server Docs</jp-data-title>
+<script type="text/javascript">
+	addClickListener(document.getElementById("the_link")) ;
+</script>
