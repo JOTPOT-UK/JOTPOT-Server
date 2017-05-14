@@ -1,0 +1,82 @@
+[
+	{
+		"title": "request.accualHost",
+		"id":"request-accualHost",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "Similar to request.orig_url, it is the host the request was originally made with, thus this is without the host alias applied.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.fullurl",
+		"id":"request-fullurl",
+		"added": "25A",
+		"extra": "",
+		"desc": "This is what will appear in the users URL bar, for example 'https://www.example.com:443/path/to/page.html'. Note that these elements will always be included.",
+		"args": []
+	},
+	{
+		"title": "request.host",
+		"id":"request-host",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "request.host will be equal to the domain the request is been made to, after aliases have been handled, so for the fullrequest and allowedrequest events, it will be the alias.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.orig_url",
+		"id":"request-orig_url",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "This will be the original URL requested by the client. See <a href=\"#request-url\">request.url</a> for details on how it is changed.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.overHttps",
+		"id":"request-overHttps",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "Alias for request.secure (was added before request.secure and left in for backwards compatibility purposes), so true if the request was made over HTTPS and false if not.",
+		"args": []
+	},
+	{
+		"title": "request.path",
+		"id":"request-path",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "The requested path (thus without the host) with all occurrences of '..' removed.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.purl",
+		"id":"request-purl",
+		"added": "25A",
+		"extra": "",
+		"desc": "Equivalent to if request.fullurl was passed to <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/url.html\">Node.js's url.parse</a>.",
+		"args": []
+	},
+	{
+		"title": "request.secure",
+		"id":"request-secure",
+		"added": "25D",
+		"extra": "",
+		"desc": "Whether or not the request and response is secure, so true if the request was made over HTTPS and false if not.",
+		"args": []
+	},
+	{
+		"title": "request.url",
+		"id":"request-url",
+		"added": "Pre 25A",
+		"extra": "Note: Before 1.2.0, request.url was all lower case.",
+		"desc": "The URL that the client requested, however with all occurrences of '..' removed to prevent the request from going into a parent directory. It also has the host concatenated before the path, so a request for '/hello.html' with the host 'www.example.com', req.url would be 'www.example.com/hello.html'.<br>This is not modified for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.user",
+		"id":"request-user",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "This is the user ID of the user of the current user, please note that this is only set when it is required for the user to be authenticated for the page. And thus also only available in the allowedrequest handle.",
+		"args": []
+	}
+]

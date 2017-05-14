@@ -1128,7 +1128,7 @@ module.exports = {
 			
 			http.createServer((req,resp) => {
 				
-				req.overHttps = false ;
+				req.overHttps = req.secure = false ;
 				req.port = options[0] ;
 				handleRequest(req,resp) ;
 				
@@ -1141,7 +1141,7 @@ module.exports = {
 			
 			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
 				
-				req.overHttps = true ;
+				req.overHttps = req.secure = true ;
 				req.port = config.httpsServers[doing].port ;
 				handleRequest(req,resp) ;
 				

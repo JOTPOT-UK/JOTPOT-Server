@@ -1,0 +1,18 @@
+[
+	{
+		"title": "response.pipeThrough",
+		"id":"response-pipeThrough",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "This is an array that by default is empty. When the response is sent, it will be piped through all the pipes in this array before been piped to the client, meaning that you can add compression transform pipes, some templating solutions or more to this array and your response will be sent through them.",
+		"args": []
+	},
+	{
+		"title": "response.vars",
+		"id":"response-vars",
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "These are variables processed in the same way as <a href=\"#server-vars\">server.vars</a> however these are only for the current response and will overwrite any global variables.",
+		"args": []
+	}
+]

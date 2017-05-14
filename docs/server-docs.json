@@ -1,0 +1,291 @@
+[
+	{
+		"title": "server.callFunc(funcName[, ...arguments])",
+		"id":"server-callFunc",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "25A",
+		"extra": "",
+		"desc": "\tCalls a function in the master process that was set by <a href=\"#server-setFunc\">server.setFunc()</a> in a master extension.\n\t<br>\n\tReturns a promise that resolves with the returned value of the called function.\n",
+		"args": [
+			"funcName &lt;String&gt; Name of the function to call.",
+			"...arguments Arguments to call the function with."
+		]
+	},
+	{
+		"title": "server.config",
+		"id":"server-config",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "25A",
+		"extra": "",
+		"desc": "\tObject created from the config.json file, used to determine settings during runtime, you can modify it and the changes will be applied.\n\t<br>\n\tPlease note that some changes such as server.config.dataPort are set when JOTPOT Server loads and thus changing them after the initial load will not have any effect. These can however be changed as soon as the extension is loaded as the server is set up after the extensions are loaded.\n",
+		"args": []
+	},
+	{
+		"title": "server.createAccountSystem(options)",
+		"id":"server-createAccountSystem",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tCreated an account system with the given options, documentation coming soon.\n",
+		"args": [
+			"options &lt;Object&gt; Options to create the account system with."
+		]
+	},
+	{
+		"title": "server.getData(request)",
+		"id":"server-getData",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tReturns a promise that resolves with all data sent by the client. It resolves when the request is ended.\n",
+		"args": [
+			"request &lt;Server Request&gt; Request to read the data from."
+		]
+	},
+	{
+		"title": "server.getGlobal(variableName[, modifying])",
+		"id":"server-getGlobal",
+		"support": [
+			true,
+			true,
+			true,
+			true
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tGets a server wide global variable. In the master process, it will resolve instantly.\n\t<br>\n\tReturns a Promise, resolves with the value of the global variable.\n\t<br>\n\tSee also: <a href=\"#server-setGlobal\">server.setGlobal()</a>\n",
+		"args": [
+			"variableName &lt;String&gt; Name of the variable to retrieve.",
+			"modifying &lt;Boolean&gt; Whether or not the variable is being 'modified'."
+		]
+	},
+	{
+		"title": "server.getMimeType(filename)",
+		"id":"server-getMimeType",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tReturns the mime type of the filename passed.\n",
+		"args": [
+			"filename &lt;String&gt; The filename to get the mime type of."
+		]
+	},
+	{
+		"title": "server.getUserID(request, response)",
+		"id":"server-getUserID",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tReturns the user ID of the user making this request. If the user doesn't already have a user ID it will create one for it.\n\t<br>\n\tNote that if it creates a new user ID, the set-cookie header will be set, and overwriting it will cause the user ID to be invalidated.\n",
+		"args": [
+			"request &lt;Server Request&gt; The request object to get the user ID from.",
+			"response &lt;Server Response&gt; The response object to get the user ID from."
+		]
+	},
+	{
+		"title": "server.handle(events, callback)",
+		"id":"server-handle",
+		"support": [
+			true,
+			true,
+			true,
+			true
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tSetting a handle for an event allows the function to overwrite or add to the default behavior for the event being handled.\n\t<br>\n\tThe function should return undefined, a Boolean or a promise - that should resolve with undefined or a Boolean.\n\t<br>\n\tIf the function returns true or the returned promise resolves true then the server will consider the event 'handled' and thus not continue with the default behavior\n\t<br>\n\tAll the events that can be handles are detailed in the Server Events section.\n",
+		"args": [
+			"events &lt;Array&lt;String&gt;|String&gt; An event or array of events this function should handle.",
+			"callback &lt;Function&gt; Function to call to handle the event."
+		]
+	},
+	{
+		"title": "server.limited",
+		"id":"server-limited",
+		"support": [
+			true,
+			true,
+			true,
+			true
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\ttrue if the extension is limited, false if not.\n",
+		"args": []
+	},
+	{
+		"title": "server.loadExt(path[, lock])",
+		"id":"server-loadExt",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "Pre 25A",
+		"extra": "Notes: Available in limited extensions until 25D",
+		"desc": "\tLoads and runs the path given as an extension. If a lock argument is given, that lock will be applied to the extension. Use the <a href=\"#server-lock\">server.lock</a> class to create a valid lock.\n\t<br>\n\tIf the current extension is a master extension, the new extension will be loaded as a master extension and if the extension is a worker extension the new extension will also be loaded as a worker extension, only in the process of the current extension - so to ensure an extension can handle all server events it must be loaded all times its parent extension is loaded.\n",
+		"args": [
+			"path &lt;String&gt; Path of the file to run.",
+			"lock &lt;Lock&gt; Optional lock to apply to the extension."
+		]
+	},
+	{
+		"title": "new server.lock([variableSandbox, mode, hosts])",
+		"id":"server-lock",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "25A",
+		"extra": "Note: From 25D the server.lock is actually an extension of the actually lock class to prevent it from being overwritten and causing errors.",
+		"desc": "\tIf variableSandbox is a string, all server wide global variables set with <a href=\"#server-setGlobal\">setGlobal</a> and retrieved with <a href=\"#server-getGlobal\">getGlobal</a> (or <a href=\"#server-modGlobal\">modGlobal</a>) will be stored within an object named 'variableSandbox' within the standard global object - meaning that the extension cannot access global variables from other extensions with no or different sandboxes, however extensions with no sandbox can access the variables be getting the global variable named 'variableSandbox' - which will be an object of the variables.\n\t<br>\n\tIf host limits are used (so mode &gt;= 1), the extension will only be allowed to handle events for that domain, so if 'hosts' is [\"www.example.com\"], then any handles created by it for \"request\" or similar events will only handle these events for requests to \"www.example.com\", so it will not be allowed to handle events for \"www.jotpot.co.uk\".\n\t<br>\n\tMode can only be 0, 1 or 2 (defaults to 2). If mode is 0, only the variable sandbox will be applied, if mode is 1, variable sandbox will be applied and the host limits will be applied, mode 2 behaves identically to mode 1 right now however new behavior will be added in the future for mode 2.\n\t<br>\n\tThe object created should be used when calling <a href=\"#server-loadExt\">server.loadExt()</a>\n",
+		"args": [
+			"variableSandbox &lt;String|null&gt; Name of sandbox to use for global variables, or null if no sandbox.",
+			"mode &lt;Number&gt; Optional lock to apply to the extension.",
+			"hosts &lt;Array&lt;String&gt;&gt; Array of strings this extension is allowed to handle events for."
+		]
+	},
+	{
+		"title": "server.modGlobal(variableName)",
+		"id":"server-modGlobal",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "25B",
+		"extra": "",
+		"desc": "\tSame as calling <a href=\"#server-getGlobal\">server.getGlobal(variableName, true)</a>\n",
+		"args": [
+			"variableName &lt;String&gt; Name of the variable to modify."
+		]
+	},
+	{
+		"title": "server.pages",
+		"id": "server-pages",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tVariables used for caching, documentation coming soon.\n",
+		"args": []
+	},
+	{
+		"title": "server.reloadConfig()",
+		"id": "server-reloadConfig",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "25A",
+		"extra": "Note: Not available in the master process until 25D",
+		"desc": "\tReloads the config.json file.\n",
+		"args": []
+	},
+	{
+		"title": "server.sendError(code, message, response)",
+		"id": "server-sendError",
+		"support": [
+			true,
+			true,
+			false,
+			false
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tSends a full response based on the error code with the 'errorTemp.jpt' file (from the working directory of the server) with all the error details.\n",
+		"args": [
+			"code &lt;Number&gt; HTTP response code to send.",
+			"message &lt;String&gt; The message to display on the error page.",
+			"response &lt;Server Response&gt; The response to send the error to."
+		]
+	},
+	{
+		"title": "server.setFunc(functionName, function)",
+		"id": "server-setFunc",
+		"support": [
+			true,
+			false,
+			true,
+			false
+		],
+		"added": "25A",
+		"extra": "",
+		"desc": "Sets a function that can be called by any of the workers via <a href=\"#server-callFunc\">server.callFunc()</a>. Each seperate lock gets its own scope for functions - based on the variable scope.",
+		"args": [
+			"functionName &lt;String&gt; Name of the function to set.",
+			"function &lt;Function&gt; The function to assign to the function name."
+		]
+	},
+	{
+		"title": "server.setGlobal(variableName, value)",
+		"id": "server-setGlobal",
+		"support": [
+			true,
+			true,
+			true,
+			true
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tSets a server wide global variable. In the master process, it will resolve instantly.\n\t<br>\n\tReturns a Promise, resolves when the value of the variable has been set.\n\t<br>\n\tSee also: <a href=\"#server-getGlobal\">server.getGlobal()</a>\n",
+		"args": [
+			"variableName &lt;String&gt; Name of the variable to retrieve.",
+			"value Value to set the variable to."
+		]
+	},
+	{
+		"title": "server.vars",
+		"id": "server-vars",
+		"support": [
+			false,
+			true,
+			false,
+			false
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\tObject containing global variables to be inserted into pages.\n\t<br>\n\tIf server.vars = {'test1':'hi','test2':'world'}, then in a page served containing the contents '$:::test1:::$ - $:::test2:::$' will be served as 'hi - world'.\n\t<br>\n\tNote that <a href=\"#response-vars\">ServerResponse.vars</a> will also be added this way, with a higher priority (with a lower priority until 25D).\n",
+		"args": []
+	}
+]
