@@ -1,5 +1,6 @@
 const p = "J:\\JOTPOT-Server" ;
 
+const node_version = "6.10.3" ;
 const fs = require("fs") ;
 const path = require("path") ;
 const cp = require("child_process") ;
@@ -10,10 +11,10 @@ function make(dir,...spawnArgs) {
 	const startDir = process.cwd() ;
 	fs.mkdirSync(dir) ;
 	process.chdir(dir) ;
-	cp.execSync(`bash -c "wget https://nodejs.org/dist/v6.10.2/node-v6.10.2.tar.gz"`) ;
-	cp.execSync(`bash -c "tar -xzf node-v6.10.2.tar.gz"`) ;
-	cp.execSync(`bash -c "rm node-v6.10.2.tar.gz"`) ;
-	cp.execSync(`bash -c "mv ./node-v6.10.2 ./build"`) ;
+	cp.execSync(`bash -c "wget https://nodejs.org/dist/v${node_version}/node-v${node_version}.tar.gz"`) ;
+	cp.execSync(`bash -c "tar -xzf node-v${node_version}.tar.gz"`) ;
+	cp.execSync(`bash -c "rm node-v${node_version}.tar.gz"`) ;
+	cp.execSync(`bash -c "mv ./node-v${node_version} ./build"`) ;
 	process.chdir("build") ;
 	fs.mkdirSync("./lib/internal/jps") ;
 	fs.writeFileSync("./lib/internal/jps/run.js",sortPaths(fs.readFileSync(path.join(p,"run.js")))) ;
@@ -42,10 +43,11 @@ const sortPaths = c => c.toString().replace(/\.\/accounts.js/gi,"internal/jps/ac
 
 make("win-x64",".\\vcbuild.bat",["x64"]) ;
 make("win-x86",".\\vcbuild.bat",["x86"]) ;
-make("linux-x64","bash",["-c","./configure --dest-cpu x64 && make -j4"]) ;
-make("linux-x86","bash",["-c","./configure --dest-cpu x86 && make -j4"]) ;
-make("linux-arm","bash",["-c","./configure --dest-cpu arm && make -j4"]) ;
-make("linux-arm64","bash",["-c","./configure --dest-cpu arm64 && make -j4"]) ;
+make("linux-x64","bash",["-c","./configure --dest-cpu=x64 && make -j4"]) ;
+make("linux-x86","bash",["-c","./configure --dest-cpu=x86 && make -j4"]) ;
+make("linux-ia32","bash",["-c","./configure --dest-cpu=ia32 && make -j4"]) ;
+make("linux-arm","bash",["-c","./configure --dest-cpu=arm && make -j4"]) ;
+make("linux-arm64","bash",["-c","./configure --dest-cpu=arm64 && make -j4"]) ;
 
 try {
 	
@@ -102,6 +104,19 @@ catch(err)  {
 try {
 	
 	fs.writeFileSync("../Release/jps-linux-x86",fs.readFileSync("./linux-x86/build/out/Release/node")) ;
+
+}
+
+catch(err)  {
+	
+	console.warn("Error") ;
+	console.warn(err) ;
+	
+}
+
+try {
+	
+	fs.writeFileSync("../Release/jps-linux-ia32",fs.readFileSync("./linux-ia32/build/out/Release/node")) ;
 
 }
 
