@@ -30,6 +30,7 @@
 let fs = require("fs") ;
 let vm = require("vm") ;
 let events = require("events") ;
+let fakefs = require("./ExtensionFileSystem.js") ;
 
 let handles = new Object() ;
 let handleOver = new Object() ;
@@ -221,7 +222,7 @@ module.exports.loadExt = (file,lock=null) => {
 	//If there is no lock
 	if (lock === null) {
 		
-		serverObj = server.generateServerObject() ;
+		serverObj = server.generateServerObject(lock.hosts, lock.fs) ;
 		
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
@@ -236,7 +237,7 @@ module.exports.loadExt = (file,lock=null) => {
 	//LOCKED!!!
 	else {
 		
-		serverObj = server.generateLimitedServerObject() ;
+		serverObj = server.generateLimitedServerObject(lock.hosts, lock.fs) ;
 		
 		//Now we are locked
 		serverObj.limited = true ;
@@ -467,7 +468,7 @@ module.exports.loadExt = (file,lock=null) => {
 	}
 	
 	//Wrap the source
-	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
+	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate,fs){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
 	
 	//To catch so ther server doesn't go down if the extention fails to load.
 	try {
@@ -477,7 +478,7 @@ module.exports.loadExt = (file,lock=null) => {
 			
 			filename: file
 			
-		})(require,serverObj,console,setTimeout,setInterval,setImmediate) ;
+		})(require,serverObj,console,setTimeout,setInterval,setImmediate,lock.fs) ;
 		
 		//So, it loaded...
 		return {"loaded":true,"serverObj":serverObj} ;
@@ -518,7 +519,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	//If there is no lock
 	if (lock === null) {
 		
-		serverObj = module.exports.generateMasterServerObject() ;
+		serverObj = module.exports.generateMasterServerObject(lock.hosts, lock.fs) ;
 		
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
@@ -533,7 +534,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	//LOCKED!!!
 	else {
 		
-		serverObj = module.exports.generateLimitedMasterServerObject() ;
+		serverObj = module.exports.generateLimitedMasterServerObject(lock.hosts, lock.fs) ;
 		
 		//Now we are locked
 		serverObj.limited = true ;
@@ -668,7 +669,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	}
 	
 	//Wrap the source
-	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
+	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate,fs){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
 	
 	//To catch so ther server doesn't go down if the extention fails to load.
 	try {
@@ -678,7 +679,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 			
 			filename: file + "fun"
 			
-		})(require,serverObj,console,setTimeout,setInterval,setImmediate) ;
+		})(require,serverObj,console,setTimeout,setInterval,setImmediate,lock.fs) ;
 		
 		//So, it loaded...
 		return {"loaded":true,"serverObj":serverObj} ;
@@ -700,29 +701,25 @@ module.exports.lock = class {
 		
 		if (typeof vars !== "string" && vars !== null) {
 			
-			throw "First argument must be a string or null" ;
-			return false ;
+			throw new Error("First argument must be a string or null") ;
 			
 		}
 		
 		if (typeof mode !== "number") {
 			
-			throw "2nd argument (mode) must be a number" ;
-			return false ;
+			throw new Error("2nd argument (mode) must be a number") ;
 			
 		}
 		
 		else if (Math.round(mode) !== mode) {
 			
-			throw "2nd argument (mode) must be an integer." ;
-			return false ;
+			throw new Error("2nd argument (mode) must be an integer.") ;
 			
 		}
 		
 		else if (mode < 0 || mode > 2) {
 			
-			throw "2nd argument (mode) must be 0, 1 or 2" ;
-			return false ;
+			throw new Error("2nd argument (mode) must be 0, 1 or 2") ;
 			
 		}
 		
@@ -754,12 +751,23 @@ module.exports.lock = class {
 			
 			if (!hostValid) {
 				
-				throw "3rd argument must be an array containing at least one host, unless mode is 0" ;
-				return false ;
+				throw new Error("3rd argument must be an array containing at least one host, unless mode is 0") ;
 				
 			}
 			
 			this.hosts = hosts ;
+			
+			if (hosts.length === 0) {
+				
+				this.fs = require("fs") ;
+				
+			}
+			
+			else {
+				
+				this.fs = new fakefs(hosts[0]) ;
+				
+			}
 			
 		}
 		
