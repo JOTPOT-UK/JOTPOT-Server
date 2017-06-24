@@ -4,7 +4,7 @@ const node_version = "6.10.3" ;
 const fs = require("fs") ;
 const path = require("path") ;
 const cp = require("child_process") ;
-fs.mkdirSync("build") ;
+//fs.mkdirSync("build") ;
 process.chdir("build") ;
 function make(dir,...spawnArgs) {
 	
@@ -34,13 +34,19 @@ function make(dir,...spawnArgs) {
 	fs.writeFileSync("./node.gyp",fs.readFileSync("./node.gyp").toString().replace(/      'lib\/internal\/bootstrap_node\.js',/g,"      'lib/internal/bootstrap_node.js',\n      'lib/internal/jps/run.js',\n      'lib/internal/jps/server.js',\n      'lib/internal/jps/externals.js',\n      'lib/internal/jps/accounts.js',")) ;
 	fs.unlinkSync("./src/res/node.ico") ;
 	fs.writeFileSync("./lib/internal/bootstrap_node.js",fs.readFileSync("./lib/internal/bootstrap_node.js").toString().replace(/if \(NativeModule.exists\('_third_party_main'\)\) {/g,"if (true) {if (process.argv[1] && process.env.NODE_UNIQUE_ID) {const cluster=NativeModule.require('cluster');cluster._setupWorker();delete process.env.NODE_UNIQUE_ID;}process.nextTick(function(){NativeModule.require('internal/jps/run');})} else if (NativeModule.exists('_third_party_main')) {")) ;
-	cp.spawnSync(spawnArgs[0],spawnArgs[1],{stdio:"inherit"}) ;
+	if (spawnArgs[0]){
+		
+		cp.spawnSync(spawnArgs[0],spawnArgs[1],{stdio:"inherit"}) ;
+		
+	}
 	process.chdir(startDir) ;
 	
 }
 
 const sortPaths = c => c.toString().replace(/\.\/accounts.js/gi,"internal/jps/accounts").replace(/\.\/externals.js/gi,"internal/jps/externals").replace(/\.\/server.js/gi,"internal/jps/server").replace(/\.\/run.js/gi,"internal/jps/run") ;
 
+make("source") ;
+process.exit() ;
 make("win-x64",".\\vcbuild.bat",["x64"]) ;
 make("win-x86",".\\vcbuild.bat",["x86"]) ;
 make("linux-x64","bash",["-c","./configure --dest-cpu=x64 && make -j4"]) ;

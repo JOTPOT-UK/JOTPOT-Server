@@ -1040,56 +1040,163 @@ module.exports = {
 			//If it is an extention, load it.
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 				
-				let currentLoad = externals.loadExt(currentDir[doing],{
+				externals.generateServerObject = _ => {
 					
-					"pages": pages,
-					"vars": vars,
-					"sendError":(...eArgs)=>sendError(...eArgs),
-					"createAccountSystem":(args) => {
+					return {
 						
-						let creatingAcc = new proc.proc(
+						"pages": pages,
+						"vars": vars,
+						"sendError":(...eArgs)=>sendError(...eArgs),
+						"createAccountSystem":(args) => {
 							
-							args.name,
-							args.db,
-							args.pages,
-							args.exclude,
-							args.loginURL,
-							args.loginPage,
-							args.logoutURL,
-							args.logoutPage,
-							args.regURL,
-							args.regPage,
-							args.loginRedirect,
-							args.https
+							let creatingAcc = new proc.proc(
+								
+								args.name,
+								args.db,
+								args.pages,
+								args.exclude,
+								args.loginURL,
+								args.loginPage,
+								args.logoutURL,
+								args.logoutPage,
+								args.regURL,
+								args.regPage,
+								args.loginRedirect,
+								args.https
+								
+							) ;
+							allAccountSystems.push(creatingAcc) ;
+							return creatingAcc ;
 							
-						) ;
-						allAccountSystems.push(creatingAcc) ;
-						return creatingAcc ;
+						},
+						"getUserID":(req,resp)=>{
+							
+							let userID = proc.getUserID(req) ;
+							if (userID) {
+								
+								return userID ;
+								
+							}
+							return proc.makeNewUID(req,resp) ;
+							
+						},
+						"getMimeType":(...args)=>getMimeType(...args),
+						"config": config,
+						"getData": req=>{
+							
+							let data = new Array() ;
+							req.on("data",d=>data.push(d)) ;
+							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+							
+						},
+						"reloadConfig":_=>loadConfig()
 						
-					},
-					"getUserID":(req,resp)=>{
+					} ;
+					
+				} ;
+				
+				let currentLimitedAccountSystem = 0 ;
+				externals.generateLimitedServerObject = (domains, fs) => {
+					
+					return {
 						
-						let userID = proc.getUserID(req) ;
-						if (userID) {
+						"sendError":(...eArgs)=>sendError(...eArgs),
+						"createAccountSystem":(args) => {
 							
-							return userID ;
+							let toCheck = ["pages", "exclude","loginURL","loginPage","logoutURL","logoutPage","regURL","regPage","loginRedirect"] ;
+							
+							for (let checking of toCheck) {
+								
+								if (typeof args[checking] === "string") {
+									
+									let ok = false ;
+									for (let domain in domains) {
+										
+										if (args[checking].indexOf(domains[domain]) === 0) {
+											
+											ok = true ;
+											break ;
+											
+										}
+										
+									}
+									if (!ok) {
+										
+										throw new Error("You cannot set up an account system using these domains...") ;
+										
+									}
+									continue ;
+									
+								}
+								
+								for (let doing = 0 ; doing < args[checking].length ; doing++) {
+									
+									let ok = false ;
+									for (let domain in domains) {
+										
+										if (args[checking][doing].indexOf(domains[domain]) === 0) {
+											
+											ok = true ;
+											break ;
+											
+										}
+										
+									}
+									if (!ok) {
+										
+										throw new Error("You cannot set up an account system using these domains...") ;
+										
+									}
+									
+								}
+								
+							}
+							
+							let creatingAcc = new proc.proc(
+								
+								`limitedsystem-${++currentLimitedAccountSystem}`,
+								fs.realpathSync(args.db, {real:true}),
+								args.pages,
+								args.loginURL,
+								args.exclude,
+								args.loginPage,
+								args.logoutURL,
+								args.logoutPage,
+								args.regURL,
+								args.regPage,
+								args.loginRedirect,
+								args.https
+								
+							) ;
+							allAccountSystems.push(creatingAcc) ;
+							return creatingAcc ;
+							
+						},
+						"getUserID":(req,resp)=>{
+							
+							let userID = proc.getUserID(req) ;
+							if (userID) {
+								
+								return userID ;
+								
+							}
+							return proc.makeNewUID(req,resp) ;
+							
+						},
+						"getMimeType":(...args)=>getMimeType(...args),
+						"getData": req=>{
+							
+							let data = new Array() ;
+							req.on("data",d=>data.push(d)) ;
+							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
 							
 						}
-						return proc.makeNewUID(req,resp) ;
 						
-					},
-					"getMimeType":(...args)=>getMimeType(...args),
-					"config": config,
-					"getData": req=>{
-						
-						let data = new Array() ;
-						req.on("data",d=>data.push(d)) ;
-						return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
-						
-					},
-					"reloadConfig":_=>loadConfig()
+					} ;
 					
-				}) ;
+				} ;
+				
+				let currentLoad = externals.loadExt(currentDir[doing]) ;
 				
 				if (currentLoad.loaded) {
 					

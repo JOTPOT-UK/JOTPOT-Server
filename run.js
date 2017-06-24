@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25D
+	Version 25E
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -138,12 +138,18 @@ if (cluster.isMaster) {
 		//If it is an extention, load it.
 		if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 			
-			let currentLoad = externals.loadMasterExt(currentDir[doing],{
+			externals.generateMasterServerObject = _ => {
 				
-				"config": config,
-				"reloadConfig":_=>loadConfig()
+				return {
+					
+					"config": config,
+					"reloadConfig":_=>loadConfig()
+					
+				} ;
 				
-			},null,vars,funcs) ;
+			} ;
+			
+			let currentLoad = externals.loadMasterExt(currentDir[doing],null,vars,funcs) ;
 			
 		}
 		

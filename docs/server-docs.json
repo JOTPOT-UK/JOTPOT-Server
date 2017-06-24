@@ -34,10 +34,10 @@
 		"title": "server.createAccountSystem(options)",
 		"id":"server-createAccountSystem",
 		"support": [
-			true,
+			false,
 			true,
 			false,
-			false
+			true
 		],
 		"added": "Pre 25A",
 		"extra": "",
@@ -201,7 +201,7 @@
 			false,
 			true,
 			false,
-			true
+			false
 		],
 		"added": "Pre 25A",
 		"extra": "",

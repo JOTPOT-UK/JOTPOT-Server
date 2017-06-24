@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25D
+	Version 25E
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -35,6 +35,11 @@ let handles = new Object() ;
 let handleOver = new Object() ;
 
 module.exports.handles = handles ;
+
+module.exports.generateServerObject = _ => {return {};} ;
+module.exports.generateLimitedServerObject = _ => {return {};} ;
+module.exports.generateMasterServerObject = _ => {return {};} ;
+module.exports.generateLimitedMasterServerObject = _ => {return {};} ;
 
 function handle(evt,func,allowOverwrite=true) {
 	
@@ -193,7 +198,7 @@ process.on("message",m=>{
 }) ;
 
 //Function to load an extention. File is path to extention, and serverObj is the object that will be the base of the server variable.
-module.exports.loadExt = (file,serverObj,lock=null) => {
+module.exports.loadExt = (file,lock=null) => {
 	
 	//If the extention doesn't exist...
 	if (!fs.existsSync(file)) {
@@ -211,9 +216,12 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		
 	}
 	
+	let serverObj ;
 	let wasThereALock = true ;
 	//If there is no lock
 	if (lock === null) {
+		
+		serverObj = server.generateServerObject() ;
 		
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
@@ -228,14 +236,12 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 	//LOCKED!!!
 	else {
 		
+		serverObj = server.generateLimitedServerObject() ;
+		
 		//Now we are locked
 		serverObj.limited = true ;
 		
 	}
-	
-	//Save the origional server object.
-	let origServerObj = {} ;
-	Object.assign(origServerObj,serverObj) ;
 	
 	//Just, dissapointing...
 	serverObj.isMaster = false ;
@@ -451,22 +457,12 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		serverObj.loadExt = (ePath,eLock=null) => {
 			
 			//Return their server object.
-			let newServerOb = new Object() ;
-			Object.assign(newServerOb,origServerObj) ;
-			return module.exports.loadExt(ePath,newServerOb,eLock) ;
+			return module.exports.loadExt(ePath,eLock) ;
 			
 		}
 		
 		//Create a clone of the lock class to add to the server object.
 		serverObj.lock = class extends module.exports.lock {} ;
-		
-	}
-	
-	else {
-		
-		delete serverObj.vars ;
-		delete serverObj.config ;
-		delete serverObj.reloadConfig ;
 		
 	}
 	
@@ -479,7 +475,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 		//Run it with the required arguments
 		vm.runInNewContext(source,{},{
 			
-			filename: file + "fun"
+			filename: file
 			
 		})(require,serverObj,console,setTimeout,setInterval,setImmediate) ;
 		
@@ -499,7 +495,7 @@ module.exports.loadExt = (file,serverObj,lock=null) => {
 }
 
 //Function to load an extention in master mode. Similar to loadExt. vars arg is vars object for seting and getting globals.
-module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
+module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	
 	//If the extention doesn't exist...
 	if (!fs.existsSync(file)) {
@@ -517,9 +513,12 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 		
 	}
 	
+	let serverObj ;
 	let wasThereALock = true ;
 	//If there is no lock
 	if (lock === null) {
+		
+		serverObj = module.exports.generateMasterServerObject() ;
 		
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
@@ -534,13 +533,12 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 	//LOCKED!!!
 	else {
 		
+		serverObj = module.exports.generateLimitedMasterServerObject() ;
+		
 		//Now we are locked
 		serverObj.limited = true ;
 		
 	}
-	
-	//Save the origional server object.
-	const origServerObj = serverObj ;
 	
 	//This is the MASTER!!!
 	serverObj.isMaster = true ;
@@ -660,21 +658,12 @@ module.exports.loadMasterExt = (file,serverObj,lock=null,vars,funcs) => {
 		serverObj.loadExt = (ePath,eLock=null) => {
 			
 			//Return their server object.
-			let newServerOb = new Object() ;
-			Object.assign(newServerOb,origServerObj) ;
-			return module.exports.loadMasterExt(ePath,newServerOb,eLock,vars) ;
+			return module.exports.loadMasterExt(ePath,eLock,vars) ;
 			
 		}
 		
 		//Create a clone of the lock class to add to the server object.
 		serverObj.lock = class extends module.exports.lock {} ;
-		
-	}
-	
-	else {
-		
-		delete serverObj.config ;
-		delete serverObj.reloadConfig ;
 		
 	}
 	
