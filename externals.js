@@ -37,6 +37,21 @@ let handleOver = new Object() ;
 
 module.exports.handles = handles ;
 
+module.exports.allowedRequirePaths = [
+	"crypto",
+	"events",
+	"path",
+	"querystring",
+	"readline",
+	"stream",
+	"string_decoder",
+	"timers",
+	"url",
+	"util",
+	"vm",
+	"zlib"
+] ;
+
 module.exports.generateServerObject = _ => {return {};} ;
 module.exports.generateLimitedServerObject = _ => {return {};} ;
 module.exports.generateMasterServerObject = _ => {return {};} ;
@@ -217,7 +232,7 @@ module.exports.loadExt = (file,lock=null) => {
 		
 	}
 	
-	let serverObj ;
+	let serverObj, requireFunc ;
 	let wasThereALock = true ;
 	//If there is no lock
 	if (lock === null) {
@@ -232,6 +247,8 @@ module.exports.loadExt = (file,lock=null) => {
 		
 		wasThereALock = false ;
 		
+		requireFunc = (...args) => require(...args) ;
+		
 	}
 	
 	//LOCKED!!!
@@ -241,6 +258,30 @@ module.exports.loadExt = (file,lock=null) => {
 		
 		//Now we are locked
 		serverObj.limited = true ;
+		
+		requireFunc = path => {
+			
+			if (path === "fs") {
+				
+				let rv = new Object() ;
+				Object.assign(rv, lock.fs) ;
+				return rv ;
+				
+			}
+			
+			else if (module.exports.allowedRequirePaths.indexOf(path) !== -1) {
+				
+				return require(path) ;
+				
+			}
+			
+			else {
+				
+				throw new Error(`Cannot find module '${path}'`) ;
+				
+			}
+			
+		} ;
 		
 	}
 	
@@ -468,7 +509,7 @@ module.exports.loadExt = (file,lock=null) => {
 	}
 	
 	//Wrap the source
-	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate,fs){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
+	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
 	
 	//To catch so ther server doesn't go down if the extention fails to load.
 	try {
@@ -478,7 +519,7 @@ module.exports.loadExt = (file,lock=null) => {
 			
 			filename: file
 			
-		})(require,serverObj,console,setTimeout,setInterval,setImmediate,lock.fs) ;
+		})(requireFunc,serverObj,console,setTimeout,setInterval,setImmediate) ;
 		
 		//So, it loaded...
 		return {"loaded":true,"serverObj":serverObj} ;
@@ -514,7 +555,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 		
 	}
 	
-	let serverObj ;
+	let serverObj, requireFunc ;
 	let wasThereALock = true ;
 	//If there is no lock
 	if (lock === null) {
@@ -529,6 +570,8 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 		
 		wasThereALock = false ;
 		
+		requireFunc = (...args) => require(...args) ;
+		
 	}
 	
 	//LOCKED!!!
@@ -538,6 +581,30 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 		
 		//Now we are locked
 		serverObj.limited = true ;
+		
+		requireFunc = path => {
+			
+			if (path === "fs") {
+				
+				let rv = new Object() ;
+				Object.assign(rv, lock.fs) ;
+				return rv ;
+				
+			}
+			
+			else if (module.exports.allowedRequirePaths.indexOf(path) !== -1) {
+				
+				return require(path) ;
+				
+			}
+			
+			else {
+				
+				throw new Error(`Cannot find module '${path}'`) ;
+				
+			}
+			
+		} ;
 		
 	}
 	
@@ -669,7 +736,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	}
 	
 	//Wrap the source
-	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate,fs){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
+	let source = `(function(require,server,console,setTimeout,setInterval,setImmediate){\r\n${fs.readFileSync(file).toString()}\r\n});` ;
 	
 	//To catch so ther server doesn't go down if the extention fails to load.
 	try {
@@ -679,7 +746,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 			
 			filename: file + "fun"
 			
-		})(require,serverObj,console,setTimeout,setInterval,setImmediate,lock.fs) ;
+		})(requireFunc,serverObj,console,setTimeout,setInterval,setImmediate,lock.fs) ;
 		
 		//So, it loaded...
 		return {"loaded":true,"serverObj":serverObj} ;
