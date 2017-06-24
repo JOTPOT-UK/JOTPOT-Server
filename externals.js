@@ -225,7 +225,7 @@ module.exports.loadExt = (file,lock=null) => {
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
 		
-		serverObj = server.generateServerObject(lock.hosts, lock.fs) ;
+		serverObj = module.exports.generateServerObject(lock.hosts, lock.fs) ;
 		
 		//This extention is not limited
 		serverObj.limited = false ;
@@ -237,7 +237,7 @@ module.exports.loadExt = (file,lock=null) => {
 	//LOCKED!!!
 	else {
 		
-		serverObj = server.generateLimitedServerObject(lock.hosts, lock.fs) ;
+		serverObj = module.exports.generateLimitedServerObject(lock.hosts, lock.fs) ;
 		
 		//Now we are locked
 		serverObj.limited = true ;
@@ -766,6 +766,7 @@ module.exports.lock = class {
 			else {
 				
 				this.fs = new fakefs(hosts[0]) ;
+				this.fs = this.fs.public ;
 				
 			}
 			
