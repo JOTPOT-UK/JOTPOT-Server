@@ -1089,7 +1089,8 @@ module.exports = {
 							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
 							
 						},
-						"reloadConfig":_=>loadConfig()
+						"reloadConfig":_=>loadConfig(),
+						"multipartFormDataParser": require("./multipart-form-data-parser.js")
 						
 					} ;
 					
@@ -1190,7 +1191,8 @@ module.exports = {
 							req.on("data",d=>data.push(d)) ;
 							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
 							
-						}
+						},
+						"multipartFormDataParser": require("./multipart-form-data-parser.js")
 						
 					} ;
 					
