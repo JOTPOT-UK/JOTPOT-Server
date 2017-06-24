@@ -100,8 +100,6 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 			
 			dataString = dataString.substring(boundary.length,dataString.length) ;
 			data = data.slice(boundaryB.length,data.length) ;
-			console.info("Headers---------------------") ;
-			console.info(dataString) ;
 			stage++ ;
 			newLineMade = false ;
 			return parseTick() ;
@@ -133,8 +131,6 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 						continue ;
 						
 					}
-					console.info("Data-------------------------------") ;
-					console.info(dataString) ;
 					stage++ ;
 					let name = null ;
 					if (typeof currentHeaders["content-disposition"] !== "undefined") {
@@ -168,8 +164,6 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 				thisData = data.slice(0,data.indexOf(boundaryB)-2) ;
 				data = data.slice(data.indexOf(boundaryB),data.length) ;
 				dataString = data.toString() ;
-				console.info("Reset-----------------------") ;
-				console.info(dataString) ;
 				stage = 0 ;
 				
 			}

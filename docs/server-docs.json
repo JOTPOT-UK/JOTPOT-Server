@@ -195,6 +195,23 @@
 		]
 	},
 	{
+		"title": "server.multiPartFormDataParser(request, callback)",
+		"id":"server-multiPartFormDataParser",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "25E",
+		"extra": "Note: Not currently recomended due to lack of testing.",
+		"desc": "Returns a Promise, that resolves when all data has been recieved and parsed.<br>The callback is called whenever a new field is recieved. It is sent with a Data class as the only argument.<br>The Data class is an extension of the standard Node.js readable stream and the data recieved for the current field will be piped out of it. It also has 3 extra popities: name, headers and setup. The name property contains the name of the field, headers contains an object of the parsed headers of the field, and setup is used for internal use.",
+		"args": [
+			"request &lt;Server Request&gt; Request to parse the data from.",
+			"callback &lt;Function&gt; Function to be called with all new data."
+		]
+	},
+	{
 		"title": "server.pages",
 		"id": "server-pages",
 		"support": [
