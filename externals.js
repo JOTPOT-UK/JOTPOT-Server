@@ -222,10 +222,10 @@ module.exports.loadExt = (file,lock=null) => {
 	//If there is no lock
 	if (lock === null) {
 		
-		serverObj = server.generateServerObject(lock.hosts, lock.fs) ;
-		
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
+		
+		serverObj = server.generateServerObject(lock.hosts, lock.fs) ;
 		
 		//This extention is not limited
 		serverObj.limited = false ;
@@ -237,10 +237,10 @@ module.exports.loadExt = (file,lock=null) => {
 	//LOCKED!!!
 	else {
 		
-		serverObj = server.generateLimitedServerObject(lock.hosts, lock.fs) ;
-		
 		//Now we are locked
 		serverObj.limited = true ;
+		
+		serverObj = server.generateLimitedServerObject(lock.hosts, lock.fs) ;
 		
 	}
 	
@@ -519,10 +519,10 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	//If there is no lock
 	if (lock === null) {
 		
-		serverObj = module.exports.generateMasterServerObject(lock.hosts, lock.fs) ;
-		
 		//Create a new one with no limits.
 		lock = new module.exports.lock() ;
+		
+		serverObj = module.exports.generateMasterServerObject(lock.hosts, lock.fs) ;
 		
 		//This extention is not limited
 		serverObj.limited = false ;
@@ -534,10 +534,10 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	//LOCKED!!!
 	else {
 		
-		serverObj = module.exports.generateLimitedMasterServerObject(lock.hosts, lock.fs) ;
-		
 		//Now we are locked
 		serverObj.limited = true ;
+		
+		serverObj = module.exports.generateLimitedMasterServerObject(lock.hosts, lock.fs) ;
 		
 	}
 	
