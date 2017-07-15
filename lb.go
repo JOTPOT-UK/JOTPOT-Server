@@ -33,36 +33,125 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"regexp"
 )
 
+//Panic if err is not nil
 func panicIfErr(err error) {
 	if err != nil {
 		panic(err)
 	}
 }
 
-type handler struct{}
+type form struct {
+	regexp     *regexp.Regexp
+	serveraddr string
+}
+type uncompiledform struct {
+	regexp     string
+	serveraddr string
+}
+type director struct {
+	DefaultAddr string
+	DefaultHost string
+	Directions  map[string][]form
+}
+type uncompileddirector struct {
+	DefaultAddr string
+	DefaultHost string
+	Directions  map[string][]uncompiledform
+}
+
+type handler struct {
+	isHTTPS  bool
+	director *director
+}
+
+//Returns the server address based on the directions from the director
+func (t director) WhereIs(u *url.URL) string {
+	//Get relivent directions
+	checks, ok := t.Directions[u.Hostname()]
+
+	//Fallback to default host/default address
+	if !ok {
+		if t.DefaultHost == "" {
+			return t.DefaultAddr
+		}
+		checks, ok = t.Directions[t.DefaultHost]
+		if !ok {
+			return t.DefaultAddr
+		}
+	}
+
+	//Test for reg exp matches
+	for _, exp := range checks {
+		if exp.regexp.MatchString(u.Path) {
+			return exp.serveraddr
+		}
+	}
+
+	//Fallback to default address
+	return t.DefaultAddr
+}
+
+//Compile uncompiled director
+func (t uncompileddirector) Compile() (out director, err error) {
+	var compiled *regexp.Regexp
+
+	//Copy basic properties
+	out.DefaultAddr = t.DefaultAddr
+	out.DefaultHost = t.DefaultHost
+
+	for host, tf := range t.Directions {
+		//If it is a nil map, we cannot just add the key
+		if out.Directions != nil {
+			out.Directions[host] = []form{}
+		} else {
+			out.Directions = map[string][]form{host: []form{}}
+		}
+
+		//Compile all the rules
+		for _, exp := range tf {
+			compiled, err = regexp.Compile(exp.regexp)
+			if err != nil {
+				//Return with err if there was an err
+				return
+			}
+			out.Directions[host] = append(out.Directions[host], form{compiled, exp.serveraddr})
+		}
+	}
+	return
+}
 
 func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	fmt.Println("Got request")
 
+	//What server should we dial
+	connectTo := m.director.WhereIs(req.URL)
+	fmt.Println(connectTo)
+
 	//Dial server
-	fmt.Println("Dialing server...")
 	forward, err := net.Dial("tcp", ":80")
 	panicIfErr(err)
 
+	//Add load balancer headers
+	req.Header["jp-source-ip"] = []string{req.RemoteAddr}
+	if m.isHTTPS {
+		req.Header["jp-source-secure"] = []string{"https"}
+	} else {
+		req.Header["jp-source-secure"] = []string{"http"}
+	}
+
 	//Write headers etc. to server
-	fmt.Println("Writing header to server...")
 	err = req.Write(forward)
 	panicIfErr(err)
 
 	//Parse as response
-	fmt.Println("Parsing server response...")
 	forwardResp, err := http.ReadResponse(bufio.NewReader(forward), nil)
 	panicIfErr(err)
 
 	//Write headers etc. to client
-	fmt.Println("Copying headers...")
 	for key, val := range forwardResp.Header {
 		//resp.Header().Set(key, val)
 		resp.Header().Set(key, val[0])
@@ -73,12 +162,10 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	fmt.Println("Writing header to client...")
 	resp.WriteHeader(forwardResp.StatusCode)
 	panicIfErr(err)
 
 	//Buf to store data in and n already set up
-	fmt.Println("Setting stuff up...")
 	buf := make([]byte, 1024)
 	var n int
 	var bClosed bool
@@ -113,5 +200,23 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	http.ListenAndServe(":8081", &handler{})
+	//To be used later
+	toCompile := uncompileddirector{
+		//Default address and host
+		"LIMBO",
+		"LIMBO",
+		//Simple test director
+		map[string][]uncompiledform{
+			"www.jotpot.co.uk": []uncompiledform{
+				uncompiledform{".*", "192.168.1.11:80"},
+			},
+		},
+	}
+
+	//Compile it
+	mainDirector, err := toCompile.Compile()
+	panicIfErr(err)
+
+	//Set up server
+	http.ListenAndServe(":8081", &handler{false, &mainDirector})
 }
