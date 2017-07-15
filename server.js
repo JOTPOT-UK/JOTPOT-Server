@@ -38,7 +38,7 @@ let https = require("https") ;
 let fs = require("fs") ;
 let path = require("path") ;
 //let zlib = require("zlib") ;
-let purl = require("url").parse ;
+let url = require("url") ;
 let proc = require("./accounts.js") ;
 let externals = require("./externals.js") ;
 let {Transform,Readable} = require("stream") ;
@@ -106,9 +106,12 @@ for (let doing in doVarsFor) {
 }
 let dontDoVarsFor = [] ;
 
+//Set up current ID
+let currentID = 0 ;
+
 //Get buffer of string for inserting vars.
-let startOfVar = new Buffer("$::") ;
-let endOfVar = new Buffer("::$") ;
+let startOfVar = Buffer.from("$::") ;
+let endOfVar = Buffer.from("::$") ;
 
 //Error file
 if (!fs.existsSync(config.errorTemplate)) {
@@ -124,6 +127,7 @@ let errorFile = fs.readFileSync(config.errorTemplate).toString() ;
 let errorCodes = new Object() ;
 errorCodes[403] = "Sorry, however you are not permitted to access this file." ;
 errorCodes[404] = "The page you are looking for may have been removed or moved to a new location!" ;
+errorCodes[500] = "An unknowen error occured." ;
 
 //Pipe for adding vars
 //When creating, give 1st argument as the path of the path of the file that will be piped.
@@ -263,7 +267,7 @@ function getMimeType(file) {
 	
 }
 
-//Proxy to realms
+//Proxy to other local server
 function forwardToOtherServer(req,resp,port) {
 	
 	try {
@@ -317,8 +321,6 @@ function getFile(file,callWithStats,pipeTo,callback) {
 			
 			if (callWithStats(stats)) {
 				
-				console.log(`\tRequest took ${Date.now() - requestGotAt}ms to process.`) ;
-				
 				//Pipe file to the pipe.
 				fs.createReadStream(file,{
 					
@@ -328,6 +330,12 @@ function getFile(file,callWithStats,pipeTo,callback) {
 				}).pipe(pipeTo) ;
 				
 				callback(true,"Erm") ;
+				
+			}
+			
+			else {
+				
+				callback(false, "Rejected because of stats...") ;
 				
 			}
 			
@@ -344,17 +352,17 @@ function getFile(file,callWithStats,pipeTo,callback) {
 }
 
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
-function sendFile(file,resp,customVars) {
+function sendFile(file,resp,customVars,rID="") {
 	
 	try {
 		
 		//Look in the sites dir.
 		file = path.join("./sites/",file) ;
 		
-		
 		//Make a pipe to send it to.
 		let mainPipe = "none" ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
+		let lengthKnowen = false ;
 		
 		//If we need to add vars.
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
@@ -400,29 +408,38 @@ function sendFile(file,resp,customVars) {
 			//No pipes at all, so only to client.
 			mainPipe = resp ;
 			
+			//We can now get the length from the stats
+			lengthKnowen = true ;
+			
 		}
 		
-		return new Promise((resolve,reject) => {getFile(file,(stats) => {
-			
-			let mime = getMimeType(file) ;
-			console.log(`\t200 OK.   ${file} (${mime}) loaded from disk.`) ;
-			resp.writeHead(200,{
+		return new Promise((resolve,reject) => {
 				
-				"Content-Type": mime,
-				"Server": "JOTPOT Server",
+			getFile(file,stats => {
 				
-				//Added because google does it :)
-				"status": 200
+				let mime = getMimeType(file) ;
+				console.log(`${rID}\t200 OK.   ${file} (${mime}) loaded from disk.`) ;
+				if (lengthKnowen) {
+					resp.setHeader("Content-Length", stats.size) ;
+				}
+				resp.writeHead(200,{
+					
+					"Content-Type": mime,
+					
+					//Added because google does it :)
+					"status": 200
+					
+				}) ;
 				
-			}) ;
+				return true ;
+				
+			},mainPipe,(done,err) => {
+				
+				resolve([done,err]) ;
+				
+			});
 			
-			return true ;
-			
-		},mainPipe,(done,err) => {
-			
-			resolve([done,err]) ;
-			
-		});}) ;
+		}) ;
 		
 	}
 	
@@ -434,7 +451,7 @@ function sendFile(file,resp,customVars) {
 	
 }
 
-function sendCache(file,cache,resp,customVars,status=200) {
+function sendCache(file,cache,resp,customVars,status=200,rID="") {
 	
 	try {
 		
@@ -446,6 +463,7 @@ function sendCache(file,cache,resp,customVars,status=200) {
 		let mainPipe = "none" ;
 		resp.pipeThrough = [] ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
+		let lengthKnowen = false ;
 		
 		//If we need to add vars.
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
@@ -489,24 +507,25 @@ function sendCache(file,cache,resp,customVars,status=200) {
 		else {
 			
 			//No pipes at all, so only to client.
+			lengthKnowen = true ;
 			mainPipe = resp ;
 			
 		}
 		
 		//Get the mime type.
 		let mime = getMimeType(file) ;
-		console.log(`\t200 OK.   ${file} (${mime}) loaded from cache.`) ;
+		console.log(`${rID}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
+		if (lengthKnowen) {
+			resp.setHeader("Content-Length", cache.length) ;
+		}
 		resp.writeHead(status,{
 			
 			"Content-Type": mime,
-			"Server": "JOTPOT Server",
 			
 			//Added because google does it :)
 			"status": status
 			
 		}) ;
-		
-		console.log(`\tRequest took ${Date.now() - requestGotAt}ms to process.`) ;
 		
 		//Write the cached data & end.
 		mainPipe.write(cache) ;
@@ -522,17 +541,19 @@ function sendCache(file,cache,resp,customVars,status=200) {
 	
 }
 
-function sendError(code,message,resp) {
+function sendError(code,message,resp,rID="") {
 	
-	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},code) ;
+	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},code,rID) ;
 	return ;
 	
 }
 
-function coughtError(err,resp) {
+function coughtError(err,resp,rID="") {
 	
 	console.warn(`Error occured in main request handler: ${err}`) ;
-	sendError(500,"An unknowen error occured.",resp) ;
+	console.warn("Stack:") ;
+	console.warn(err.stack) ;
+	sendError(500,"An unknowen error occured.",resp,rID) ;
 	
 }
 
@@ -542,15 +563,11 @@ function handleRequest(req,resp) {
 	try {
 		
 		//Get time stuff.
-		let timeRecieved = Date.now() ;
-		requestGotAt = timeRecieved ;
-		let requestTime = new Date(timeRecieved) ;
+		let timeRecieved = process.hrtime() ;
+		let requestTime = new Date() ;
 		
-		//For vars
-		let host = req.headers.host || config.defaultDomain ;
-		req.host = host ;
-		req.fullurl = `http${req.overHttps?"s":""}://${host}:${req.port}${req.url}` ;
-		req.purl = purl(req.fullurl) ;
+		//Set server header
+		resp.setHeader("Server","JOTPOT Server") ;
 		
 		//Get IP, follow jp-source headers if we are behind a load balancer
 		let user_ip, user_ip_remote ;
@@ -567,14 +584,37 @@ function handleRequest(req,resp) {
 			
 		}
 		
+		//URL parsing
+		req.purl = url.parse(req.url, false) ;
+		
+		//Add http(s):// properties
+		req.purl.protocol = `http${req.overHttps?"s":""}:` ;
+		req.purl.slashes = true ;
+		
+		//Get host, fallback to default host in the config
+		req.host = (req.headers.host || config.defaultDomain).toLowerCase() ;
+		req.purl.host = req.host ;
+		//Split host into hostname and port
+		//	This isn't the same method as the Node.js url.parse
+		let splithost = req.host.split(":") ;
+		if (splithost.length > 1) {
+			req.purl.port = req.port = splithost.pop() ;
+		} else {
+			//Use default http/https port
+			req.purl.port = req.port = req.overHttps?443:80 ;
+		}
+		req.purl.hostname = splithost.join(":") ;
+		
+		//Set the full url and href
+		req.purl.href = req.fullurl = url.format(req.purl) ;
+		
 		//Add stuff to resp object.
-		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
+		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":req.host,"purl":JSON.stringify(req.purl)} ;
 		resp.pipeThrough = new Array() ;
 		req.ip = user_ip ;
 		req.remoteAddress = user_ip_remote ;
 		
 		//Do request handle.
-		//if (externals.handles.request(req,resp)) {
 		let cont = true ;
 		let gotOtherPromise = false ;
 		externals.doEvt("request",req,resp).then(d=>{
@@ -587,7 +627,7 @@ function handleRequest(req,resp) {
 			
 			if (gotOtherPromise && cont) {
 				
-				handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
+				handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
 				
 			}
 			
@@ -595,7 +635,7 @@ function handleRequest(req,resp) {
 			
 		})
 		
-		externals.doEvt(`${host}/request`,req,resp).then(d=>{
+		externals.doEvt(`${req.host}/request`,req,resp).then(d=>{
 			
 			if (d) {
 				
@@ -605,7 +645,7 @@ function handleRequest(req,resp) {
 			
 			if (gotOtherPromise && cont) {
 				
-				handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
+				handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
 				
 			}
 			
@@ -624,18 +664,19 @@ function handleRequest(req,resp) {
 	
 }
 
-function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) {
+function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) {
 	
-	//Secure URL.
+	//Secure URL. Remove '..' to prevent it from going to a parent directory.
 	req.orig_url = req.url ;
-	//req.url = req.url.toLowerCase().replace(/\.\./g,"") ;
 	req.url = req.url.replace(/\.\./g,"") ;
 	
 	//Check if we need to forward to another port.
+	// Will soon be obsolete due to lb.go
 	for (let doing in config.otherProcesses) {
 		
-		if (config.otherProcesses[doing].forwardUrls.indexOf(host + req.url) !== -1) {
+		if (config.otherProcesses[doing].forwardUrls.indexOf(req.host + req.url) !== -1) {
 			
+			console.warn("Forwarding requests to other servers is depricated, use lb.go (located in the main JOTPOT Server repo) instead.") ;
 			return forwardToOtherServer(req,resp,config.otherProcesses[doing].forwardPort) ;
 			
 		}
@@ -643,11 +684,11 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 	}
 	
 	//Should we redirect to https.
-	if (req.overHttps === false && config.redirectToHttps.indexOf(host) !== -1 && config.canBeHttp.indexOf(req.url) === -1) {
+	if (req.overHttps === false && config.redirectToHttps.indexOf(req.host) !== -1 && config.canBeHttp.indexOf(req.url) === -1) {
 		
-		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
-		console.log(`\t302 Found.   Redirecting to https://${host}${req.url}.`) ;
-		resp.writeHead(301,{"Content-Type":"text/plain","location":"https://" + host + req.url}) ;
+		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${req.host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
+		console.log(`\t302 Found.   Redirecting to https://${req.host}${req.url}.`) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":"https://" + req.host + req.url,"status":301}) ;
 		resp.write("Redirecting you to our secure site...") ;
 		resp.end() ;
 		return ;
@@ -655,19 +696,29 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 	}
 	
 	//Is the host an alias
-	if (typeof config.hostAlias[host] !== "undefined") {
+	while (typeof config.hostAlias[req.host] !== "undefined") {
 		
-		host = config.hostAlias[host] ;
+		req.host = config.hostAlias[req.host] ;
 		
 	}
 	
 	//Should we redirect to another host.
-	if (typeof config.hostRedirects[host] !== "undefined") {
+	if (typeof config.hostRedirects[req.host] !== "undefined") {
 		
-		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
-		console.log(`\t302 Found.   Redirecting to ${config.hostRedirects[host]}.`) ;
-		resp.writeHead(301,{"Content-Type":"text/plain","location":["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host] + req.url}) ;
-		resp.write("Redirecting you to " + ["http://","https://"][Number(req.overHttps)] + config.hostRedirects[host] + req.url + "...") ;
+		console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${req.host}${req.url} being handled by thread ${cluster.worker.id}.`) ;
+		console.log(`\t302 Found.   Redirecting to ${config.hostRedirects[req.host]}.`) ;
+		
+		//Set new host
+		req.purl.host = config.hostRedirects[req.host] ;
+		
+		//Set correct protocol
+		let isRedirectHttps = config.redirectToHttps.indexOf(config.hostRedirects[req.host]) !== -1 && config.canBeHttp.indexOf(req.url) === -1 ;
+		req.purl.protocol = isRedirectHttps?"https:":"http:"
+		
+		//Format and send response
+		let href = url.format(req.purl) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":href, "status":301}) ;
+		resp.write("Redirecting you to " + href + "...") ;
 		resp.end() ;
 		return ;
 		
@@ -675,9 +726,9 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 	
 	//Add host to URL
 	req.accualHost = req.host ;
-	req.host = host ;
-	req.path = req.url ;
-	req.url = host + req.url ;
+	req.path = req.purl.path ;
+	req.pathname = req.purl.pathname ;
+	req.url = req.host + req.url ;
 	
 	//Page alias?
 	if (typeof config.pageAlias[req.url] !== "undefined") {
@@ -685,6 +736,18 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 		req.url = config.pageAlias[req.url] ;
 		
 	}
+	
+	{
+		let rID = `#${(currentID++).toString(16).toUpperCase()}` ;
+		Object.defineProperty(req, "jpid", {
+			configurable: false,
+			enumerable: false,
+			value: rID,
+			writable: false
+		}) ;
+	}
+	
+	console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} (${req.orig_url}) being handled by thread ${cluster.worker.id}.`) ;
 	
 	//Handle for full request.
 	
@@ -700,7 +763,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 		
 		if (gotOtherPromise && cont) {
 			
-			handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
+			handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
 			
 		}
 		
@@ -708,7 +771,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 		
 	})
 	
-	externals.doEvt(`${host}/fullrequest`,req,resp).then(d=>{
+	externals.doEvt(`${req.host}/fullrequest`,req,resp).then(d=>{
 		
 		if (d) {
 			
@@ -718,7 +781,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 		
 		if (gotOtherPromise && cont) {
 			
-			handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) ;
+			handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
 			
 		}
 		
@@ -728,9 +791,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,host,user_ip,user_
 	
 }
 
-function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_ip_remote) {
-	
-	console.log(`\n\nRequest from ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
+function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) {
 	
 	//If there are no account systems, then dont bother checking if the user has permission.
 	if (allAccountSystems.length === 0) {
@@ -747,7 +808,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 			
 			if (gotOtherPromise && cont) {
 				
-				allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 				
 			}
 			
@@ -755,7 +816,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 			
 		})
 		
-		externals.doEvt(`${host}/allowedrequest`,req,resp).then(d=>{
+		externals.doEvt(`${req.host}/allowedrequest`,req,resp).then(d=>{
 			
 			if (d) {
 				
@@ -765,7 +826,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 			
 			if (gotOtherPromise && cont) {
 				
-				allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 				
 			}
 			
@@ -834,7 +895,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 						
 						if (gotOtherPromise && cont) {
 							
-							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 							
 						}
 						
@@ -842,7 +903,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 						
 					})
 					
-					externals.doEvt(`${host}/allowedrequest`,req,resp).then(d=>{
+					externals.doEvt(`${req.host}/allowedrequest`,req,resp).then(d=>{
 						
 						if (d) {
 							
@@ -852,7 +913,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 						
 						if (gotOtherPromise && cont) {
 							
-							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 							
 						}
 						
@@ -881,7 +942,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 			//Somthing has gone wrong, so play it safe & send a 401.
 			else {
 				
-				console.log(`\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
+				console.log(`${req.jpid}\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
 				resp.writeHead(401,{"Content-Type":"text/plain"}) ;
 				resp.write("Nope.") ;
 				resp.end() ;
@@ -889,7 +950,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 				
 			}
 			
-		}).catch(err=>{coughtError(err,resp);console.log("Error trace: Error recieving account data.");}) ;
+		}).catch(err=>{coughtError(err,resp,req.jpid);console.log("Error trace: Error recieving account data.");}) ;
 		
 	} ;
 	//Check
@@ -900,18 +961,9 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,host,user_ip,user_
 }
 
 //Should be called when a request is allowed.
-function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
+function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 	
 	try {
-		
-		//Do allowed request handle.
-		/*if (externals.doEvt("allowedrequest",req,resp)) {
-			
-			return true ;
-			
-		}*/
-		
-		let varsToSend = resp.vars ;
 		
 		//Is cached or special page.
 		if (typeof pages[req.url] === "object") {
@@ -919,7 +971,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 			//Is just page alias.
 			if (pages[req.url][0] === "file") {
 				
-				req.url = host + pages[req.url][1] ;
+				req.url = req.host + pages[req.url][1] ;
 				
 			}
 			
@@ -929,7 +981,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 				//If it is a cached file send it.
 				if (pages[req.url][0] === "cache") {
 					
-					sendCache(req.url,pages[req.url][1],resp,varsToSend) ;
+					sendCache(req.url,pages[req.url][1],resp,resp.vars) ;
 					return true ;
 					
 				}
@@ -949,14 +1001,17 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 			
 		}
 		
+		let normPath = path.normalize(req.url) ;
+		let rID = req.jpid ;
+		
 		//Try the URL the user entered.
-		sendFile(req.url,resp,varsToSend).then(done=>{
+		sendFile(normPath,resp,resp.vars,rID).then(done=>{
 			
 			//If the file failed to send.
 			if (!done[0]) {
 				
 				//Try with .page extention.
-				return sendFile(`${req.url}.page`,resp,varsToSend);
+				return sendFile(`${normPath}.page`,resp,resp.vars,rID);
 				
 			}
 			
@@ -972,7 +1027,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 			if (!done[0]) {
 				
 				//Try the index.html.
-				return sendFile(path.join(req.url,"/index.html"),resp,varsToSend);
+				return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID);
 				
 			}
 			
@@ -1000,23 +1055,25 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote) {
 					
 				}
 				//And send the error.
-				return sendError(code,errorCodes[code],resp) ;
+				sendError(code,errorCodes[code],resp,rID) ;
 				
 			}
 			
-			else {
-				
-				return [true] ;
-				
-			}
+			let timeTaken = process.hrtime(timeRecieved) ;
+			console.log(`${rID}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 			
-		}).catch(err=>{coughtError(err,resp);console.log("Error trace: Error in send promise.") ;}) ;
+		}).catch(err=>{
+			
+			coughtError(err,resp,rID) ;
+			console.log("Error trace: Error in send promise.") ;
+			
+		}) ;
 		
 	}
 	
 	catch(err) {
 		
-		coughtError(err,resp) ;
+		coughtError(err,resp,rID) ;
 		console.log("Error trace: Request allowed, issue processubg headers.") ;
 		
 	}
@@ -1282,5 +1339,3 @@ module.exports = {
 	}
 
 }
-
-let requestGotAt ;

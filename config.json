@@ -2,8 +2,8 @@
 	
 	"otherProcesses": [],
 	
-	"dataPort": 501,
-	"controlers":["192.168.1.5"],
+	"dataPort": 500,
+	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
 	
 	"httpServers": [
 		
