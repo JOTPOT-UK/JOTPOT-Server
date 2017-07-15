@@ -48,6 +48,8 @@
 	
 	"errorTemplate": "errorTemp.jpt",
 	
-	"defaultDomain": "www.your_main_domain.com"
+	"defaultDomain": "www.your_main_domain.com",
+	
+	"behindLoadBalencer": false
 	
 }
