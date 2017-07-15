@@ -24,6 +24,14 @@
 		"args": []
 	},
 	{
+		"title": "request.ip",
+		"id":"request-ip",
+		"added": "25E",
+		"extra": "",
+		"desc": "request.ip if the IP address of the user making the request. If there is an x-forwarded-for header, the IP address is set the that over the accual IP address.<br>If config.behindLoadBalancer is true, the jp-source-ip header set by the load balancer will be used as the source IP.<br>Also see <a href=\"#request-sourceIp\">request.sourceIp</a>.",
+		"args": []
+	},
+	{
 		"title": "request.orig_url",
 		"id":"request-orig_url",
 		"added": "Pre 25A",
@@ -36,7 +44,7 @@
 		"id":"request-overHttps",
 		"added": "Pre 25A",
 		"extra": "",
-		"desc": "Alias for request.secure (was added before request.secure and left in for backwards compatibility purposes), so true if the request was made over HTTPS and false if not.",
+		"desc": "Alias for <a href=\"request-secure\">request.secure</a> (was added before request.secure and left in for backwards compatibility purposes), so true if the request was made over HTTPS and false if not.",
 		"args": []
 	},
 	{
@@ -60,7 +68,22 @@
 		"id":"request-secure",
 		"added": "25D",
 		"extra": "",
-		"desc": "Whether or not the request and response is secure, so true if the request was made over HTTPS and false if not.",
+		"desc": "Whether or not the request and response is secure, so true if the request was made over HTTPS and false if not.<br>From 25E onwards, if config.behindLoadBalancer is true, the jp-source-secure header set by the load balancer will be set, even if the load balancer made the request via HTTP to the server, the value will be determined by the clients connection to the load balancer.",
+		"args": []
+	},{
+		"title": "request.secureToServer",
+		"id":"request-secureToServer",
+		"added": "25D",
+		"extra": "",
+		"desc": "Whether or not the connection to the load balancer is HTTPS. If there is no load balancer, it is equal to <a href=\"#request-secure\">request.secure</a>",
+		"args": []
+	},
+	{
+		"title": "request.remoteAddress",
+		"id":"request-remoteAddress",
+		"added": "25E",
+		"extra": "",
+		"desc": "request.remoteAddress if the IP address of the client making the request. Unlike <a href=\"#request-ip\">request.ip</a>, it ignores the x-forwarded-for header.<br>If config.behindLoadBalancer is true, the jp-source-ip header set by the load balancer will be used as the source IP.",
 		"args": []
 	},
 	{

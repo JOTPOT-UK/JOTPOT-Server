@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25D
+	Version 25E
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -551,12 +551,27 @@ function handleRequest(req,resp) {
 		req.host = host ;
 		req.fullurl = `http${req.overHttps?"s":""}://${host}:${req.port}${req.url}` ;
 		req.purl = purl(req.fullurl) ;
-		let user_ip = (req.headers['x-forwarded-for'] || req.headers["jp-source"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-		let user_ip_remote = (req.headers["jp-source"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+		
+		//Get IP, follow jp-source headers if we are behind a load balancer
+		let user_ip, user_ip_remote ;
+		if (config.behindLoadBalancer) {
+			
+			user_ip = (req.headers['x-forwarded-for'] || req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+			user_ip_remote = (req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+			req.overHttps = req.secure = req.headers["jp-source-secure"] === "https" ;
+			
+		} else {
+			
+			user_ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+			user_ip_remote = (req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+			
+		}
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":host} ;
 		resp.pipeThrough = new Array() ;
+		req.ip = user_ip ;
+		req.remoteAddress = user_ip_remote ;
 		
 		//Do request handle.
 		//if (externals.handles.request(req,resp)) {
@@ -1237,7 +1252,7 @@ module.exports = {
 			
 			http.createServer((req,resp) => {
 				
-				req.overHttps = req.secure = false ;
+				req.overHttps = req.secure = req.secureToServer = false ;
 				req.port = options[0] ;
 				handleRequest(req,resp) ;
 				
@@ -1250,7 +1265,7 @@ module.exports = {
 			
 			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
 				
-				req.overHttps = req.secure = true ;
+				req.overHttps = req.secure = req.secureToServer = true ;
 				req.port = config.httpsServers[doing].port ;
 				handleRequest(req,resp) ;
 				
