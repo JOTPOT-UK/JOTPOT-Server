@@ -37,6 +37,8 @@ import (
 	"regexp"
 )
 
+const ignorePort bool = true
+
 //Panic if err is not nil
 func panicIfErr(err error) {
 	if err != nil {
@@ -71,7 +73,13 @@ type handler struct {
 //Returns the server address based on the directions from the director
 func (t director) WhereIs(u *url.URL) string {
 	//Get relivent directions
-	checks, ok := t.Directions[u.Hostname()]
+	var hostname string
+	if ignorePort {
+		hostname = u.Hostname()
+	} else {
+		hostname = u.Host
+	}
+	checks, ok := t.Directions[hostname]
 
 	//Fallback to default host/default address
 	if !ok {
@@ -127,12 +135,15 @@ func (t uncompileddirector) Compile() (out director, err error) {
 func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	fmt.Println("Got request")
 
+	//Add the host to the URL object for WhereIs
+	req.URL.Host = req.Host
+
 	//What server should we dial
 	connectTo := m.director.WhereIs(req.URL)
 	fmt.Println(connectTo)
 
 	//Dial server
-	forward, err := net.Dial("tcp", ":80")
+	forward, err := net.Dial("tcp", connectTo)
 	panicIfErr(err)
 
 	//Add load balancer headers
@@ -209,6 +220,9 @@ func main() {
 		map[string][]uncompiledform{
 			"www.jotpot.co.uk": []uncompiledform{
 				uncompiledform{".*", "192.168.1.11:80"},
+			},
+			"localhost": []uncompiledform{
+				uncompiledform{".*", ":8080"},
 			},
 		},
 	}
