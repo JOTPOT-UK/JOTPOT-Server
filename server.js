@@ -689,7 +689,9 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} (${req.orig_url}) being handled by thread ${cluster.worker.id}.`) ;
 		console.log(`${req.jpid}\t302 Found.   Redirecting to https://${req.host}${req.url}.`) ;
 		
-		resp.writeHead(301,{"Content-Type":"text/plain","location":"https://" + req.host + req.url,"status":301}) ;
+		req.purl.protocol = "https:" ;
+		
+		resp.writeHead(301,{"Content-Type":"text/plain","location":url.format(req.purl),"status":301}) ;
 		resp.write("Redirecting you to our secure site...") ;
 		resp.end() ;
 		
