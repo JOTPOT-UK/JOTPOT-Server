@@ -134,7 +134,7 @@ let errorFile = fs.readFileSync(config.errorTemplate).toString() ;
 let errorCodes = new Object() ;
 errorCodes[403] = "Sorry, however you are not permitted to access this file." ;
 errorCodes[404] = "The page you are looking for may have been removed or moved to a new location!" ;
-errorCodes[500] = "An unknowen error occured." ;
+errorCodes[500] = "An unknown error occured." ;
 
 //Pipe for adding vars
 //When creating, give 1st argument as the path of the path of the file that will be piped.
@@ -377,7 +377,7 @@ function sendFile(file,resp,customVars,rID="") {
 		//Make a pipe to send it to.
 		let mainPipe = "none" ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
-		let lengthKnowen = false ;
+		let lengthknown = false ;
 		
 		//If we need to add vars.
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
@@ -424,7 +424,7 @@ function sendFile(file,resp,customVars,rID="") {
 			mainPipe = resp ;
 			
 			//We can now get the length from the stats
-			lengthKnowen = true ;
+			lengthknown = true ;
 			
 		}
 		
@@ -434,7 +434,7 @@ function sendFile(file,resp,customVars,rID="") {
 				
 				let mime = getMimeType(file) ;
 				console.log(`${rID}\t200 OK.   ${file} (${mime}) loaded from disk.`) ;
-				if (lengthKnowen) {
+				if (lengthknown) {
 					resp.setHeader("Content-Length", stats.size) ;
 				}
 				resp.writeHead(200,{
@@ -480,7 +480,7 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		let mainPipe = "none" ;
 		resp.pipeThrough = [] ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
-		let lengthKnowen = false ;
+		let lengthknown = false ;
 		
 		//If we need to add vars.
 		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
@@ -524,7 +524,7 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		else {
 			
 			//No pipes at all, so only to client.
-			lengthKnowen = true ;
+			lengthknown = true ;
 			mainPipe = resp ;
 			
 		}
@@ -532,7 +532,7 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		//Get the mime type.
 		let mime = getMimeType(file) ;
 		console.log(`${rID}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
-		if (lengthKnowen) {
+		if (lengthknown) {
 			resp.setHeader("Content-Length", cache.length) ;
 		}
 		resp.writeHead(status,{
@@ -567,7 +567,7 @@ function sendError(code,message,resp,rID="") {
 
 function coughtError(err,resp,rID="") {
 	
-	let isUnknowen = false ;
+	let isUnknown = false ;
 	console.warn("---------------") ;
 	if (err && err.stack) {
 		console.warn("!!! Error in main request handler:") ;
@@ -576,11 +576,11 @@ function coughtError(err,resp,rID="") {
 		console.warn("!!! Error in main request handler:") ;
 		console.warn("\t" + err.replace(/\n/g,"\n\t")) ;
 	} else {
-		console.warn("!!! Error in main request handler, details unknowen. Stack unavailable.") ;
-		isUnknowen = true ;
+		console.warn("!!! Error in main request handler, details unknown. Stack unavailable.") ;
+		isUnknown = true ;
 	}
 	console.warn("---------------") ;
-	sendError(500,`A${isUnknowen?"n unknowen":" knowen "} error occured.${isUnknowen?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't strust you."}.`,resp,rID) ;
+	sendError(500,`A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't strust you."}.`,resp,rID) ;
 	
 }
 
