@@ -110,7 +110,8 @@ Properties:
 	<br>'cache': Array of Strings. Each item is in the format "&lt;host&gt;/&lt;page&gt;", this will be cached.
 	<br>'errorTemplate': String. The file to use as the error page.
 	<br>'defaultDomain': String. The domain to use by default if the http request contains no host header.
-	<br>'useDefaultHostIfHostDoesNotExist': Boolean. true if the default host should be used like an alias if the host the user is requesting does not exist.
+	<br>'useDefaultHostIfHostDoesNotExist': Boolean. true if the default host should be used like an alias if the host the user is requesting does not exist. This is not implemented yet, planed release in 25F - sceduled for release on 31/7/17
+	<br>'behindLoadBalencer': Boolean. true if headers set be the JOTPOT Server load balencer should be used, for example when determining the source IP address or if the request was HTTPS.
 	<br>
 	<br>HTTP Server Options:
 	<br>'port': Number, the port you would like the server to be opened on.

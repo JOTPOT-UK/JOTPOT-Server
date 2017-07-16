@@ -56,6 +56,14 @@
 		"args": []
 	},
 	{
+		"title": "request.pathname",
+		"id":"request-pathname",
+		"added": "25E",
+		"extra": "",
+		"desc": "<a href=\"#request-path\">request.path</a> however without the query.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
 		"title": "request.purl",
 		"id":"request-purl",
 		"added": "25A",

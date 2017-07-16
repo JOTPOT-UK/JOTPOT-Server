@@ -240,10 +240,28 @@
 		"args": []
 	},
 	{
+		"title": "server.sendCache(file, response, request)",
+		"id": "server-sendCache",
+		"support": [
+			false,
+			true,
+			false,
+			false
+		],
+		"added": "25E",
+		"extra": "",
+		"desc": "Exposes an internal function that has been around scince the first release.<br>server.sendCache sends a cache to the response. The cache argument is writen to the response into Node.js's <a href=\"\">response.write</a>, so any type that can be writen to that will be acceptable as the cache argument.<br>The code argument specifies the response code to be sent.<br>Returns a promise that rejects on an unexpected error, and resolves with an array. Index 0 of this array is a boolean, true if the response was sent succesfully and false if not. If index 0 is false, index 1 is the error.<br>Chunked encoding is used unless there are no pipes, in which case the content-length header will be set the the length property of the cache argument.",
+		"args": [
+			"file &lt;String&gt; URL to send coresponding file for.",
+			"response &lt;Server Response&gt; The response to send the error to.",
+			"request &lt;Server Request&gt; Optional, the request to get the ID from for improved logging."
+		]
+	},
+	{
 		"title": "server.sendError(code, message, response)",
 		"id": "server-sendError",
 		"support": [
-			true,
+			false,
 			true,
 			false,
 			false
@@ -255,6 +273,24 @@
 			"code &lt;Number&gt; HTTP response code to send.",
 			"message &lt;String&gt; The message to display on the error page.",
 			"response &lt;Server Response&gt; The response to send the error to."
+		]
+	},
+	{
+		"title": "server.sendFile(file, response, request)",
+		"id": "server-sendFile",
+		"support": [
+			false,
+			true,
+			false,
+			false
+		],
+		"added": "25E",
+		"extra": "",
+		"desc": "Exposes an internal function that has been around scince the first release.<br>server.sendFile sends the correct file as the response to the request. For example if file is 'example.com/hello.html', it will serve './sites/example.com/hello.html'.<br>Returns a promise that rejects on an unexpected error, and resolves with an array. Index 0 of this array is a boolean, true if the response was sent succesfully and false if not. If index 0 is false, index 1 is the error.<br>It pipes through all the correct pipes, including the vars pipe if it should be added for the file given. Chunked encoding is used unless there are no pipes, in which case the content-length header is set to the size of the file being served.",
+		"args": [
+			"file &lt;String&gt; URL to send coresponding file for.",
+			"response &lt;Server Response&gt; The response to send the error to.",
+			"request &lt;Server Request&gt; Optional, the request to get the ID from for improved logging."
 		]
 	},
 	{
