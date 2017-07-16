@@ -48,7 +48,8 @@
 	
 	"errorTemplate": "errorTemp.jpt",
 	
-	"defaultDomain": "www.your_main_domain.com",
+	"defaultHost": "your_main_domain.com",
+	"useDefaultHostIfHostDoesNotExist": true,
 	
 	"behindLoadBalencer": false
 	

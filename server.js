@@ -86,6 +86,13 @@ function loadConfig() {
 }
 loadConfig() ;
 
+let availHosts = [] ;
+if (config.useDefaultHostIfHostDoesNotExist) {
+	
+	availHosts = fs.readdirSync("./sites") ;
+	
+}
+
 //Vars to add to files
 let vars = new Object ;
 vars.Global = new Object() ;
@@ -612,7 +619,7 @@ function handleRequest(req,resp) {
 		req.purl.slashes = true ;
 		
 		//Get host, fallback to default host in the config
-		req.host = (req.headers.host || config.defaultDomain).toLowerCase() ;
+		req.host = (req.headers.host || config.defaultHost || config.defaultDomain).toLowerCase() ;
 		req.purl.host = req.host ;
 		//Split host into hostname and port
 		//	This isn't the same method as the Node.js url.parse
@@ -722,10 +729,23 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 	}
 	
+	req.accualHost = req.host ;
+	
 	//Is the host an alias
 	while (typeof config.hostAlias[req.host] !== "undefined") {
 		
 		req.host = config.hostAlias[req.host] ;
+		
+	}
+	
+	//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
+	if (config.useDefaultHostIfHostDoesNotExist) {
+		
+		if (availHosts.indexOf(req.host) === -1) {
+			
+			req.host = config.defaultHost || "default" ;
+			
+		}
 		
 	}
 	
@@ -758,7 +778,6 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	}
 	
 	//Add host to URL
-	req.accualHost = req.host ;
 	req.path = req.purl.path ;
 	req.pathname = req.purl.pathname ;
 	req.url = req.host + req.url ;
@@ -1318,19 +1337,6 @@ module.exports = {
 			}
 			
 		}
-		
-		//If the correct handes are not defined, create them.
-		/*if (typeof externals.handles.request === "undefined") {
-			
-			externals.handles.request =_=>false ;
-			
-		}
-		
-		if (typeof externals.handles.fullrequest === "undefined") {
-			
-			externals.handles.fullrequest =_=>false ;
-			
-		}*/
 		
 		//Set up the HTTP servers
 		for (let doing in config.httpServers) {

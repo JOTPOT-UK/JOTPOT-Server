@@ -31,7 +31,8 @@
 	
 	"errorTemplate": "errorTemp.jpt",
 	
-	"defaultDomain": "localhost",
+	"defaultHost": "localhost",
+	"useDefaultHostIfHostDoesNotExist": true,
 	
 	"behindLoadBalencer": false
 	
