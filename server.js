@@ -357,7 +357,15 @@ function sendFile(file,resp,customVars,rID="") {
 	try {
 		
 		//Look in the sites dir.
-		file = path.join("./sites/",file) ;
+		let start = path.join(process.cwd(), "sites") ;
+		file = path.join(start,file.replace(":",";")) ;
+		
+		//If we aren't in the sites dir, then throw.
+		if (file.indexOf(start) !== 0) {
+			
+			throw new Error("Server has left the serving directory!") ;
+			
+		}
 		
 		//Make a pipe to send it to.
 		let mainPipe = "none" ;
@@ -445,7 +453,9 @@ function sendFile(file,resp,customVars,rID="") {
 	
 	catch(err) {
 		
-		coughtError(err,resp) ;
+		//coughtError(err,resp,rID) ;
+		//Return an instantly rejecting promise
+		return new Promise((resolve, reject) => reject(err)) ;
 		
 	}
 	
@@ -550,10 +560,20 @@ function sendError(code,message,resp,rID="") {
 
 function coughtError(err,resp,rID="") {
 	
-	console.warn(`Error occured in main request handler: ${err}`) ;
-	console.warn("Stack:") ;
-	console.warn(err.stack) ;
-	sendError(500,"An unknowen error occured.",resp,rID) ;
+	let isUnknowen = false ;
+	console.warn("---------------") ;
+	if (err && err.stack) {
+		console.warn("!!! Error in main request handler:") ;
+		console.warn("\t" + err.stack.replace(/\n/g,"\n\t")) ;
+	} else if (err) {
+		console.warn("!!! Error in main request handler:") ;
+		console.warn("\t" + err.replace(/\n/g,"\n\t")) ;
+	} else {
+		console.warn("!!! Error in main request handler, details unknowen. Stack unavailable.") ;
+		isUnknowen = true ;
+	}
+	console.warn("---------------") ;
+	sendError(500,`A${isUnknowen?"n unknowen":" knowen "} error occured.${isUnknowen?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't strust you."}.`,resp,rID) ;
 	
 }
 
@@ -696,7 +716,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		resp.end() ;
 		
 		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${rID}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 		
 		return ;
 		
@@ -827,7 +847,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 			gotOtherPromise = true ;
 			
-		})
+		}) ;
 		
 		externals.doEvt(`${req.host}/allowedrequest`,req,resp).then(d=>{
 			
@@ -1086,7 +1106,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 	
 	catch(err) {
 		
-		coughtError(err,resp,rID) ;
+		coughtError(err,resp,req.jpid) ;
 		console.log("Error trace: Request allowed, issue processubg headers.") ;
 		
 	}
@@ -1165,7 +1185,7 @@ module.exports = {
 							return proc.makeNewUID(req,resp) ;
 							
 						},
-						"getMimeType":(...args)=>getMimeType(...args),
+						"getMimeType": (...args)=>getMimeType(...args),
 						"config": config,
 						"getData": req=>{
 							
@@ -1174,8 +1194,10 @@ module.exports = {
 							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
 							
 						},
-						"reloadConfig":_=>loadConfig(),
-						"multipartFormDataParser": require("./multipart-form-data-parser.js")
+						"reloadConfig": _=>loadConfig(),
+						"multipartFormDataParser": require("./multipart-form-data-parser.js"),
+						"sendFile": (file, resp, req={jpid:""}) => sendFile(file, resp, resp.vars, req.jpid),
+						"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid)
 						
 					} ;
 					
@@ -1277,7 +1299,8 @@ module.exports = {
 							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
 							
 						},
-						"multipartFormDataParser": require("./multipart-form-data-parser.js")
+						"multipartFormDataParser": require("./multipart-form-data-parser.js")//,
+						//"sendFile": (file, resp, req={jpid:""}) => sendFile(path.normalize(file).replace(/\.\./g,""), resp, resp.vars, req.jpid)
 						
 					} ;
 					
