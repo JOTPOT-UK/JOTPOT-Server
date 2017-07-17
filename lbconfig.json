@@ -2,5 +2,7 @@
 	"directions": {},
 	"defaultAddr":":80",
 	"defaultHost":"default",
-	"ignorePort":false
+	"ignorePort":false,
+	"serverProperties":{},
+	"listenOn":":8080"
 }

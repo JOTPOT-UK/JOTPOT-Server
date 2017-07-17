@@ -69,8 +69,8 @@ type uncompileddirector struct {
 }
 
 type handler struct {
-	isHTTPS  bool
-	director *director
+	IsHTTPS  bool
+	Director *director
 }
 
 type lowestLoad struct {
@@ -184,7 +184,8 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	req.URL.Host = req.Host
 
 	//What server should we dial
-	connectTo := m.director.WhereIs(req.URL)
+	connectTo := m.Director.WhereIs(req.URL)
+	m.Director.Servers[connectTo] = [2]uint64{m.Director.Servers[connectTo][0] + m.Director.Servers[connectTo][1], m.Director.Servers[connectTo][1]}
 
 	//Dial server
 	forward, err := net.Dial("tcp", connectTo)
@@ -192,7 +193,7 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 	//Add load balancer headers
 	req.Header["jp-source-ip"] = []string{req.RemoteAddr}
-	if m.isHTTPS {
+	if m.IsHTTPS {
 		req.Header["jp-source-secure"] = []string{"https"}
 	} else {
 		req.Header["jp-source-secure"] = []string{"http"}
@@ -230,29 +231,39 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	for {
 		//Client -> Server
 		n, err = req.Body.Read(buf)
-		if err == nil {
+		if n > 0 {
 			forward.Write(buf[:n])
-		} else if err == io.EOF {
-			bClosed = true
+		}
+		if err != nil {
+			if err == io.EOF {
+				bClosed = true
+			} else {
+				panic(err)
+			}
 		}
 
 		//Server -> Client
 		n, err = forwardResp.Body.Read(buf)
-		if err == nil {
+		if n > 0 {
 			resp.Write(buf[:n])
-		} else if err == io.EOF {
-			fClosed = true
+		}
+		if err != nil {
+			if err == io.EOF {
+				fClosed = true
+			} else {
+				panic(err)
+			}
 		}
 
 		if bClosed && fClosed {
 			forward.Close()
+			m.Director.Servers[connectTo] = [2]uint64{m.Director.Servers[connectTo][0] - m.Director.Servers[connectTo][1], m.Director.Servers[connectTo][1]}
 			return
 		}
 	}
 
 }
 
-//func getConfig() map[string]map[string]string {
 func getConfig() (map[string]interface{}, error) {
 
 	//Load file
@@ -306,7 +317,7 @@ func main() {
 
 	//Set up server
 	fmt.Println("Ready to go!")
-	err = http.ListenAndServe(":8081", &handler{false, &mainDirector})
+	err = http.ListenAndServe(config["listenOn"], &handler{false, &mainDirector})
 	panicIfErr(err)
 
 }
