@@ -317,7 +317,7 @@ func main() {
 
 	//Set up server
 	fmt.Println("Ready to go!")
-	err = http.ListenAndServe(config["listenOn"], &handler{false, &mainDirector})
+	err = http.ListenAndServe(conf["listenOn"].(string), &handler{false, &mainDirector})
 	panicIfErr(err)
 
 }
