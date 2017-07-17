@@ -39,7 +39,7 @@ import (
 	"regexp"
 )
 
-const ignorePort bool = true
+var ignorePort bool
 
 //Panic if err is not nil
 func panicIfErr(err error) {
@@ -50,16 +50,17 @@ func panicIfErr(err error) {
 
 type rule struct {
 	regexp     *regexp.Regexp
-	serveraddr string
+	serveraddr []string
 }
 type uncompiledrule struct {
 	regexp     string
-	serveraddr string
+	serveraddr []string
 }
 type director struct {
 	DefaultAddr string
 	DefaultHost string
 	Directions  map[string][]rule
+	Servers     map[string][2]uint64
 }
 type uncompileddirector struct {
 	DefaultAddr string
@@ -70,6 +71,11 @@ type uncompileddirector struct {
 type handler struct {
 	isHTTPS  bool
 	director *director
+}
+
+type lowestLoad struct {
+	val  uint64
+	addr string
 }
 
 type ruleset map[string][]uncompiledrule
@@ -99,7 +105,22 @@ func (t director) WhereIs(u *url.URL) string {
 	//Test for reg exp matches
 	for _, exp := range checks {
 		if exp.regexp.MatchString(u.Path) {
-			return exp.serveraddr
+
+			//If there is only 1 server, it must be the one with the lowest load
+			if len(exp.serveraddr) == 1 {
+				return exp.serveraddr[0]
+			}
+
+			//Now we need to return tu server with tu lowest load
+			ll := lowestLoad{1<<64 - 1, t.DefaultAddr}
+			for _, tuServer := range exp.serveraddr {
+				load := t.Servers[tuServer][0]
+				if load < ll.val {
+					ll = lowestLoad{load, tuServer}
+				}
+			}
+			return ll.addr
+
 		}
 	}
 
@@ -108,13 +129,14 @@ func (t director) WhereIs(u *url.URL) string {
 }
 
 //Compile uncompiled director
-func (t uncompileddirector) Compile() (out director, err error) {
+func (t uncompileddirector) Compile(serverConfig map[string]interface{}) (out director, err error) {
 	var compiled *regexp.Regexp
 
 	//Copy basic properties
 	out.DefaultAddr = t.DefaultAddr
 	out.DefaultHost = t.DefaultHost
 
+	//Go through the hosts and rulesets in the uncompiled one
 	for host, tf := range t.Directions {
 		//If it is a nil map, we cannot just add the key
 		if out.Directions != nil {
@@ -123,28 +145,46 @@ func (t uncompileddirector) Compile() (out director, err error) {
 			out.Directions = map[string][]rule{host: []rule{}}
 		}
 
-		//Compile all the rules
-		for _, exp := range tf {
-			compiled, err = regexp.Compile(exp.regexp)
+		//Compile all the rules and set up the server loads
+		for _, tuRule := range tf {
+
+			for _, tuServer := range tuRule.serveraddr {
+				_, ok := out.Servers[tuServer]
+				if !ok {
+					capI, ok := serverConfig[tuServer]
+					var cap uint64 = 50
+					if ok {
+						cap = uint64(capI.(float64))
+					}
+					if out.Servers != nil {
+						out.Servers[tuServer] = [2]uint64{0, cap}
+					} else {
+						out.Servers = map[string][2]uint64{tuServer: {0, cap}}
+					}
+				}
+			}
+
+			//Compile the regexp
+			compiled, err = regexp.Compile(tuRule.regexp)
 			if err != nil {
 				//Return with err if there was an err
 				return
 			}
-			out.Directions[host] = append(out.Directions[host], rule{compiled, exp.serveraddr})
+
+			//Append it
+			out.Directions[host] = append(out.Directions[host], rule{compiled, tuRule.serveraddr})
 		}
 	}
 	return
 }
 
 func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	fmt.Println("Got request")
 
 	//Add the host to the URL object for WhereIs
 	req.URL.Host = req.Host
 
 	//What server should we dial
 	connectTo := m.director.WhereIs(req.URL)
-	fmt.Println(connectTo)
 
 	//Dial server
 	forward, err := net.Dial("tcp", connectTo)
@@ -189,7 +229,6 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	//Body
 	for {
 		//Client -> Server
-		fmt.Println("Client -> Server")
 		n, err = req.Body.Read(buf)
 		if err == nil {
 			forward.Write(buf[:n])
@@ -198,7 +237,6 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		}
 
 		//Server -> Client
-		fmt.Println("Server -> Client")
 		n, err = forwardResp.Body.Read(buf)
 		if err == nil {
 			resp.Write(buf[:n])
@@ -207,30 +245,43 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		}
 
 		if bClosed && fClosed {
-			fmt.Println("We are at the end!")
 			forward.Close()
 			return
 		}
 	}
+
 }
 
 //func getConfig() map[string]map[string]string {
 func getConfig() (map[string]interface{}, error) {
+
+	//Load file
 	file, err := ioutil.ReadFile("lbconfig.json")
 	if err != nil {
 		return nil, err
 	}
+
+	//Parse and return file
 	var data interface{}
-	json.Unmarshal(file, &data)
+	err = json.Unmarshal(file, &data)
+	if err != nil {
+		return nil, err
+	}
 	return data.(map[string]interface{}), nil
 }
 
 func main() {
 
 	fmt.Println("lb.go is now loading...")
+
+	//Get config file
 	conf, err := getConfig()
 	panicIfErr(err)
+
+	//Load defaults and set up empty ruleset
 	toCompile := uncompileddirector{conf["defaultAddr"].(string), conf["defaultHost"].(string), ruleset{}}
+
+	//Fill the directions
 	for key, val := range conf["directions"].(map[string]interface{}) {
 		if toCompile.Directions != nil {
 			toCompile.Directions[key] = []uncompiledrule{}
@@ -239,16 +290,23 @@ func main() {
 		}
 		vals := val.(map[string]interface{})
 		for k2, v2 := range vals {
-			toCompile.Directions[key] = append(toCompile.Directions[key], uncompiledrule{k2, v2.(string)})
+			toCompile.Directions[key] = append(toCompile.Directions[key], uncompiledrule{k2, []string{}})
+			for _, v3 := range v2.([]interface{}) {
+				toCompile.Directions[key][len(toCompile.Directions[key])-1].serveraddr = append(toCompile.Directions[key][len(toCompile.Directions[key])-1].serveraddr, v3.(string))
+			}
 		}
 	}
 
+	//Other settings
+	ignorePort = conf["ignorePort"].(bool)
+
 	//Compile it
-	mainDirector, err := toCompile.Compile()
+	mainDirector, err := toCompile.Compile(conf["serverProperties"].(map[string]interface{}))
 	panicIfErr(err)
 
-	fmt.Println("Ready to go!")
 	//Set up server
-	http.ListenAndServe(":8081", &handler{false, &mainDirector})
+	fmt.Println("Ready to go!")
+	err = http.ListenAndServe(":8081", &handler{false, &mainDirector})
+	panicIfErr(err)
 
 }

@@ -1,8 +1,6 @@
 {
-	"directions": {
-		"www.jotpot.co.uk":{"hello":"world","sup":"peoples"},
-		"localhost":{".*":"WOOO!!!"}
-	},
-	"defaultAddr":"da",
-	"defaultHost":"dh"
+	"directions": {},
+	"defaultAddr":":80",
+	"defaultHost":"default",
+	"ignorePort":false
 }
