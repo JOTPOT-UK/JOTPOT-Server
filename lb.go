@@ -32,6 +32,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -214,23 +215,21 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 }
 
 //func getConfig() map[string]map[string]string {
-func getConfig() map[string]interface{} {
+func getConfig() (map[string]interface{}, error) {
+	file, err := ioutil.ReadFile("lbconfig.json")
+	if err != nil {
+		return nil, err
+	}
 	var data interface{}
-	json.Unmarshal([]byte(`
-	{
-		"directions": {
-			"www.jotpot.co.uk":{"hello":"world","sup":"peoples"},
-			"localhost":{".*":"WOOO!!!"}
-		},
-		"defaultAddr":"da",
-		"defaultHost":"dh"
-	}`), &data)
-	return data.(map[string]interface{})
+	json.Unmarshal(file, &data)
+	return data.(map[string]interface{}), nil
 }
 
 func main() {
 
-	conf := getConfig()
+	fmt.Println("lb.go is now loading...")
+	conf, err := getConfig()
+	panicIfErr(err)
 	toCompile := uncompileddirector{conf["defaultAddr"].(string), conf["defaultHost"].(string), ruleset{}}
 	for key, val := range conf["directions"].(map[string]interface{}) {
 		if toCompile.Directions != nil {
@@ -248,6 +247,8 @@ func main() {
 	mainDirector, err := toCompile.Compile()
 	panicIfErr(err)
 
+	fmt.Println("Ready to go!")
 	//Set up server
 	http.ListenAndServe(":8081", &handler{false, &mainDirector})
+
 }
