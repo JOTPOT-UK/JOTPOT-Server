@@ -29,6 +29,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -46,29 +47,31 @@ func panicIfErr(err error) {
 	}
 }
 
-type form struct {
+type rule struct {
 	regexp     *regexp.Regexp
 	serveraddr string
 }
-type uncompiledform struct {
+type uncompiledrule struct {
 	regexp     string
 	serveraddr string
 }
 type director struct {
 	DefaultAddr string
 	DefaultHost string
-	Directions  map[string][]form
+	Directions  map[string][]rule
 }
 type uncompileddirector struct {
 	DefaultAddr string
 	DefaultHost string
-	Directions  map[string][]uncompiledform
+	Directions  map[string][]uncompiledrule
 }
 
 type handler struct {
 	isHTTPS  bool
 	director *director
 }
+
+type ruleset map[string][]uncompiledrule
 
 //Returns the server address based on the directions from the director
 func (t director) WhereIs(u *url.URL) string {
@@ -114,9 +117,9 @@ func (t uncompileddirector) Compile() (out director, err error) {
 	for host, tf := range t.Directions {
 		//If it is a nil map, we cannot just add the key
 		if out.Directions != nil {
-			out.Directions[host] = []form{}
+			out.Directions[host] = []rule{}
 		} else {
-			out.Directions = map[string][]form{host: []form{}}
+			out.Directions = map[string][]rule{host: []rule{}}
 		}
 
 		//Compile all the rules
@@ -126,7 +129,7 @@ func (t uncompileddirector) Compile() (out director, err error) {
 				//Return with err if there was an err
 				return
 			}
-			out.Directions[host] = append(out.Directions[host], form{compiled, exp.serveraddr})
+			out.Directions[host] = append(out.Directions[host], rule{compiled, exp.serveraddr})
 		}
 	}
 	return
@@ -210,21 +213,35 @@ func (m *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func main() {
-	//To be used later
-	toCompile := uncompileddirector{
-		//Default address and host
-		"LIMBO",
-		"LIMBO",
-		//Simple test director
-		map[string][]uncompiledform{
-			"www.jotpot.co.uk": []uncompiledform{
-				uncompiledform{".*", "192.168.1.11:80"},
-			},
-			"localhost": []uncompiledform{
-				uncompiledform{".*", ":8080"},
-			},
+//func getConfig() map[string]map[string]string {
+func getConfig() map[string]interface{} {
+	var data interface{}
+	json.Unmarshal([]byte(`
+	{
+		"directions": {
+			"www.jotpot.co.uk":{"hello":"world","sup":"peoples"},
+			"localhost":{".*":"WOOO!!!"}
 		},
+		"defaultAddr":"da",
+		"defaultHost":"dh"
+	}`), &data)
+	return data.(map[string]interface{})
+}
+
+func main() {
+
+	conf := getConfig()
+	toCompile := uncompileddirector{conf["defaultAddr"].(string), conf["defaultHost"].(string), ruleset{}}
+	for key, val := range conf["directions"].(map[string]interface{}) {
+		if toCompile.Directions != nil {
+			toCompile.Directions[key] = []uncompiledrule{}
+		} else {
+			toCompile.Directions = ruleset{key: []uncompiledrule{}}
+		}
+		vals := val.(map[string]interface{})
+		for k2, v2 := range vals {
+			toCompile.Directions[key] = append(toCompile.Directions[key], uncompiledrule{k2, v2.(string)})
+		}
 	}
 
 	//Compile it

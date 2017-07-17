@@ -29,7 +29,7 @@
 	
 	"errorTemplate": "errorTemp.jpt",
 	
-	"defaultHost": "localhost",
+	"defaultHost": "default",
 	"useDefaultHostIfHostDoesNotExist": true,
 	
 	"behindLoadBalencer": false
