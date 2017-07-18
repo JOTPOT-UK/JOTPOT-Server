@@ -846,10 +846,34 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 	}
 	
-	//Page alias?
-	if (typeof config.pageAlias[req.url.value] !== "undefined") {
+	let url ;
+	if (req.usePortInDirectory) {
 		
-		req.url.fullvalue = config.pageAlias[req.url.value] ;
+		url = req.url.value ;
+		
+	}
+	
+	else {
+		
+		url = req.url.hostname + req.url.pathname ;
+		
+	}
+	
+	//Page alias?
+	if (typeof config.pageAlias[url] !== "undefined") {
+		
+		let changeTo = config.pageAlias[url] ;
+		if (changeTo.indexOf("?keep?") === changeTo.length - 6) {
+			
+			req.url.fullvalue = changeTo ;
+			
+		}
+		
+		else {
+			
+			req.url.value = changeTo ;
+			
+		}
 		
 	}
 	
@@ -1080,6 +1104,20 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 	
 	try {
+		
+		let cachePath ;
+		
+		if (req.usePortInDirectory) {
+			
+			cachePath = req.url.host + req.url.path ;
+			
+		}
+		
+		else {
+			
+			cachePath = req.url.hostname + req.url.path ;
+			
+		}
 		
 		//Is cached or special page.
 		if (typeof pages[req.url.fullvalue] === "object") {
