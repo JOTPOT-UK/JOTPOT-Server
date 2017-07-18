@@ -39,7 +39,7 @@ let fs = require("fs") ;
 let path = require("path") ;
 let proc = require("./accounts.js") ;
 let externals = require("./externals.js") ;
-let URL = require("./URL.js") ;
+let URL = require("./url-object.js") ;
 let {Transform,Readable} = require("stream") ;
 let cluster ;
 
@@ -385,6 +385,18 @@ function forwardToOtherServer(req,resp,port) {
 	
 }
 
+function wrapURL(req) {
+	
+	let url = new URL(req, config.defaultHost || config.defaultDomain) ;
+	Object.defineProperty(req, "url", {
+		enumerable: true,
+		configurable: false,
+		get: _=>url,
+		set: v=>url.value=v
+	}) ;
+	
+}
+
 //Pipes the file through the transform pipe into the main pipe.
 //Calls the callback with the first argument as a boolean - true if succeded, false if not.
 function getFile(file,callWithStats,pipeTo,callback) {
@@ -686,7 +698,8 @@ function handleRequest(req,resp) {
 		}
 		
 		//Create URL object
-		req.url = new URL(req, config.defaultHost || config.defaultDomain) ;
+		//req.url = new URL(req, config.defaultHost || config.defaultDomain) ;
+		wrapURL(req) ;
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":req.host,"purl":JSON.stringify(req.purl)} ;
