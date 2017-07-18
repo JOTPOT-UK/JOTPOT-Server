@@ -1,7 +1,5 @@
 {
 	
-	"otherProcesses": [],
-	
 	"dataPort": 500,
 	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
 	
@@ -31,7 +29,7 @@
 	
 	"errorTemplate": "errorTemp.jpt",
 	
-	"defaultHost": "default",
+	"defaultHost": "default:0",
 	"useDefaultHostIfHostDoesNotExist": true,
 	
 	"behindLoadBalencer": false

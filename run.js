@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25E
+	Version 25F
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -497,30 +497,11 @@ if (cluster.isMaster) {
 	
 	//Set up an array for storing the workers.
 	let workers = new Array() ;
-	let otherProcesses = new Array() ;
 	
-	//If there arn't enough CPU cores for all the required child processes, spawn a worker in anyway - but only 1.
-	if (1 > os.cpus().length - 1 - config.otherProcesses.length) {
+	//Create a worker for every core that is not being used by the master or another child process.
+	for (let doing = 0 ; doing < Math.max(os.cpus().length, 1) ; doing++) {
 		
 		newFork() ;
-		
-	}
-	
-	else {
-		
-		//Create a worker for every core that is not being used by the master or another child process.
-		for (let doing = 0 ; doing < os.cpus().length - 1 - config.otherProcesses.length ; doing++) {
-			
-			newFork() ;
-			
-		}
-		
-	}
-	
-	//Spawn the other child processes.
-	for (let doing in config.otherProcesses) {
-		
-		otherProcesses.push(cp.fork(config.otherProcesses[doing].filename)) ;
 		
 	}
 	

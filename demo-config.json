@@ -1,17 +1,5 @@
 {
 	
-	"otherProcesses": [
-		
-		{
-			
-			"filename": "demo_extention_server.js",
-			"forwardUrls": ["localhost/demo_server_forward","localhost/k_den"],
-			"forwardPort": 180
-			
-		}
-		
-	],
-	
 	"dataPort": 500,
 	
 	"httpServers": [

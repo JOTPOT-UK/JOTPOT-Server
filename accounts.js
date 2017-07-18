@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25E
+	Version 25F
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -271,7 +271,7 @@ class proc {
 		
 		return new Promise((resolve,regect) => {
 			
-			let page = req.url ;
+			let page = req.url.value ;
 			
 			//If this doesn't protect it.
 			if (typeof this.specialPagesP[page] !== "undefined" || this.pagesEx.indexOf(page) !== -1) {

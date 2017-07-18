@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25E
+	Version 25F
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -37,15 +37,52 @@ let http = require("http") ;
 let https = require("https") ;
 let fs = require("fs") ;
 let path = require("path") ;
-//let zlib = require("zlib") ;
-let url = require("url") ;
 let proc = require("./accounts.js") ;
 let externals = require("./externals.js") ;
+let URL = require("./URL.js") ;
 let {Transform,Readable} = require("stream") ;
 let cluster ;
 
 //Load the config
 let config ;
+
+const defaultConfig = {
+	
+	"otherProcesses": [],
+	
+	"dataPort": 500,
+	
+	"httpServers": [
+		
+		{
+			
+			"port": 80
+			
+		}
+		
+	],
+	"httpsServers": [],
+	
+	"redirectToHttps": [],
+	"canBeHttp": [],
+	
+	"hostRedirects":{},
+	"hostAlias":{},
+	"pageAlias":{},
+	
+	"addVarsByDefault": false,
+	"doVarsForIfNotByDefault": [],
+	
+	"cache": [],
+	
+	"errorTemplate": "errorTemp.jpt",
+	
+	"defaultHost": "default:0",
+	"useDefaultHostIfHostDoesNotExist": true,
+	
+	"behindLoadBalencer": false
+	
+} ;
 
 function loadConfig() {
 
@@ -75,11 +112,26 @@ function loadConfig() {
 
 	else {
 		
-		console.warn("Config file does not exist.") ;
-		console.info("Config file does not exist.") ;
-		console.warn("Exiting") ;
-		console.info("Exiting") ;
-		process.exit() ;
+		console.warn("Config file does not exist, using default config.") ;
+		config = new Object() ;
+		Object.assign(config, defaultConfig) ;
+		return ;
+		
+	}
+	
+	for (let doing in defaultConfig) {
+		
+		if (typeof config[doing] === "undefined") {
+			
+			config[doing] = defaultConfig[doing] ;
+			
+		}
+		
+		else if (typeof config[doing] !== typeof defaultConfig[doing]) {
+			
+			throw new Error(`The ${doing} property in config.json must be of type ${typeof defaultConfig[doing]}.`) ;
+			
+		}
 		
 	}
 	
@@ -108,7 +160,7 @@ let doVarsFor = ["error_page"].concat(config.doVarsForIfNotByDefault) ;
 for (let doing in doVarsFor) {
 	
 	doVarsFor[doing] = path.normalize(doVarsFor[doing]) ;
-	doVarsFor[doing] = path.join("sites",doVarsFor[doing]) ;
+	doVarsFor[doing] = path.join(process.cwd(),"sites",doVarsFor[doing]) ;
 	
 }
 let dontDoVarsFor = [] ;
@@ -121,16 +173,38 @@ let startOfVar = Buffer.from("$::") ;
 let endOfVar = Buffer.from("::$") ;
 
 //Error file
+let errorFile ;
 if (!fs.existsSync(config.errorTemplate)) {
 	
-	console.warn("Error template file does not exist.") ;
-	console.info("Error template file does not exist.") ;
-	console.warn("Exiting") ;
-	console.info("Exiting") ;
-	process.exit() ;
+	console.warn("Error template file does not exist, using the default.") ;
+	errorFile = `<html>
+<head>
+<title>
+Error $:::error_code:::$ - $:::error_type:::$
+</title>
+</head>
+<body>
+	<b>Erm, this isn't meant to happen...</b>
+	<h2>$:::error_code:::$: $:::error_type:::$</h2>
+	<hr>
+	$:::error_message:::$
+	<br><br>
+	For more infomation please see 
+	<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/$:::error_code:::$">this MDN page</a> 
+	or 
+	<a href="https://httpstatuses.com/$:::error_code:::$">httpstatuses.com/$:::error_code:::$</a>
+	<hr>
+</body>
+</html>` ;
 	
 }
-let errorFile = fs.readFileSync(config.errorTemplate).toString() ;
+
+else {
+	
+	errorFile = fs.readFileSync(config.errorTemplate).toString() ;
+	 
+}
+
 let errorCodes = new Object() ;
 errorCodes[403] = "Sorry, however you are not permitted to access this file." ;
 errorCodes[404] = "The page you are looking for may have been removed or moved to a new location!" ;
@@ -365,7 +439,7 @@ function sendFile(file,resp,customVars,rID="") {
 		
 		//Look in the sites dir.
 		let start = path.join(process.cwd(), "sites") ;
-		file = path.join(start,file.replace(":",";")) ;
+		file = path.join(start,URL.toDir(file)) ;
 		
 		//If we aren't in the sites dir, then throw.
 		if (file.indexOf(start) !== 0) {
@@ -432,7 +506,7 @@ function sendFile(file,resp,customVars,rID="") {
 				
 			getFile(file,stats => {
 				
-				let mime = getMimeType(file) ;
+				let mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 				console.log(`${rID}\t200 OK.   ${file} (${mime}) loaded from disk.`) ;
 				if (lengthknown) {
 					resp.setHeader("Content-Length", stats.size) ;
@@ -473,7 +547,7 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 	try {
 		
 		//Look in the sites dir.
-		file = path.join("./sites/",file) ;
+		file = path.join(process.cwd(),"sites",file) ;
 		
 		
 		//Make a pipe to send it to.
@@ -611,35 +685,15 @@ function handleRequest(req,resp) {
 			
 		}
 		
-		//URL parsing
-		req.purl = url.parse(req.url, false) ;
-		
-		//Add http(s):// properties
-		req.purl.protocol = `http${req.overHttps?"s":""}:` ;
-		req.purl.slashes = true ;
-		
-		//Get host, fallback to default host in the config
-		req.host = (req.headers.host || config.defaultHost || config.defaultDomain).toLowerCase() ;
-		req.purl.host = req.host ;
-		//Split host into hostname and port
-		//	This isn't the same method as the Node.js url.parse
-		let splithost = req.host.split(":") ;
-		if (splithost.length > 1) {
-			req.purl.port = req.port = splithost.pop() ;
-		} else {
-			//Use default http/https port
-			req.purl.port = req.port = req.overHttps?443:80 ;
-		}
-		req.purl.hostname = splithost.join(":") ;
-		
-		//Set the full url and href
-		req.purl.href = req.fullurl = url.format(req.purl) ;
+		//Create URL object
+		req.url = new URL(req, config.defaultHost || config.defaultDomain) ;
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":req.host,"purl":JSON.stringify(req.purl)} ;
 		resp.pipeThrough = new Array() ;
 		req.ip = user_ip ;
 		req.remoteAddress = user_ip_remote ;
+		resp.forceDownload = false ;
 		
 		//Do request handle.
 		let cont = true ;
@@ -694,31 +748,17 @@ function handleRequest(req,resp) {
 function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) {
 	
 	//Secure URL. Remove '..' to prevent it from going to a parent directory.
-	req.orig_url = req.url ;
-	req.url = req.url.replace(/\.\./g,"") ;
-	
-	//Check if we need to forward to another port.
-	// Will soon be obsolete due to lb.go
-	for (let doing in config.otherProcesses) {
-		
-		if (config.otherProcesses[doing].forwardUrls.indexOf(req.host + req.url) !== -1) {
-			
-			console.warn("Forwarding requests to other servers is depricated, use lb.go (located in the main JOTPOT Server repo) instead.") ;
-			return forwardToOtherServer(req,resp,config.otherProcesses[doing].forwardPort) ;
-			
-		}
-		
-	}
+	req.url.pathname = req.url.pathname.replace(/\.\./g,"") ;
 	
 	//Should we redirect to https.
-	if (req.overHttps === false && config.redirectToHttps.indexOf(req.host) !== -1 && config.canBeHttp.indexOf(req.url) === -1) {
+	if (req.overHttps === false && config.redirectToHttps.indexOf(req.host) !== -1 && config.canBeHttp.indexOf(req.url.value) === -1) {
 		
-		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} (${req.orig_url}) being handled by thread ${cluster.worker.id}.`) ;
-		console.log(`${req.jpid}\t302 Found.   Redirecting to https://${req.host}${req.url}.`) ;
+		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.href}.`) ;
 		
-		req.purl.protocol = "https:" ;
+		req.url.protocol = "https:" ;
 		
-		resp.writeHead(301,{"Content-Type":"text/plain","location":url.format(req.purl),"status":301}) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.href,"status":301}) ;
 		resp.write("Redirecting you to our secure site...") ;
 		resp.end() ;
 		
@@ -728,8 +768,6 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		return ;
 		
 	}
-	
-	req.accualHost = req.host ;
 	
 	//Is the host an alias
 	while (typeof config.hostAlias[req.host] !== "undefined") {
@@ -741,33 +779,30 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
 	if (config.useDefaultHostIfHostDoesNotExist) {
 		
-		if (availHosts.indexOf(req.host) === -1) {
+		if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
 			
-			req.host = config.defaultHost || "default" ;
+			req.url.host = config.defaultHost || "default:0" ;
 			
 		}
 		
 	}
 	
 	//Should we redirect to another host.
-	if (typeof config.hostRedirects[req.host] !== "undefined") {
+	if (typeof config.hostRedirects[req.url.host] !== "undefined") {
 		
-		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} (${req.orig_url}) being handled by thread ${cluster.worker.id}.`) ;
+		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		
 		//Set new host
-		req.purl.host = config.hostRedirects[req.host] ;
+		req.url.host = config.hostRedirects[req.url.host] ;
 		
 		//Set correct protocol
 		let isRedirectHttps = config.redirectToHttps.indexOf(config.hostRedirects[req.host]) !== -1 && config.canBeHttp.indexOf(req.url) === -1 ;
-		req.purl.protocol = isRedirectHttps?"https:":"http:"
-		
-		//Format
-		let href = url.format(req.purl) ;
+		req.url.protocol = isRedirectHttps?"https:":"http:" ;
 		
 		//And send response
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${config.hostRedirects[req.host]}.`) ;
-		resp.writeHead(301,{"Content-Type":"text/plain","location":href, "status":301}) ;
-		resp.write("Redirecting you to " + href + "...") ;
+		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.href}.`) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.href, "status":301}) ;
+		resp.write("Redirecting you to " + req.url.href + "...") ;
 		resp.end() ;
 		
 		let timeTaken = process.hrtime(timeRecieved) ;
@@ -777,15 +812,10 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 	}
 	
-	//Add host to URL
-	req.path = req.purl.path ;
-	req.pathname = req.purl.pathname ;
-	req.url = req.host + req.url ;
-	
 	//Page alias?
-	if (typeof config.pageAlias[req.url] !== "undefined") {
+	if (typeof config.pageAlias[req.url.value] !== "undefined") {
 		
-		req.url = config.pageAlias[req.url] ;
+		req.url.fullvalue = config.pageAlias[req.url.value] ;
 		
 	}
 	
@@ -799,7 +829,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		}) ;
 	}
 	
-	console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} (${req.orig_url}) being handled by thread ${cluster.worker.id}.`) ;
+	console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
 	
 	//Handle for full request.
 	
@@ -1018,30 +1048,30 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 	try {
 		
 		//Is cached or special page.
-		if (typeof pages[req.url] === "object") {
+		if (typeof pages[req.url.fullvalue] === "object") {
 			
 			//Is just page alias.
-			if (pages[req.url][0] === "file") {
+			if (pages[req.url.fullvalue][0] === "file") {
 				
-				req.url = req.host + pages[req.url][1] ;
+				req.url.fullvalue = req.host + pages[req.url.fullvalue][1] ;
 				
 			}
 			
 			//Check that the page is still in the cache after a change.
-			if (typeof pages[req.url] === "object") {
+			if (typeof pages[req.url.fullvalue] === "object") {
 				
 				//If it is a cached file send it.
-				if (pages[req.url][0] === "cache") {
+				if (pages[req.url.fullvalue][0] === "cache") {
 					
-					sendCache(req.url,pages[req.url][1],resp,resp.vars) ;
+					sendCache(req.url.fullvalue,pages[req.url.fullvalue][1],resp,resp.vars) ;
 					return true ;
 					
 				}
 				
 				//If it is a function, then execute the function & dont continute if it returns true.
-				else if (pages[req.url][0] === "func") {
+				else if (pages[req.url.fullvalue][0] === "func") {
 					
-					if (req.url,pages[req.url][1](req,resp)) {
+					if (req.url.fullvalue,pages[req.url.fullvalue][1](req,resp)) {
 						
 						return true ;
 						
@@ -1053,7 +1083,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 			
 		}
 		
-		let normPath = path.normalize(req.url) ;
+		let normPath = path.normalize(req.url.value) ;
 		let rID = req.jpid ;
 		
 		//Try the URL the user entered.
