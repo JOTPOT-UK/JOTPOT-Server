@@ -702,7 +702,7 @@ function handleRequest(req,resp) {
 		wrapURL(req) ;
 		
 		//Add stuff to resp object.
-		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":req.host,"purl":JSON.stringify(req.purl)} ;
+		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":req.url.host,"purl":JSON.stringify(req.purl)} ;
 		resp.pipeThrough = new Array() ;
 		req.ip = user_ip ;
 		req.remoteAddress = user_ip_remote ;
@@ -730,7 +730,7 @@ function handleRequest(req,resp) {
 			
 		})
 		
-		externals.doEvt(`${req.host}/request`,req,resp).then(d=>{
+		externals.doEvt(`${req.url.host}/request`,req,resp).then(d=>{
 			
 			if (d) {
 				
@@ -765,7 +765,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	req.url.pathname = req.url.pathname.replace(/\.\./g,"") ;
 	
 	//Should we redirect to https.
-	if (req.overHttps === false && config.redirectToHttps.indexOf(req.host) !== -1 && config.canBeHttp.indexOf(req.url.value) === -1) {
+	if (req.overHttps === false && config.redirectToHttps.indexOf(req.url.host) !== -1 && config.canBeHttp.indexOf(req.url.value) === -1) {
 		
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
 		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
@@ -784,9 +784,9 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	}
 	
 	//Is the host an alias
-	while (typeof config.hostAlias[req.host] !== "undefined") {
+	while (typeof config.hostAlias[req.url.host] !== "undefined") {
 		
-		req.host = config.hostAlias[req.host] ;
+		req.url.host = config.hostAlias[req.url.host] ;
 		
 	}
 	
@@ -911,7 +911,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 	})
 	
-	externals.doEvt(`${req.host}/fullrequest`,req,resp).then(d=>{
+	externals.doEvt(`${req.url.host}/fullrequest`,req,resp).then(d=>{
 		
 		if (d) {
 			
@@ -948,7 +948,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 			if (gotOtherPromise && cont) {
 				
-				allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 				
 			}
 			
@@ -956,7 +956,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 		}) ;
 		
-		externals.doEvt(`${req.host}/allowedrequest`,req,resp).then(d=>{
+		externals.doEvt(`${req.url.host}/allowedrequest`,req,resp).then(d=>{
 			
 			if (d) {
 				
@@ -966,7 +966,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 			if (gotOtherPromise && cont) {
 				
-				allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 				
 			}
 			
@@ -1035,7 +1035,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 						
 						if (gotOtherPromise && cont) {
 							
-							allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 							
 						}
 						
@@ -1043,7 +1043,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 						
 					})
 					
-					externals.doEvt(`${req.host}/allowedrequest`,req,resp).then(d=>{
+					externals.doEvt(`${req.url.host}/allowedrequest`,req,resp).then(d=>{
 						
 						if (d) {
 							
@@ -1053,7 +1053,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 						
 						if (gotOtherPromise && cont) {
 							
-							allowedRequest(req.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
 							
 						}
 						
@@ -1125,7 +1125,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 			//Is just page alias.
 			if (pages[req.url.fullvalue][0] === "file") {
 				
-				req.url.fullvalue = req.host + pages[req.url.fullvalue][1] ;
+				req.url.fullvalue = req.url.host + pages[req.url.fullvalue][1] ;
 				
 			}
 			
