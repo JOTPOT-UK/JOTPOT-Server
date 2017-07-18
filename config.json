@@ -32,6 +32,7 @@
 	"defaultHost": "default:0",
 	"useDefaultHostIfHostDoesNotExist": true,
 	
-	"behindLoadBalencer": false
+	"behindLoadBalencer": false,
+	"fallbackToNoPort": true
 	
 }

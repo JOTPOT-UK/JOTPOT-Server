@@ -80,7 +80,8 @@ const defaultConfig = {
 	"defaultHost": "default:0",
 	"useDefaultHostIfHostDoesNotExist": true,
 	
-	"behindLoadBalencer": false
+	"behindLoadBalencer": false,
+	"fallbackToNoPort": true
 	
 } ;
 
@@ -139,7 +140,7 @@ function loadConfig() {
 loadConfig() ;
 
 let availHosts = [] ;
-if (config.useDefaultHostIfHostDoesNotExist) {
+if (config.useDefaultHostIfHostDoesNotExist || config.fallbackToNoPort) {
 	
 	availHosts = fs.readdirSync("./sites") ;
 	
@@ -698,7 +699,6 @@ function handleRequest(req,resp) {
 		}
 		
 		//Create URL object
-		//req.url = new URL(req, config.defaultHost || config.defaultDomain) ;
 		wrapURL(req) ;
 		
 		//Add stuff to resp object.
@@ -789,8 +789,30 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 	}
 	
+	req.usePortInDirectory = true ;
+	
+	//If we might need to fallback and the host doesn't exist
+	if (config.fallbackToNoPort && availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+		
+		//But if we ignore the port and it still doesn't, and we should fallback to default, then fallback to default.
+		if (availHosts.indexOf(URL.toDir(req.url.hostname)) === -1 && config.useDefaultHostIfHostDoesNotExist) {
+			
+			req.url.host = config.defaultHost || "default:0" ;
+			req.usePortInDirectory = false ;
+			
+		}
+		
+		//Otherwise, it does exist so lets not use the port
+		else {
+			
+			req.usePortInDirectory = false ;
+			
+		}
+		
+	}
+	
 	//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
-	if (config.useDefaultHostIfHostDoesNotExist) {
+	else if (config.useDefaultHostIfHostDoesNotExist) {
 		
 		if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
 			
@@ -1096,7 +1118,19 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 			
 		}
 		
-		let normPath = path.normalize(req.url.value) ;
+		let normPath ;
+		if (req.usePortInDirectory) {
+			
+			normPath = path.normalize(req.url.value) ;
+			
+		}
+		
+		else {
+			
+			normPath = path.normalize(req.url.hostname + req.url.pathname) ;
+			
+		}
+		
 		let rID = req.jpid ;
 		
 		//Try the URL the user entered.

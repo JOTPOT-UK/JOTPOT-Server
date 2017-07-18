@@ -39,6 +39,7 @@
 	"defaultHost": "your_main_domain.com",
 	"useDefaultHostIfHostDoesNotExist": true,
 	
-	"behindLoadBalencer": false
+	"behindLoadBalencer": false,
+	"fallbackToNoPort": true
 	
 }
