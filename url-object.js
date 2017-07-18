@@ -27,17 +27,17 @@
 
 const url = require("url") ;
 
-function parseHost(host, req) {
+function parseHost(host, https) {
 	let splithost = host.split(":") ;
 	//If the host doesn't conatain the port, add 80/443
 	if (splithost.length < 2) {
-		return [`${host}:${req.overHttps?443:80}`, host, req.overHttps?443:80] ;
+		return [`${host}:${https?443:80}`, host, https?443:80] ;
 	} else {
 		let portshouldbe = splithost.pop() ;
 		if (parseInt(portshouldbe).toString() === portshouldbe) {
 			return [host, splithost.join(":"), portshouldbe] ;
 		} else {
-			return [`${host}:${req.overHttps?443:80}`, host, req.overHttps?443:80] ;
+			return [`${host}:${https?443:80}`, host, https?443:80] ;
 		}
 	}
 }
@@ -61,7 +61,7 @@ class URL {
 		
 		//Split host into hostname and port
 		//	This isn't the same method as the Node.js url.parse
-		let parsedHost = parseHost((req.headers.host || defaultHost).toLowerCase(), req) ;
+		let parsedHost = parseHost((req.headers.host || defaultHost).toLowerCase(), req.overHttps) ;
 		purl.host = parsedHost[0] ;
 		purl.hostname = parsedHost[1] ;
 		purl.port = parsedHost[2] ;
@@ -158,10 +158,26 @@ class URL {
 			purl = url.parse(val) ;
 		}, enumerable:true, configurable:false}) ;
 		
+		Object.defineProperty(this, "hrefnoport", {get:_=>{
+			return url.format(purl).replace(purl.host, purl.hostname) ;
+		}, set:val=>{
+			purl = url.parse(val) ;
+		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "location", {get:_=>{
+			if ((purl.port === 80 && purl.protocol === "http:") || purl.port === 443 && purl.protocol === "https:") {
+				return url.format(purl).replace(purl.host, purl.hostname) ;
+			} else {
+				return url.format(purl) ;
+			}
+		}, set:val=>{
+			purl = url.parse(val) ;
+		}, enumerable:true, configurable:false}) ;
+		
 		Object.defineProperty(this, "host", {get:_=>{
 			return purl.host ;
 		}, set:val=>{
-			parsedHost = parseHost(val, req) ;
+			parsedHost = parseHost(val, purl.protocol==="https:") ;
 			purl.host = parsedHost[0] ;
 			purl.hostname = parsedHost[1] ;
 			purl.port = parsedHost[2] ;

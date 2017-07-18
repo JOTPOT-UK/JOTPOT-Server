@@ -707,6 +707,7 @@ function handleRequest(req,resp) {
 		req.ip = user_ip ;
 		req.remoteAddress = user_ip_remote ;
 		resp.forceDownload = false ;
+		req.usePortInDirectory = true ;
 		
 		//Do request handle.
 		let cont = true ;
@@ -767,11 +768,11 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	if (req.overHttps === false && config.redirectToHttps.indexOf(req.host) !== -1 && config.canBeHttp.indexOf(req.url.value) === -1) {
 		
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.href}.`) ;
+		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
 		
 		req.url.protocol = "https:" ;
 		
-		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.href,"status":301}) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location,"status":301}) ;
 		resp.write("Redirecting you to our secure site...") ;
 		resp.end() ;
 		
@@ -788,8 +789,6 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		req.host = config.hostAlias[req.host] ;
 		
 	}
-	
-	req.usePortInDirectory = true ;
 	
 	//If we might need to fallback and the host doesn't exist
 	if (config.fallbackToNoPort && availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
@@ -828,16 +827,16 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		
 		//Set new host
-		req.url.host = config.hostRedirects[req.url.host] ;
+		req.url.hostname = config.hostRedirects[req.url.hostname] ;
 		
 		//Set correct protocol
-		let isRedirectHttps = config.redirectToHttps.indexOf(config.hostRedirects[req.host]) !== -1 && config.canBeHttp.indexOf(req.url) === -1 ;
+		let isRedirectHttps = config.redirectToHttps.indexOf(req.url.host) !== -1 && config.canBeHttp.indexOf(req.url.value) === -1 ;
 		req.url.protocol = isRedirectHttps?"https:":"http:" ;
 		
 		//And send response
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.href}.`) ;
-		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.href, "status":301}) ;
-		resp.write("Redirecting you to " + req.url.href + "...") ;
+		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location, "status":301}) ;
+		resp.write("Redirecting you to " + req.url.location + "...") ;
 		resp.end() ;
 		
 		let timeTaken = process.hrtime(timeRecieved) ;
