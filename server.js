@@ -437,7 +437,7 @@ function getFile(file,callWithStats,pipeTo,callback) {
 		
 		else {
 			
-			callback(false,"TEST") ;
+			callback(false,"DIR") ;
 			
 		}
 		
@@ -1138,7 +1138,14 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 			//If the file failed to send.
 			if (!done[0]) {
 				
-				//Try with .page extention.
+				//If it a directory, try index.html
+				if (done[1] === "DIR") {
+					
+					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID);
+					
+				}
+				
+				//Otherwise, try with .page extention.
 				return sendFile(`${normPath}.page`,resp,resp.vars,rID);
 				
 			}
@@ -1149,7 +1156,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 				
 			}
 			
-		}).then(done=>{
+		})/*.then(done=>{
 			
 			//If the file failed to send.
 			if (!done[0]) {
@@ -1165,7 +1172,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 				
 			}
 			
-		}).then(done=>{
+		})*/.then(done=>{
 			
 			//If it still hasn't worked.
 			if (!done[0]) {
