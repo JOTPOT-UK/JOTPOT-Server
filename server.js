@@ -166,6 +166,10 @@ for (let doing in doVarsFor) {
 }
 let dontDoVarsFor = [] ;
 
+//Currently imprelemted methods
+const defaultMethods = ["GET", "POST", "HEAD", "OPTIONS"] ;
+let implementedMethods = {} ;
+
 //Set up current ID
 let currentID = 0 ;
 
@@ -429,7 +433,7 @@ function getFile(file,callWithStats,pipeTo,callback) {
 			
 			else {
 				
-				callback(false, "Rejected because of stats...") ;
+				callback(false, "CBR") ;
 				
 			}
 			
@@ -446,7 +450,7 @@ function getFile(file,callWithStats,pipeTo,callback) {
 }
 
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
-function sendFile(file,resp,customVars,rID="") {
+function sendFile(file,resp,customVars,rID="",sendBody) {
 	
 	try {
 		
@@ -462,55 +466,65 @@ function sendFile(file,resp,customVars,rID="") {
 		}
 		
 		//Make a pipe to send it to.
-		let mainPipe = "none" ;
+		let mainPipe ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
 		let lengthknown = false ;
 		
-		//If we need to add vars.
-		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
+		if (sendBody) {
 			
-			//Vars go first.
-			mainPipe = new addVars(file,customVars) ;
-			
-			//Add the resp.pipeThrough
-			while (doingTransform > -1) {
+			//If we need to add vars.
+			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 				
-				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-				doingTransform-- ;
+				//Vars go first.
+				mainPipe = new addVars(file,customVars) ;
 				
-			}
-			
-			//Then to the client.
-			mainPipe.pipe(resp) ;
-			
-		}
-		
-		//No vars, but still pipe.
-		else if (doingTransform > -1) {
-			
-			//Start at last thing
-			mainPipe = resp.pipeThrough[doingTransform] ;
-			doingTransform-- ;
-			
-			//Now do the rest
-			while (doingTransform > -1) {
+				//Add the resp.pipeThrough
+				while (doingTransform > -1) {
+					
+					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+					doingTransform-- ;
+					
+				}
 				
-				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-				doingTransform-- ;
+				//Then to the client.
+				mainPipe.pipe(resp) ;
 				
 			}
 			
-			//And guess what... The client!
-			mainPipe.pipe(resp) ;
+			//No vars, but still pipe.
+			else if (doingTransform > -1) {
+				
+				//Start at last thing
+				mainPipe = resp.pipeThrough[doingTransform] ;
+				doingTransform-- ;
+				
+				//Now do the rest
+				while (doingTransform > -1) {
+					
+					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+					doingTransform-- ;
+					
+				}
+				
+				//And guess what... The client!
+				mainPipe.pipe(resp) ;
+				
+			}
+			
+			else {
+				
+				//No pipes at all, so only to client.
+				mainPipe = resp ;
+				
+				//We can now get the length from the stats
+				lengthknown = true ;
+				
+			}
 			
 		}
 		
-		else {
+		else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
 			
-			//No pipes at all, so only to client.
-			mainPipe = resp ;
-			
-			//We can now get the length from the stats
 			lengthknown = true ;
 			
 		}
@@ -533,11 +547,28 @@ function sendFile(file,resp,customVars,rID="") {
 					
 				}) ;
 				
+				if (!sendBody) {
+					
+					resp.end() ;
+					return false ;
+					
+				}
+				
 				return true ;
 				
 			},mainPipe,(done,err) => {
 				
-				resolve([done,err]) ;
+				if (!sendBody && !done && err === "CBR") {
+					
+					resolve([true,null]) ;
+					
+				}
+				
+				else {
+					
+					resolve([done,err]) ;
+					
+				}
 				
 			});
 			
@@ -555,7 +586,7 @@ function sendFile(file,resp,customVars,rID="") {
 	
 }
 
-function sendCache(file,cache,resp,customVars,status=200,rID="") {
+function sendCache(file,cache,resp,customVars,status=200,rID="",sendBody) {
 	
 	try {
 		
@@ -564,55 +595,65 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		
 		
 		//Make a pipe to send it to.
-		let mainPipe = "none" ;
+		let mainPipe ;
 		resp.pipeThrough = [] ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
 		let lengthknown = false ;
 		
-		//If we need to add vars.
-		if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
+		if (sendBody) {
 			
-			//Vars go first.
-			mainPipe = new addVars(file,customVars) ;
-			
-			//Add the resp.pipeThrough
-			while (doingTransform > -1) {
+			//If we need to add vars.
+			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 				
-				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-				doingTransform-- ;
+				//Vars go first.
+				mainPipe = new addVars(file,customVars) ;
 				
-			}
-			
-			//Then to the client.
-			mainPipe.pipe(resp) ;
-			
-		}
-		
-		//No vars, but still pipe.
-		else if (doingTransform > -1) {
-			
-			//Start at last thing
-			mainPipe = resp.pipeThrough[doingTransform] ;
-			doingTransform-- ;
-			
-			//Now do the rest
-			while (doingTransform > -1) {
+				//Add the resp.pipeThrough
+				while (doingTransform > -1) {
+					
+					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+					doingTransform-- ;
+					
+				}
 				
-				mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-				doingTransform-- ;
+				//Then to the client.
+				mainPipe.pipe(resp) ;
 				
 			}
 			
-			//And guess what... The client!
-			mainPipe.pipe(resp) ;
+			//No vars, but still pipe.
+			else if (doingTransform > -1) {
+				
+				//Start at last thing
+				mainPipe = resp.pipeThrough[doingTransform] ;
+				doingTransform-- ;
+				
+				//Now do the rest
+				while (doingTransform > -1) {
+					
+					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
+					doingTransform-- ;
+					
+				}
+				
+				//And guess what... The client!
+				mainPipe.pipe(resp) ;
+				
+			}
+			
+			else {
+				
+				//No pipes at all, so only to client.
+				lengthknown = true ;
+				mainPipe = resp ;
+				
+			}
 			
 		}
 		
-		else {
+		else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
 			
-			//No pipes at all, so only to client.
 			lengthknown = true ;
-			mainPipe = resp ;
 			
 		}
 		
@@ -632,7 +673,9 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		}) ;
 		
 		//Write the cached data & end.
-		mainPipe.write(cache) ;
+		if (sendBody) {
+			mainPipe.write(cache) ;
+		}
 		mainPipe.end() ;
 		
 	}
@@ -702,7 +745,7 @@ function handleRequest(req,resp) {
 		wrapURL(req) ;
 		
 		//Add stuff to resp object.
-		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"utctime":requestTime.toUTCString(),"time":requestTime.getTime(),"host":req.url.host,"purl":JSON.stringify(req.purl)} ;
+		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"time":requestTime.getTime().toString(),"href":req.url.href,"method":req.method} ;
 		resp.pipeThrough = new Array() ;
 		req.ip = user_ip ;
 		req.remoteAddress = user_ip_remote ;
@@ -948,7 +991,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 			if (gotOtherPromise && cont) {
 				
-				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
 				
 			}
 			
@@ -966,7 +1009,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 			if (gotOtherPromise && cont) {
 				
-				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
 				
 			}
 			
@@ -1035,7 +1078,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 						
 						if (gotOtherPromise && cont) {
 							
-							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
 							
 						}
 						
@@ -1053,7 +1096,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 						
 						if (gotOtherPromise && cont) {
 							
-							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved) ;
+							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
 							
 						}
 						
@@ -1101,9 +1144,144 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 }
 
 //Should be called when a request is allowed.
-function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
+function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDone) {
 	
 	try {
+		
+		let sendBody = true ;
+		
+		if (typeof implementedMethods[req.method] !== "undefined" && implementedMethods[req.method][0](req)) {
+			
+			return implementedMethods[req.method][1](req) ;
+			
+		}
+		
+		else if (req.method === "GET") {
+			
+			//Do nothing, jsut dont check the rest lol
+			
+		}
+		
+		else if (req.method === "HEAD") {
+			
+			sendBody = false ;
+			
+		}
+		
+		else if (req.method === "POST") {
+			
+			if (!postDone) {
+				
+				if (typeof req.headers["content-length"] !== "undefined") {
+					
+					let dLength = parseInt(req.headers["content-length"]) ;
+					if (isNaN(dLength)) {
+						
+						sendError(400, "Content-Length header must be a number") ;
+						return ;
+						
+					}
+					let data = Buffer.alloc(dLength) ;
+					let currentPos = 0 ;
+					let errorSent = false ;
+					req.on("data", d=>{
+						
+						if (currentPos + d.length > data.length) {
+							
+							if (errorSent) {
+								return ;
+							}
+							errorSent = true ;
+							sendError(400, "Request body was longer than the Content-Length header.") ;
+							return ;
+							
+						}
+						currentPos += d.copy(data, currentPos) ;
+						
+					}) ;
+					req.on("end", _ => {
+						
+						resp.vars.body = data.toString("base64") ;
+						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true)
+						
+					}) ;
+					return ;
+					
+				}
+				
+				else {
+					
+					let data = Buffer.alloc(0) ;
+					let errorSent = false ;
+					req.on("data", d=>{
+						
+						data = Buffer.concat([data, d], data.length + d.length) ;
+						
+					}) ;
+					req.on("end", _ => {
+						
+						resp.vars.body = data.toString("base64") ;
+						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true)
+						
+					}) ;
+					return ;
+					
+				}
+				
+			}
+			
+		}
+		
+		else if (req.method === "OPTIONS") {
+			
+			let suppMethods = [] ;
+			for (let doing in implementedMethods) {
+				
+				for (let theOne in implementedMethods[doing]) {
+					
+					if (implementedMethods[doing][theOne][0](req)) {
+						
+						suppMethods.push(doing) ;
+						break ;
+						
+					}
+					
+				}
+				
+			}
+			resp.writeHead(200,{
+				
+				"Allow": defaultMethods.concat(suppMethods).sort().join(", "),
+				"Content-Length": 0
+				
+			}) ;
+			resp.end() ;
+			return ;
+			
+		}
+		
+		else {
+			
+			let suppMethods = [] ;
+			for (let doing in implementedMethods) {
+				
+				for (let theOne in implementedMethods[doing]) {
+					
+					if (implementedMethods[doing][theOne][0](req)) {
+						
+						suppMethods.push(doing) ;
+						break ;
+						
+					}
+					
+				}
+				
+			}
+			resp.setHeader("Allow", defaultMethods.concat(suppMethods).sort().join(", ")) ;
+			sendError(405, "That method is not supported for this URL. Sorry :(") ;
+			return ;
+			
+		}
 		
 		let cachePath ;
 		
@@ -1132,10 +1310,15 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 			//Check that the page is still in the cache after a change.
 			if (typeof pages[req.url.fullvalue] === "object") {
 				
+				let timeTaken = process.hrtime(timeRecieved) ;
+				console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
+				
 				//If it is a cached file send it.
 				if (pages[req.url.fullvalue][0] === "cache") {
 					
-					sendCache(req.url.fullvalue,pages[req.url.fullvalue][1],resp,resp.vars) ;
+					sendCache(req.url.fullvalue,pages[req.url.fullvalue][1],resp,resp.vars,200,req.jpid,sendBody) ;
+					let timeTaken = process.hrtime(timeRecieved) ;
+					console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 					return true ;
 					
 				}
@@ -1145,6 +1328,8 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 					
 					if (req.url.fullvalue,pages[req.url.fullvalue][1](req,resp)) {
 						
+						let timeTaken = process.hrtime(timeRecieved) ;
+						console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 						return true ;
 						
 					}
@@ -1170,8 +1355,11 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 		
 		let rID = req.jpid ;
 		
+		let timeTaken = process.hrtime(timeRecieved) ;
+		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
+		
 		//Try the URL the user entered.
-		sendFile(normPath,resp,resp.vars,rID).then(done=>{
+		sendFile(normPath,resp,resp.vars,rID,sendBody).then(done=>{
 			
 			//If the file failed to send.
 			if (!done[0]) {
@@ -1179,12 +1367,12 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 				//If it a directory, try index.html
 				if (done[1] === "DIR") {
 					
-					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID);
+					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID,sendBody);
 					
 				}
 				
 				//Otherwise, try with .page extention.
-				return sendFile(`${normPath}.page`,resp,resp.vars,rID);
+				return sendFile(`${normPath}.page`,resp,resp.vars,rID,sendBody);
 				
 			}
 			
@@ -1232,7 +1420,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved) {
 				
 			}
 			
-			let timeTaken = process.hrtime(timeRecieved) ;
+			timeTaken = process.hrtime(timeRecieved) ;
 			console.log(`${rID}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 			
 		}).catch(err=>{
@@ -1336,8 +1524,8 @@ module.exports = {
 						},
 						"reloadConfig": _=>loadConfig(),
 						"multipartFormDataParser": require("./multipart-form-data-parser.js"),
-						"sendFile": (file, resp, req={jpid:""}) => sendFile(file, resp, resp.vars, req.jpid),
-						"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid)
+						"sendFile": (file, resp, req={jpid:""}, sendBody=true) => sendFile(file, resp, resp.vars, req.jpid, sendBody),
+						"sendCache": (file, cache, resp, status=200, req={jpid:""}, sendBody=true) => sendCache(file, cache, resp, resp.vars, status, req.jpid, sendBody)
 						
 					} ;
 					

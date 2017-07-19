@@ -139,17 +139,13 @@ class URL {
 			purl.protocol = val ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "slashes", {
-			configurable: false,
-			enumerable: true,
-			value: true,
-			writable: false
-		}) ;
-		
-		Object.defineProperty(this, "auth", {get:_=>{
-			return purl.auth ;
+		Object.defineProperty(this, "slashes", {get:_=>{
+			return purl.slashes ;
 		}, set:val=>{
-			purl.auth = val ;
+			if (typeof slashes !== "boolean") {
+				console.warn("slashes must be a boolean") ;
+			}
+			purl.slashes = val ;
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "href", {get:_=>{
@@ -216,6 +212,50 @@ class URL {
 			purl.pathname = npurl.pathname ;
 			purl.search = npurl.search ;
 			purl.query = npurl.query ;
+		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "origin", {get:_=>{
+			return purl.protocol + purl.slashes?"//":"" + purl.host ;
+		}, set:val=>{
+			let spliter = ":" ;
+			if (val.indexOf(":") === val.indexOf("://")) {
+				splitter = "://" ;
+				purl.slashes = true ;
+			} else {
+				purl.slashes = false ;
+			}
+			purl.protocol = val.substring(0, val.indexOf(spliter)) + ":" ;
+			if (validProtocols.indexOf(purl.protocol) === -1) {
+				console.warn("Protocol has been changed to", val, "this is not a valid web protocol (http: or https:)") ;
+			}
+			this.host = val.substring(val.indexOf(splitter), val.length) ;
+		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "username", {get:_=>{
+			return purl.auth.split(":")[0] ;
+		}, set:val=>{
+			if (val.indexOf(":") !== -1) {
+				throw new Error("username/password must not contain ':'") ;
+			}
+			purl.auth = val + ":" + this.password
+		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "password", {get:_=>{
+			return purl.auth.split(":")[1] ;
+		}, set:val=>{
+			if (val.indexOf(":") !== -1) {
+				throw new Error("username/password must not contain ':'") ;
+			}
+			purl.auth = this.username + ":" + val
+		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "auth", {get:_=>{
+			return purl.auth ;
+		}, set:val=>{
+			if (val.match(/:/g).length !== 2) {
+				throw new Error("auth must have 1 ':'") ;
+			}
+			purl.auth = val ;
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.seal(this) ;
