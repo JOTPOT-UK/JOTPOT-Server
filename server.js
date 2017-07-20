@@ -1566,7 +1566,27 @@ module.exports = {
 						"reloadConfig": _=>loadConfig(),
 						"multipartFormDataParser": require("./multipart-form-data-parser.js"),
 						"sendFile": (file, resp, req={jpid:""}) => sendFile(file, resp, resp.vars, req.jpid),
-						"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid)
+						"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid),
+						"implementMethod": (method, checker, handler) => {
+							
+							//Check types
+							if (typeof checker !== "function" || typeof handler !== "function" || typeof method !== "string") {
+								
+								throw new Error("Both the checker and the handler has to be functions, and the method must be a string.") ;
+								
+							}
+							
+							//If there are no current implementations of this method, create it as an empty array.
+							if (typeof implementedMethods[method] !== "object") {
+								
+								implementedMethods[method] = new Array() ;
+								
+							}
+							
+							//Push the implementation
+							implementedMethods[method].push([checker, handler]) ;
+							
+						}
 						
 					} ;
 					
