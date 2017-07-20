@@ -45,6 +45,8 @@ function parseHost(host, https) {
 class URL {
 	constructor (req, defaultHost) {
 		
+		let hostLocked = false ;
+		
 		//Parse the URL
 		let purl = url.parse(req.url, false) ;
 		
@@ -151,13 +153,38 @@ class URL {
 		Object.defineProperty(this, "href", {get:_=>{
 			return url.format(purl) ;
 		}, set:val=>{
-			purl = url.parse(val) ;
+			if (!hostLocked) {
+				purl = url.parse(val) ;
+			} else {
+				const origHost = purl.host ;
+				purl = url.parse(val) ;
+				if (purl.host !== origHost) {
+					console.warn("An attempt was made to change the host be setting the href, however the host is locked so was not changed.") ;
+					this.host = origHost ;
+				}
+			}
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "hrefnoport", {get:_=>{
 			return url.format(purl).replace(purl.host, purl.hostname) ;
 		}, set:val=>{
-			purl = url.parse(val) ;
+			const port = purl.port ;
+			if (!hostLocked) {
+				purl = url.parse(val) ;
+				purl.hostname = purl.host ;
+				purl.port = port ;
+				purl.host = purl.hostname + ":" + port ;
+			} else {
+				const origHost = purl.host ;
+				purl = url.parse(val) ;
+				purl.hostname = purl.host ;
+				purl.port = port ;
+				purl.host = purl.hostname + ":" + port ;
+				if (origHost !== purl.host) {
+					console.warn("An attempt was made to change the host be setting the hrefnoport, however the host is locked so was not changed.") ;
+					this.host = origHost ;
+				}
+			}
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "location", {get:_=>{
@@ -173,24 +200,36 @@ class URL {
 		Object.defineProperty(this, "host", {get:_=>{
 			return purl.host ;
 		}, set:val=>{
-			parsedHost = parseHost(val, purl.protocol==="https:") ;
-			purl.host = parsedHost[0] ;
-			purl.hostname = parsedHost[1] ;
-			purl.port = parsedHost[2] ;
+			if (!hostLocked) {
+				parsedHost = parseHost(val, purl.protocol==="https:") ;
+				purl.host = parsedHost[0] ;
+				purl.hostname = parsedHost[1] ;
+				purl.port = parsedHost[2] ;
+			} else {
+				console.warn("URL host change attempted, although host is locked.") ;
+			}
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "hostname", {get:_=>{
 			return purl.hostname ;
 		}, set:val=>{
-			purl.hostname = val ;
-			purl.host = `${val}:${purl.port}` ;
+			if (!hostLocked) {
+				purl.hostname = val ;
+				purl.host = `${val}:${purl.port}` ;
+			} else {
+				console.warn("URL hostname change attempted, although host is locked.") ;
+			}
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "port", {get:_=>{
 			return purl.port ;
 		}, set:val=>{
-			purl.port = val ;
-			purl.host = `${purl.hostname}:${val}` ;
+			if (!hostLocked) {
+				purl.port = val ;
+				purl.host = `${purl.hostname}:${val}` ;
+			} else {
+				console.warn("URL port change attempted, although host is locked.") ;
+			}
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "value", {get:_=>{
@@ -257,6 +296,15 @@ class URL {
 			}
 			purl.auth = val ;
 		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "lockHost", {value:_=>{
+			if (hostLocked) {
+				return _ => {} ;
+			} else {
+				hostLocked = true ;
+				return _ => hostLocked = false ;
+			}
+		}, enumerable: false, configurable: false, writable: false}) ;
 		
 		Object.seal(this) ;
 		
