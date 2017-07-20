@@ -450,7 +450,7 @@ function getFile(file,callWithStats,pipeTo,callback) {
 }
 
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
-function sendFile(file,resp,customVars,rID="",sendBody) {
+function sendFile(file,resp,customVars,rID="") {
 	
 	try {
 		
@@ -470,7 +470,8 @@ function sendFile(file,resp,customVars,rID="",sendBody) {
 		let doingTransform = resp.pipeThrough.length - 1 ;
 		let lengthknown = false ;
 		
-		if (sendBody) {
+		//Only bother with the pipes if we are accualy sending the body
+		if (resp.sendBody) {
 			
 			//If we need to add vars.
 			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
@@ -547,7 +548,7 @@ function sendFile(file,resp,customVars,rID="",sendBody) {
 					
 				}) ;
 				
-				if (!sendBody) {
+				if (!resp.sendBody) {
 					
 					resp.end() ;
 					return false ;
@@ -558,7 +559,8 @@ function sendFile(file,resp,customVars,rID="",sendBody) {
 				
 			},mainPipe,(done,err) => {
 				
-				if (!sendBody && !done && err === "CBR") {
+				//If we judt didn't need to send the body, then there isn't an error
+				if (!resp.sendBody && !done && err === "CBR") {
 					
 					resolve([true,null]) ;
 					
@@ -586,7 +588,7 @@ function sendFile(file,resp,customVars,rID="",sendBody) {
 	
 }
 
-function sendCache(file,cache,resp,customVars,status=200,rID="",sendBody) {
+function sendCache(file,cache,resp,customVars,status=200,rID="") {
 	
 	try {
 		
@@ -600,7 +602,8 @@ function sendCache(file,cache,resp,customVars,status=200,rID="",sendBody) {
 		let doingTransform = resp.pipeThrough.length - 1 ;
 		let lengthknown = false ;
 		
-		if (sendBody) {
+		//Only bother with the pipes if we accualy have to send the requests
+		if (resp.sendBody) {
 			
 			//If we need to add vars.
 			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
@@ -672,8 +675,8 @@ function sendCache(file,cache,resp,customVars,status=200,rID="",sendBody) {
 			
 		}) ;
 		
-		//Write the cached data & end.
-		if (sendBody) {
+		//Write the cached data (if we need to) & end.
+		if (resp.sendBody) {
 			mainPipe.write(cache) ;
 		}
 		mainPipe.end() ;
@@ -747,9 +750,10 @@ function handleRequest(req,resp) {
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"time":requestTime.getTime().toString(),"href":req.url.href,"method":req.method} ;
 		resp.pipeThrough = new Array() ;
+		resp.forceDownload = false ;
+		resp.sendBody = true ;
 		req.ip = user_ip ;
 		req.remoteAddress = user_ip_remote ;
-		resp.forceDownload = false ;
 		req.usePortInDirectory = true ;
 		
 		//Do request handle.
@@ -1148,11 +1152,38 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 	
 	try {
 		
-		let sendBody = true ;
-		
+		//Determine how to handle the method
 		if (typeof implementedMethods[req.method] !== "undefined" && implementedMethods[req.method][0](req)) {
 			
-			return implementedMethods[req.method][1](req) ;
+			if (!postDone) {
+				
+				//If it is a custom method and it hasn't already run call it.
+				let rv =  implementedMethods[req.method][1](req) ;
+				
+				//Promise? If it resolved false, then rerun
+				if (typeof rv.then === "function") {
+					
+					rv.then(handled=>{
+						
+						if (!handled) {
+							
+							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
+							
+						}
+						
+					}) ;
+					return ;
+					
+				}
+				
+				//Dont run if we returned true
+				else if (rv) {
+					
+					return ;
+					
+				}
+				
+			}
 			
 		}
 		
@@ -1164,14 +1195,17 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 		
 		else if (req.method === "HEAD") {
 			
-			sendBody = false ;
+			//Carry on, but don't send the body of the request.
+			resp.sendBody = false ;
 			
 		}
 		
 		else if (req.method === "POST") {
 			
+			//Only if we havn't already got the data
 			if (!postDone) {
 				
+				//Collect the data (optimise if content-length is set)
 				if (typeof req.headers["content-length"] !== "undefined") {
 					
 					let dLength = parseInt(req.headers["content-length"]) ;
@@ -1201,6 +1235,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 					}) ;
 					req.on("end", _ => {
 						
+						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
 						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true)
 						
@@ -1220,6 +1255,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 					}) ;
 					req.on("end", _ => {
 						
+						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
 						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true)
 						
@@ -1234,11 +1270,13 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 		
 		else if (req.method === "OPTIONS") {
 			
+			//What custom methods support this URL?
 			let suppMethods = [] ;
 			for (let doing in implementedMethods) {
 				
 				for (let theOne in implementedMethods[doing]) {
 					
+					//If this handler supports it, push this method to the array and move on to the next method
 					if (implementedMethods[doing][theOne][0](req)) {
 						
 						suppMethods.push(doing) ;
@@ -1249,6 +1287,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 				}
 				
 			}
+			//Send empty response with allow header as the sorted protocols
 			resp.writeHead(200,{
 				
 				"Allow": defaultMethods.concat(suppMethods).sort().join(", "),
@@ -1262,6 +1301,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 		
 		else {
 			
+			//We cannot handle that protocol, so set the allow header (as in the OPTIONS method)
 			let suppMethods = [] ;
 			for (let doing in implementedMethods) {
 				
@@ -1278,6 +1318,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 				
 			}
 			resp.setHeader("Allow", defaultMethods.concat(suppMethods).sort().join(", ")) ;
+			//And send a 405
 			sendError(405, "That method is not supported for this URL. Sorry :(") ;
 			return ;
 			
@@ -1316,7 +1357,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 				//If it is a cached file send it.
 				if (pages[req.url.fullvalue][0] === "cache") {
 					
-					sendCache(req.url.fullvalue,pages[req.url.fullvalue][1],resp,resp.vars,200,req.jpid,sendBody) ;
+					sendCache(req.url.fullvalue,pages[req.url.fullvalue][1],resp,resp.vars,200,req.jpid) ;
 					let timeTaken = process.hrtime(timeRecieved) ;
 					console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 					return true ;
@@ -1359,7 +1400,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
 		
 		//Try the URL the user entered.
-		sendFile(normPath,resp,resp.vars,rID,sendBody).then(done=>{
+		sendFile(normPath,resp,resp.vars,rID).then(done=>{
 			
 			//If the file failed to send.
 			if (!done[0]) {
@@ -1367,12 +1408,12 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 				//If it a directory, try index.html
 				if (done[1] === "DIR") {
 					
-					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID,sendBody);
+					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID);
 					
 				}
 				
 				//Otherwise, try with .page extention.
-				return sendFile(`${normPath}.page`,resp,resp.vars,rID,sendBody);
+				return sendFile(`${normPath}.page`,resp,resp.vars,rID);
 				
 			}
 			
@@ -1524,8 +1565,8 @@ module.exports = {
 						},
 						"reloadConfig": _=>loadConfig(),
 						"multipartFormDataParser": require("./multipart-form-data-parser.js"),
-						"sendFile": (file, resp, req={jpid:""}, sendBody=true) => sendFile(file, resp, resp.vars, req.jpid, sendBody),
-						"sendCache": (file, cache, resp, status=200, req={jpid:""}, sendBody=true) => sendCache(file, cache, resp, resp.vars, status, req.jpid, sendBody)
+						"sendFile": (file, resp, req={jpid:""}) => sendFile(file, resp, resp.vars, req.jpid),
+						"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid)
 						
 					} ;
 					
