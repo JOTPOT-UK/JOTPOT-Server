@@ -430,10 +430,13 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 				
 				if (range !== null) {
 					if (isNaN(range[1])) {
-						range[1] = stats.size ;
+						range[1] = stats.size - 1 ;
 					}
 					opts.start = range[0] ;
 					opts.end = range[1] ;
+					if (opts.end >= stats.size) {
+						range[1] = stats.size - 1 ;
+					}
 				}
 				
 				//Pipe file to the pipe.
@@ -561,7 +564,7 @@ function sendFile(file,resp,customVars,req) {
 				//Split the start from the end
 				rangesArr = rangesArr[0].split("-") ;
 				//Only carry on if we have a start and end
-				if (ranges.length === 2) {
+				if (rangesArr.length === 2) {
 					ranges = new Array(3) ;
 					//Do end please
 					ranges[2] = false ;
@@ -626,48 +629,61 @@ function sendFile(file,resp,customVars,req) {
 					//«Þø[§
 				}
 				if (cont) {
-					fs.stat(file, (err, stats) => {
-						if (err) {
-							resolve(false, err) ;
-							return ;
-						}
-						if (!stats.isFile()) {
-							resolve(false, "DIR") ;
-							return ;
-						}
-						const boundary = "BOUNDARY-gfkldjvmtuksdhirludtihdnkhbgk-BOUNDARY" ;
-						const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
-						resp.writeHead(206, {
-							"Accept-Ranges": "bytes",
-							"Content-Type": `multipart/byteranges; boundary=${boundary}`,
-							"status": 206
-						}) ;
-						if (!resp.sendBody) {
-							resp.end() ;
-							return ;
-						}
-						const writeBoundary = (start, end) => writeTo.write(`\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${stats.size}\r\n\r\n`) ;
-						let doing = -1 ;
-						const next =_=> {
-							doing++ ;
-							if (doing >= rangesArr.length) {
-								resp.write(`\r\n--${boundary}--\r\n`) ;
-								resp.end() ;
-								return ;
-							}
-							writeBoundary(rangesArr[0], rangesArr[1]) ;
-							let reader = fs.createReadStream(file, {
-								flags: 'r',
-								autoClose: true,
-								start: rangesArr[doing][0],
-								end: rangesArr[doing][1]
+					return new Promise((resolve, reject)=>{
+						try {
+							fs.stat(file, (err, stats) => {
+								if (err) {
+									resolve(false, err) ;
+									return ;
+								}
+								if (!stats.isFile()) {
+									resolve(false, "DIR") ;
+									return ;
+								}
+								const boundary = "58dca288fd8c0f00" ;
+								const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
+								const getBoundary = (start, end) => `\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${stats.size}\r\n\r\n` ;
+								let length = 0 ;
+								for (let doing in rangesArr) {
+									length += getBoundary(rangesArr[doing][0], rangesArr[doing][1]).length ;
+									length += rangesArr[doing][1] - rangesArr[doing][0] + 1 ;
+								}
+								length += (`\r\n--${boundary}--\r\n`).length ;
+								resp.writeHead(206, {
+									"Accept-Ranges": "bytes",
+									"Content-Type": `multipart/byteranges; boundary=${boundary}`,
+									"Content-Length": length,
+									"status": 206
+								}) ;0
+								if (!resp.sendBody) {
+									resp.end() ;
+									return ;
+								}
+								let doing = -1 ;
+								const next =_=> {
+									doing++ ;
+									if (doing >= rangesArr.length) {
+										resp.write(`\r\n--${boundary}--\r\n`) ;
+										resp.end() ;
+										return ;
+									}
+									resp.write(getBoundary(rangesArr[doing][0], rangesArr[doing][1])) ;
+									let reader = fs.createReadStream(file, {
+										flags: 'r',
+										autoClose: true,
+										start: rangesArr[doing][0],
+										end: rangesArr[doing][1]
+									}) ;
+									reader.on("data", d=>resp.write(d)) ;
+									reader.on("end", next) ;
+								} ;
+								next() ;
+								resolve([true, null]) ;
 							}) ;
-							reader.on("data", resp.write) ;
-							reader.on("end", next) ;
-						} ;
-						next() ;
+						} catch (err) {
+							reject(err) ;
+						}
 					}) ;
-					return ;
 				}
 			}
 		}
@@ -679,8 +695,8 @@ function sendFile(file,resp,customVars,req) {
 				const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
 				if (status === 206) {
-					resp.setHeader("Content-Range", `bytes ${ranges[0]}-${ranges[1]}/${stats.size}`) ;
-					resp.setHeader("Content-Length", (isNaN(ranges[1])?stats.size:ranges[1]) - ranges[0] + 1) ;
+					resp.setHeader("Content-Range", `bytes ${ranges[0]}-${isNaN(ranges[1])?(stats.size-1):Math.min(ranges[1],stats.size-1)}/${stats.size}`) ;
+					resp.setHeader("Content-Length", (isNaN(ranges[1])?(stats.size-1):Math.min(ranges[1],stats.size-1)) - ranges[0] + 1) ;
 				} else if (lengthknown) {
 					resp.setHeader("Content-Length", stats.size) ;
 				}
@@ -718,7 +734,7 @@ function sendFile(file,resp,customVars,req) {
 					
 				}
 				
-			});
+			}, ranges);
 			
 		}) ;
 		
@@ -1547,7 +1563,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
 		
 		//Try the URL the user entered.
-		sendFile(normPath,resp,resp.vars,rID).then(done=>{
+		sendFile(normPath,resp,resp.vars,req).then(done=>{
 			
 			//If the file failed to send.
 			if (!done[0]) {
@@ -1555,12 +1571,12 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 				//If it a directory, try index.html
 				if (done[1] === "DIR") {
 					
-					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID);
+					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,req);
 					
 				}
 				
 				//Otherwise, try with .page extention.
-				return sendFile(`${normPath}.page`,resp,resp.vars,rID);
+				return sendFile(`${normPath}.page`,resp,resp.vars,req);
 				
 			}
 			
@@ -1712,7 +1728,7 @@ module.exports = {
 						},
 						"reloadConfig": _=>loadConfig(),
 						"multipartFormDataParser": require("./multipart-form-data-parser.js"),
-						"sendFile": (file, resp, req={jpid:""}) => sendFile(file, resp, resp.vars, req.jpid),
+						"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
 						"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid),
 						"implementMethod": (method, checker, handler) => {
 							
