@@ -44,8 +44,52 @@ let externals = require("./externals.js") ;
 //Load the config
 let config ;
 
-function loadConfig() {
+//Default configuration
+const defaultConfig = {
+	
+	"otherProcesses": [],
+	
+	"dataPort": 500,
+	
+	"httpServers": [
+		
+		{
+			
+			"port": 80
+			
+		}
+		
+	],
+	"httpsServers": [],
+	
+	"redirectToHttps": [],
+	"canBeHttp": [],
+	
+	"hostRedirects":{},
+	"hostAlias":{},
+	"pageAlias":{},
+	
+	"addVarsByDefault": false,
+	"doVarsForIfNotByDefault": [],
+	
+	"cache": [],
+	
+	"errorTemplate": "errorTemp.jpt",
+	
+	"defaultHost": "default:0",
+	"useDefaultHostIfHostDoesNotExist": true,
+	
+	"behindLoadBalencer": false,
+	"fallbackToNoPort": true,
+	
+	"defaultHeaders": {}
+	
+} ;
 
+//Load the comfig and fill in any blanks. If it doesn't exist, set the config to the default config.
+function loadConfig() {
+	
+	//If it exists, load it, parse it and fill in any blanks or throw if the types aren't correct
 	if (fs.existsSync("config.json")) {
 		
 		config = fs.readFileSync("config.json").toString() ;
@@ -68,20 +112,45 @@ function loadConfig() {
 			
 		}
 		
+		for (let doing in defaultConfig) {
+			
+			if (typeof config[doing] === "undefined") {
+				
+				config[doing] = defaultConfig[doing] ;
+				
+			}
+			
+			else if (typeof config[doing] !== typeof defaultConfig[doing]) {
+				
+				throw new Error(`The ${doing} property in config.json must be of type ${typeof defaultConfig[doing]}.`) ;
+				
+			}
+			
+		}
+		
 	}
 
 	else {
 		
-		console.warn("Config file does not exist.") ;
-		console.info("Config file does not exist.") ;
-		console.warn("Exiting") ;
-		console.info("Exiting") ;
-		process.exit() ;
+		console.warn("Config file does not exist, using default config.") ;
+		config = new Object() ;
+		Object.assign(config, defaultConfig) ;
+		return ;
 		
 	}
-
+	
 }
 loadConfig() ;
+
+if (process.argv[process.argv.length-1].indexOf("-jps-open-on-") === 0) {
+	config.httpServers = [
+		{
+			port: parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[0]),
+			host: "127.0.0.1"
+		}
+	] ;
+	config.dataPort = parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[1]) ;
+}
 
 //Get stuff ready for user systems
 let UIDs = new Array() ;

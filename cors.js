@@ -16,7 +16,7 @@ let corsEnabled = false ;
 //allowedOrigings: Array of origins that can access the resource
 //	Can be string or regexp
 //allowedMethods: array of allowed HTTP methods
-function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins, allowMethods, allowHeaders, exposeHeaders, allowCredentials=false, priority=0, maxAge=0) {
+function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins, allowMethods, allowHeaders=[], exposeHeaders=[], allowCredentials=false, priority=0, maxAge=0) {
 	if (typeof host === "object" && typeof host[0] !== "undefined") {
 		for (let doing in host) {
 			addRule(protocols, host[doing], pathYes, pathNo, allowOrigins, allowMethods, allowHeaders, exposeHeaders, allowCredentials)
@@ -46,11 +46,19 @@ function allowed(rule, req, resp) {
 		resp.setHeader("Access-Control-Allow-Credentials", "true") ;
 	}
 	//If it is a preflight request, add the relivent headers
-	if (req.method === "OPTIONS" && req.headers["Access-Control-Request-Method"] && req.headers["Access-Control-Request-Method"]) {
-		resp.setHeader("Access-Control-Allow-Methods", rule[7]) ;
-		resp.setHeader("Access-Control-Allow-Headers", rule[8]) ;
-		resp.setHeader("Access-Control-Expose-Headers", rule[9]) ;
-		resp.setHeader("Access-Control-Max-Age", String(rules[11])) ;
+	if (req.method === "OPTIONS" && req.headers["access-control-request-method"] && req.headers["access-control-request-headers"]) {
+		if (rule[7]) {
+			resp.setHeader("Access-Control-Allow-Methods", rule[7]) ;
+		}
+		if (rule[8]) {
+			resp.setHeader("Access-Control-Allow-Headers", rule[8]) ;
+		}
+		if (rule[9]) {
+			resp.setHeader("Access-Control-Expose-Headers", rule[9]) ;
+		}
+		if (rule[11]) {
+			resp.setHeader("Access-Control-Max-Age", String(rules[11])) ;
+		}
 	}
 }
 
@@ -68,7 +76,7 @@ function checkWith(rule, req, resp) {
 		return false ;
 	}
 	//Check pathNo
-	if (rule[3] !== null && req.url.match(rule[3])) {
+	if (rule[3] !== null && req.url.path.match(rule[3])) {
 		return false ;
 	}
 	//OK, so we now apply
@@ -95,6 +103,7 @@ function checkWith(rule, req, resp) {
 			}
 		}
 	}
+	return false ;
 }
 
 //Function to set headers, goes through all the lists

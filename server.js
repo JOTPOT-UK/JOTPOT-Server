@@ -145,6 +145,16 @@ function loadConfig() {
 }
 loadConfig() ;
 
+if (process.argv[process.argv.length-1].indexOf("-jps-open-on-") === 0) {
+	config.httpServers = [
+		{
+			port: parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[0]),
+			host: "127.0.0.1"
+		}
+	] ;
+	config.dataPort = parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[1]) ;
+}
+
 let availHosts = [] ;
 if (config.useDefaultHostIfHostDoesNotExist || config.fallbackToNoPort) {
 	
@@ -411,7 +421,7 @@ function wrapURL(req, secure) {
 		enumerable: true,
 		configurable: false
 	}) ;
-	Object.defineProperty(req, "secure", {
+	Object.defineProperty(req, "overHttps", {
 		get: _=>secure,
 		set: setSecure,
 		enumerable: true,
@@ -680,7 +690,7 @@ function sendFile(file,resp,customVars,req) {
 									"Accept-Ranges": "bytes",
 									"Content-Type": `multipart/byteranges; boundary=${boundary}`,
 									"Content-Length": length,
-									"status": 206
+									"Status": 206
 								}) ;0
 								if (!resp.sendBody) {
 									resp.end() ;
@@ -733,7 +743,7 @@ function sendFile(file,resp,customVars,req) {
 					"Accept-Ranges": lengthknown?"bytes":"none",
 					
 					//Added because google does it :)
-					"status": status
+					"Status": status
 					
 				}) ;
 				
@@ -858,10 +868,10 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		resp.writeHead(status,{
 			
 			"Content-Type": mime,
-			"Accept-Ranges":lengthknown?"bytes":"none",
+			"Accept-Ranges": lengthknown?"bytes":"none",
 			
 			//Added because google does it :)
-			"status": status
+			"Status": status
 			
 		}) ;
 		
@@ -1014,7 +1024,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 		req.url.protocol = "https:" ;
 		
-		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location,"status":301}) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location,"Status":301}) ;
 		resp.write("Redirecting you to our secure site...") ;
 		resp.end() ;
 		
@@ -1077,7 +1087,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 		//And send response
 		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
-		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location, "status":301}) ;
+		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location, "Status":301}) ;
 		resp.write("Redirecting you to " + req.url.location + "...") ;
 		resp.end() ;
 		
@@ -1131,7 +1141,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	
 	console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
 	
-	CORS.addHeaders(req, resp) ;
+	CORS.setHeaders(req, resp) ;
 	
 	
 	//Handle for full request.
@@ -1785,7 +1795,7 @@ module.exports = {
 							implementedMethods[method].push([checker, handler]) ;
 							
 						},
-						"addCORSRules": (...args) => CORS.addRule(...args)
+						"addCORSRule": (...args) => CORS.addRule(...args)
 						
 					} ;
 					
