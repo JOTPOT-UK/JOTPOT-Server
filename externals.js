@@ -298,6 +298,25 @@ module.exports.loadExt = (file,lock=null) => {
 			//If it is only allowed to handle cirton hosts.
 			if (lock.mode === 1) {
 				
+				const accFunc = (...args) => {
+					
+					if (typeof args[0] === "object") {
+						
+						if (typeof args[0].url === "object") {
+							
+							let unlockHost = args[0].url.lockHost() ;
+							func(...args) ;
+							unlockHost() ;
+							return ;
+							
+						}
+						
+					}
+					
+					func(...args) ;
+					
+				} ;
+				
 				//And it is trying to handle requests.
 				if (evt === "request" || evt === "fullrequest" || evt === "allowedrequest") {
 					
@@ -305,7 +324,7 @@ module.exports.loadExt = (file,lock=null) => {
 					for (let doing in lock.hosts) {
 						
 						//Handle the event, but only for the host.
-						handle(`${lock.hosts[doing]}/${evt}`,func) ;
+						handle(`${lock.hosts[doing]}/${evt}`,accFunc) ;
 						
 					}
 					return ;
@@ -346,7 +365,7 @@ module.exports.loadExt = (file,lock=null) => {
 			}
 			
 			//We can just handle the event now.
-			handle(evt,func) ;
+			handle(evt,accFunc) ;
 			return ;
 			
 		}
