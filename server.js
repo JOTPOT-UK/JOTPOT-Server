@@ -82,7 +82,9 @@ const defaultConfig = {
 	"useDefaultHostIfHostDoesNotExist": true,
 	
 	"behindLoadBalencer": false,
-	"fallbackToNoPort": true
+	"fallbackToNoPort": true,
+	
+	"defaultHeaders": {}
 	
 } ;
 
@@ -918,6 +920,11 @@ function handleRequest(req,resp) {
 		req.ip = user_ip ;
 		req.remoteAddress = user_ip_remote ;
 		req.usePortInDirectory = true ;
+		
+		//Set default headers
+		for (let doing in config.defaultHeaders) {
+			resp.setHeader(doing, config.defaultHeaders[doing]) ;
+		}
 		
 		//Do request handle.
 		let cont = true ;
