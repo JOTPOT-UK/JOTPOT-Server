@@ -40,12 +40,13 @@ let path = require("path") ;
 let proc = require("./accounts.js") ;
 let externals = require("./externals.js") ;
 let URL = require("./url-object.js") ;
-let {Transform,Readable} = require("stream") ;
+let {Transform,Readable,PassThrough} = require("stream") ;
 let cluster ;
 
 //Load the config
 let config ;
 
+//Default configuration
 const defaultConfig = {
 	
 	"otherProcesses": [],
@@ -85,8 +86,10 @@ const defaultConfig = {
 	
 } ;
 
+//Load the comfig and fill in any blanks. If it doesn't exist, set the config to the default config.
 function loadConfig() {
-
+	
+	//If it exists, load it, parse it and fill in any blanks or throw if the types aren't correct
 	if (fs.existsSync("config.json")) {
 		
 		config = fs.readFileSync("config.json").toString() ;
@@ -109,6 +112,22 @@ function loadConfig() {
 			
 		}
 		
+		for (let doing in defaultConfig) {
+			
+			if (typeof config[doing] === "undefined") {
+				
+				config[doing] = defaultConfig[doing] ;
+				
+			}
+			
+			else if (typeof config[doing] !== typeof defaultConfig[doing]) {
+				
+				throw new Error(`The ${doing} property in config.json must be of type ${typeof defaultConfig[doing]}.`) ;
+				
+			}
+			
+		}
+		
 	}
 
 	else {
@@ -117,22 +136,6 @@ function loadConfig() {
 		config = new Object() ;
 		Object.assign(config, defaultConfig) ;
 		return ;
-		
-	}
-	
-	for (let doing in defaultConfig) {
-		
-		if (typeof config[doing] === "undefined") {
-			
-			config[doing] = defaultConfig[doing] ;
-			
-		}
-		
-		else if (typeof config[doing] !== typeof defaultConfig[doing]) {
-			
-			throw new Error(`The ${doing} property in config.json must be of type ${typeof defaultConfig[doing]}.`) ;
-			
-		}
 		
 	}
 	
@@ -390,6 +393,7 @@ function forwardToOtherServer(req,resp,port) {
 	
 }
 
+//Add the URL property to a request object. Make it so that if it is set, it sets the value instead.
 function wrapURL(req) {
 	
 	let url = new URL(req, config.defaultHost || config.defaultDomain) ;
@@ -404,7 +408,7 @@ function wrapURL(req) {
 
 //Pipes the file through the transform pipe into the main pipe.
 //Calls the callback with the first argument as a boolean - true if succeded, false if not.
-function getFile(file,callWithStats,pipeTo,callback) {
+function getFile(file,callWithStats,pipeTo,callback,range=null) {
 	
 	fs.stat(file,(err,stats) => {
 		
@@ -419,15 +423,23 @@ function getFile(file,callWithStats,pipeTo,callback) {
 			
 			if (callWithStats(stats)) {
 				
-				//Pipe file to the pipe.
-				fs.createReadStream(file,{
-					
+				let opts = {
 					flags: 'r',
 					autoClose: true
-					
-				}).pipe(pipeTo) ;
+				} ;
 				
-				callback(true,"Erm") ;
+				if (range !== null) {
+					if (isNaN(range[1])) {
+						range[1] = stats.size ;
+					}
+					opts.start = range[0] ;
+					opts.end = range[1] ;
+				}
+				
+				//Pipe file to the pipe.
+				fs.createReadStream(file, opts).pipe(pipeTo) ;
+				
+				callback(true, null) ;
 				
 			}
 			
@@ -450,7 +462,7 @@ function getFile(file,callWithStats,pipeTo,callback) {
 }
 
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
-function sendFile(file,resp,customVars,rID="") {
+function sendFile(file,resp,customVars,req) {
 	
 	try {
 		
@@ -469,6 +481,8 @@ function sendFile(file,resp,customVars,rID="") {
 		let mainPipe ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
 		let lengthknown = false ;
+		let ranges = null ;
+		let status = 200 ;
 		
 		//Only bother with the pipes if we are accualy sending the body
 		if (resp.sendBody) {
@@ -530,21 +544,153 @@ function sendFile(file,resp,customVars,rID="") {
 			
 		}
 		
+		if (lengthknown && typeof req.headers.range === "string") {
+			let rangesArr = req.headers.range.split("=") ;
+			
+			//We can only use bytes as a range value
+			if (rangesArr[0] !== "bytes") {
+				sendError(416, `${rangesArr[0]} is not a valid range unit.`, resp, req.jpid) ;
+				return ;
+			}
+			
+			//Create array of all the range values
+			rangesArr = rangesArr[1].split(", ") ;
+			
+			//If there is only 1 range
+			if (rangesArr.length === 1) {
+				//Split the start from the end
+				rangesArr = rangesArr[0].split("-") ;
+				//Only carry on if we have a start and end
+				if (ranges.length === 2) {
+					ranges = new Array(3) ;
+					//Do end please
+					ranges[2] = false ;
+					//If there is no value or the value isn't a number, set the value to the start or end. Otherwise, set the value
+					if (rangesArr[0] === "") {
+						ranges[0] = 0 ;
+					} else {
+						let toSetTo = parseInt(rangesArr[0]) ;
+						if (isNaN(toSetTo)) {
+							ranges[0] = 0 ;
+						} else {
+							ranges[0] = toSetTo ;
+						}
+					}
+					if (rangesArr[1] === "") {
+						rangesArr[1] = NaN ;
+					} else {
+						let toSetTo = parseInt(rangesArr[1]) ;
+						if (isNaN(toSetTo)) {
+							ranges[1] = 0 ;
+						} else {
+							ranges[1] = toSetTo ;
+						}
+					}
+					//If it is the entire document, then don't bother with the ranges
+					if (ranges[0] === 0 && isNaN(ranges[1])) {
+						ranges = null ;
+					} else {
+						//Otherwise, set the status and relivent headers
+						status = 206 ;
+					}
+				}
+			} else if (rangesArr.length > 1) {
+				let cont = true ;
+				for (let doing in rangesArr) {
+					rangesArr[doing] = rangesArr[doing].split("-") ;
+					if (rangesArr[doing][0] === "") {
+						rangesArr[doing][0] = 0 ;
+					} else {
+						let toStartAt = parseInt(rangesArr[doing][0]) ;
+						if (isNaN(toStartAt)) {
+							rangesArr[doing][0] = 0 ;
+						} else {
+							rangesArr[doing][0] = toStartAt ;
+						}
+					}
+					if (rangesArr[doing][1] === "") {
+						rangesArr[doing][1] = stats.size ;
+					} else {
+						let toEndAt = parseInt(rangesArr[doing][1]) ;
+						if (isNaN(toEndAt)) {
+							rangesArr[doing][1] = 0 ;
+						} else {
+							rangesArr[doing][1] = toEndAt ;
+						}
+					}
+					if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size) {
+						cont = false ;
+						break ;
+					}
+					//▀‗ð►╠Ä#/'╠╩♦♀0╦┐¶ýÄ↔A8─oeÀ╚Ä´Há*
+					//«Þø[§
+				}
+				if (cont) {
+					fs.stat(file, (err, stats) => {
+						if (err) {
+							resolve(false, err) ;
+							return ;
+						}
+						if (!stats.isFile()) {
+							resolve(false, "DIR") ;
+							return ;
+						}
+						const boundary = "BOUNDARY-gfkldjvmtuksdhirludtihdnkhbgk-BOUNDARY" ;
+						const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
+						resp.writeHead(206, {
+							"Accept-Ranges": "bytes",
+							"Content-Type": `multipart/byteranges; boundary=${boundary}`,
+							"status": 206
+						}) ;
+						if (!resp.sendBody) {
+							resp.end() ;
+							return ;
+						}
+						const writeBoundary = (start, end) => writeTo.write(`\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${stats.size}\r\n\r\n`) ;
+						let doing = -1 ;
+						const next =_=> {
+							doing++ ;
+							if (doing >= rangesArr.length) {
+								resp.write(`\r\n--${boundary}--\r\n`) ;
+								resp.end() ;
+								return ;
+							}
+							writeBoundary(rangesArr[0], rangesArr[1]) ;
+							let reader = fs.createReadStream(file, {
+								flags: 'r',
+								autoClose: true,
+								start: rangesArr[doing][0],
+								end: rangesArr[doing][1]
+							}) ;
+							reader.on("data", resp.write) ;
+							reader.on("end", next) ;
+						} ;
+						next() ;
+					}) ;
+					return ;
+				}
+			}
+		}
+		
 		return new Promise((resolve,reject) => {
 				
 			getFile(file,stats => {
 				
-				let mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
-				console.log(`${rID}\t200 OK.   ${file} (${mime}) loaded from disk.`) ;
-				if (lengthknown) {
+				const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
+				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
+				if (status === 206) {
+					resp.setHeader("Content-Range", `bytes ${ranges[0]}-${ranges[1]}/${stats.size}`) ;
+					resp.setHeader("Content-Length", (isNaN(ranges[1])?stats.size:ranges[1]) - ranges[0] + 1) ;
+				} else if (lengthknown) {
 					resp.setHeader("Content-Length", stats.size) ;
 				}
-				resp.writeHead(200,{
+				resp.writeHead(status,{
 					
 					"Content-Type": mime,
+					"Accept-Ranges": lengthknown?"bytes":"none",
 					
 					//Added because google does it :)
-					"status": 200
+					"status": status
 					
 				}) ;
 				
@@ -669,6 +815,7 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		resp.writeHead(status,{
 			
 			"Content-Type": mime,
+			"Accept-Ranges":lengthknown?"bytes":"none",
 			
 			//Added because google does it :)
 			"status": status
