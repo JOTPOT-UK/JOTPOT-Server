@@ -40,6 +40,7 @@ let path = require("path") ;
 let proc = require("./accounts.js") ;
 let externals = require("./externals.js") ;
 let URL = require("./url-object.js") ;
+let CORS = require("./cors.js") ;
 let {Transform,Readable,PassThrough} = require("stream") ;
 let cluster ;
 
@@ -1130,6 +1131,9 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	
 	console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
 	
+	CORS.addHeaders(req, resp) ;
+	
+	
 	//Handle for full request.
 	
 	let cont = true ;
@@ -1708,7 +1712,7 @@ module.exports = {
 			//If it is an extention, load it.
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 				
-				externals.generateServerObject = _ => {
+				externals.generateServerObject =_=> {
 					
 					return {
 						
@@ -1780,7 +1784,8 @@ module.exports = {
 							//Push the implementation
 							implementedMethods[method].push([checker, handler]) ;
 							
-						}
+						},
+						"addCORSRules": (...args) => CORS.addRule(...args)
 						
 					} ;
 					
