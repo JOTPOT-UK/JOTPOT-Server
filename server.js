@@ -396,7 +396,32 @@ function forwardToOtherServer(req,resp,port) {
 }
 
 //Add the URL property to a request object. Make it so that if it is set, it sets the value instead.
-function wrapURL(req) {
+function wrapURL(req, secure) {
+	const defaultProtocols = ["http:","https:"] ;
+	const setSecure = val => {
+		secure = Boolean(val) ;
+		if (defaultProtocols.indexOf(req.url.protocol) !== -1) {
+			req.url.protocol = secure?"https:":"http:" ;
+		}
+	} ;
+	Object.defineProperty(req, "secure", {
+		get: _=>secure,
+		set: setSecure,
+		enumerable: true,
+		configurable: false
+	}) ;
+	Object.defineProperty(req, "secure", {
+		get: _=>secure,
+		set: setSecure,
+		enumerable: true,
+		configurable: false
+	}) ;
+	Object.defineProperty(req, "secureToServer", {
+		value: secure,
+		writable: false,
+		enumerable: true,
+		configurable: false
+	}) ;
 	
 	let url = new URL(req, config.defaultHost || config.defaultDomain) ;
 	Object.defineProperty(req, "url", {
@@ -405,7 +430,6 @@ function wrapURL(req) {
 		get: _=>url,
 		set: v=>url.value=v
 	}) ;
-	
 }
 
 //Pipes the file through the transform pipe into the main pipe.
@@ -883,7 +907,7 @@ function coughtError(err,resp,rID="") {
 }
 
 //Function to handle http requests.
-function handleRequest(req,resp) {
+function handleRequest(req,resp,secure) {
 	
 	try {
 		
@@ -909,8 +933,8 @@ function handleRequest(req,resp) {
 			
 		}
 		
-		//Create URL object
-		wrapURL(req) ;
+		//Create URL object and secure, and overHttps and secureToServer
+		wrapURL(req, secure) ;
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"time":requestTime.getTime().toString(),"href":req.url.href,"method":req.method} ;
@@ -1891,9 +1915,9 @@ module.exports = {
 			
 			http.createServer((req,resp) => {
 				
-				req.overHttps = req.secure = req.secureToServer = false ;
+				//req.overHttps = req.secure = req.secureToServer = false ;
 				req.port = options[0] ;
-				handleRequest(req,resp) ;
+				handleRequest(req,resp,false) ;
 				
 			}).listen(...options) ;
 			
@@ -1904,9 +1928,9 @@ module.exports = {
 			
 			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
 				
-				req.overHttps = req.secure = req.secureToServer = true ;
+				//req.overHttps = req.secure = req.secureToServer = true ;
 				req.port = config.httpsServers[doing].port ;
-				handleRequest(req,resp) ;
+				handleRequest(req,resp,true) ;
 				
 			}).listen(config.httpsServers[doing].port) ;
 			
