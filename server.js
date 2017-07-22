@@ -604,9 +604,7 @@ function sendFile(file,resp,customVars,req) {
 				rangesArr = rangesArr[0].split("-") ;
 				//Only carry on if we have a start and end
 				if (rangesArr.length === 2) {
-					ranges = new Array(3) ;
-					//Do end please
-					ranges[2] = false ;
+					ranges = new Array(2) ;
 					//If there is no value or the value isn't a number, set the value to the start or end. Otherwise, set the value
 					if (rangesArr[0] === "") {
 						ranges[0] = 0 ;
@@ -623,7 +621,7 @@ function sendFile(file,resp,customVars,req) {
 					} else {
 						let toSetTo = parseInt(rangesArr[1]) ;
 						if (isNaN(toSetTo)) {
-							ranges[1] = 0 ;
+							ranges[1] = NaN ;
 						} else {
 							ranges[1] = toSetTo ;
 						}
@@ -651,16 +649,16 @@ function sendFile(file,resp,customVars,req) {
 						}
 					}
 					if (rangesArr[doing][1] === "") {
-						rangesArr[doing][1] = stats.size ;
+						rangesArr[doing][1] = stats.size - 1 ;
 					} else {
 						let toEndAt = parseInt(rangesArr[doing][1]) ;
 						if (isNaN(toEndAt)) {
-							rangesArr[doing][1] = 0 ;
+							rangesArr[doing][1] = stats.size - 1 ;
 						} else {
 							rangesArr[doing][1] = toEndAt ;
 						}
 					}
-					if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size) {
+					if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size - 1) {
 						cont = false ;
 						break ;
 					}
@@ -789,7 +787,7 @@ function sendFile(file,resp,customVars,req) {
 	
 }
 
-function sendCache(file,cache,resp,customVars,status=200,rID="") {
+function sendCache(file,cache,resp,customVars,req,status=200) {
 	
 	try {
 		
@@ -802,6 +800,7 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		resp.pipeThrough = [] ;
 		let doingTransform = resp.pipeThrough.length - 1 ;
 		let lengthknown = false ;
+		let ranges = null ;
 		
 		//Only bother with the pipes if we accualy have to send the requests
 		if (resp.sendBody) {
@@ -861,10 +860,128 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 			
 		}
 		
+		if (lengthknown && typeof req.headers.range === "string") {
+			let rangesArr = req.headers.range.split("=") ;
+			
+			//We can only use bytes as a range value
+			if (rangesArr[0] !== "bytes") {
+				sendError(416, `${rangesArr[0]} is not a valid range unit.`, resp, req.jpid) ;
+				return ;
+			}
+			
+			//Create array of all the range values
+			rangesArr = rangesArr[1].split(", ") ;
+			
+			//If there is only 1 range
+			if (rangesArr.length === 1) {
+				//Split the start from the end
+				rangesArr = rangesArr[0].split("-") ;
+				//Only carry on if we have a start and end
+				if (rangesArr.length === 2) {
+					ranges = new Array(2) ;
+					//If there is no value or the value isn't a number, set the value to the start or end. Otherwise, set the value
+					if (rangesArr[0] === "") {
+						ranges[0] = 0 ;
+					} else {
+						let toSetTo = parseInt(rangesArr[0]) ;
+						if (isNaN(toSetTo)) {
+							ranges[0] = 0 ;
+						} else {
+							ranges[0] = toSetTo ;
+						}
+					}
+					if (rangesArr[1] === "") {
+						rangesArr[1] = cache.length - 1 ;
+					} else {
+						let toSetTo = parseInt(rangesArr[1]) ;
+						if (isNaN(toSetTo)) {
+							ranges[1] = cache.length - 1 ;
+						} else {
+							ranges[1] = toSetTo ;
+						}
+					}
+					//If it is the entire document, then don't bother with the ranges
+					if (ranges[0] === 0 && ranges[1] === cache.length - 1) {
+						ranges = null ;
+					} else {
+						//Otherwise, set the status and relivent headers
+						status = 206 ;
+					}
+				}
+			} else if (rangesArr.length > 1) {
+				let cont = true ;
+				for (let doing in rangesArr) {
+					rangesArr[doing] = rangesArr[doing].split("-") ;
+					if (rangesArr[doing][0] === "") {
+						rangesArr[doing][0] = 0 ;
+					} else {
+						let toStartAt = parseInt(rangesArr[doing][0]) ;
+						if (isNaN(toStartAt)) {
+							rangesArr[doing][0] = 0 ;
+						} else {
+							rangesArr[doing][0] = toStartAt ;
+						}
+					}
+					if (rangesArr[doing][1] === "") {
+						rangesArr[doing][1] = cache.length - 1 ;
+					} else {
+						let toEndAt = parseInt(rangesArr[doing][1]) ;
+						if (isNaN(toEndAt)) {
+							rangesArr[doing][1] = cache.length - 1 ;
+						} else {
+							rangesArr[doing][1] = toEndAt ;
+						}
+					}
+					if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === cache.length - 1) {
+						cont = false ;
+						break ;
+					}
+				}
+				if (cont) {
+					const boundary = "58dca288fd8c0f00" ;
+					const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
+					const getBoundary = (start, end) => `\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${cache.length}\r\n\r\n` ;
+					let length = 0 ;
+					for (let doing in rangesArr) {
+						length += getBoundary(rangesArr[doing][0], rangesArr[doing][1]).length ;
+						length += rangesArr[doing][1] - rangesArr[doing][0] + 1 ;
+					}
+					length += (`\r\n--${boundary}--\r\n`).length ;
+					resp.writeHead(206, {
+						"Accept-Ranges": "bytes",
+						"Content-Type": `multipart/byteranges; boundary=${boundary}`,
+						"Content-Length": length,
+						"Status": 206
+					}) ;
+					if (!resp.sendBody) {
+						resp.end() ;
+						return ;
+					}
+					let doing = -1 ;
+					const next =_=> {
+						doing++ ;
+						if (doing >= rangesArr.length) {
+							resp.write(`\r\n--${boundary}--\r\n`) ;
+							resp.end() ;
+							return ;
+						}
+						resp.write(getBoundary(rangesArr[doing][0], rangesArr[doing][1])) ;
+						resp.write(cache.slice(rangesArr[doing][0], rangesArr[doing][1] + 1)) ;
+						next() ;
+					} ;
+					next() ;
+					return ;
+				}
+			}
+		}
+		
 		//Get the mime type.
 		let mime = getMimeType(file) ;
-		console.log(`${rID}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
-		if (lengthknown) {
+		console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
+		if (status === 206) {
+			resp.setHeader("Content-Range", `bytes ${ranges[0]}-${Math.min(ranges[1],cache.length-1)}/${cache.length}`) ;
+			resp.setHeader("Content-Length", Math.min(ranges[1],cache.length-1) - ranges[0] + 1) ;
+		} else if (lengthknown) {
 			resp.setHeader("Content-Length", cache.length) ;
 		}
 		resp.writeHead(status,{
@@ -879,7 +996,11 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 		
 		//Write the cached data (if we need to) & end.
 		if (resp.sendBody) {
-			mainPipe.write(cache) ;
+			if (ranges === null) {
+				mainPipe.write(cache) ;
+			} else {
+				mainPipe.write(cache.slice(ranges[0], ranges[1] + 1)) ;
+			}
 		}
 		mainPipe.end() ;
 		
@@ -895,7 +1016,7 @@ function sendCache(file,cache,resp,customVars,status=200,rID="") {
 
 function sendError(code,message,resp,rID="") {
 	
-	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},code,rID) ;
+	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},{jpid:rID,headers:{}},code) ;
 	return ;
 	
 }
@@ -1549,25 +1670,25 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 		}
 		
 		//Is cached or special page.
-		if (typeof pages[req.url.fullvalue] === "object") {
+		if (typeof pages[cachePath] === "object") {
 			
 			//Is just page alias.
-			if (pages[req.url.fullvalue][0] === "file") {
+			if (pages[cachePath][0] === "file") {
 				
-				req.url.fullvalue = req.url.host + pages[req.url.fullvalue][1] ;
+				req.url.fullvalue = req.url.host + pages[cachePath][1] ;
 				
 			}
 			
 			//Check that the page is still in the cache after a change.
-			if (typeof pages[req.url.fullvalue] === "object") {
+			if (typeof pages[cachePath] === "object") {
 				
 				let timeTaken = process.hrtime(timeRecieved) ;
 				console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
 				
 				//If it is a cached file send it.
-				if (pages[req.url.fullvalue][0] === "cache") {
+				if (pages[cachePath][0] === "cache") {
 					
-					sendCache(req.url.fullvalue,pages[req.url.fullvalue][1],resp,resp.vars,200,req.jpid) ;
+					sendCache(cachePath,pages[cachePath][1],resp,resp.vars,req,200) ;
 					let timeTaken = process.hrtime(timeRecieved) ;
 					console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 					return true ;
@@ -1575,9 +1696,9 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 				}
 				
 				//If it is a function, then execute the function & dont continute if it returns true.
-				else if (pages[req.url.fullvalue][0] === "func") {
+				else if (pages[cachePath][0] === "func") {
 					
-					if (req.url.fullvalue,pages[req.url.fullvalue][1](req,resp)) {
+					if (pages[cachePath][1](req,resp)) {
 						
 						let timeTaken = process.hrtime(timeRecieved) ;
 						console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
@@ -1768,7 +1889,7 @@ module.exports = {
 				"reloadConfig": _=>loadConfig(),
 				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
 				"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
-				"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid),
+				"sendCache": (file, cache, resp, req, status=200) => sendCache(file, cache, resp, resp.vars, req, status),
 				"implementMethod": (method, checker, handler) => {
 					
 					//Check types
@@ -1928,7 +2049,7 @@ module.exports = {
 			Object.assign(thisOb, config.CORS[doing]) ;
 			for (let tRE in thisOb[5]) {
 				if (thisOb[5][tRE].indexOf('*') === 0) {
-					thisOb[5][tRE] = new RegExp(thisOb[5][tRE], "g") ;
+					thisOb[5][tRE] = new RegExp(thisOb[5][tRE].substring(1, thisOb[5][tRE].length), "g") ;
 				}
 			}
 			CORS.addRule(...thisOb) ;

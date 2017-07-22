@@ -75,7 +75,7 @@ class URL {
 				throw new Error("pathname must begin with a '/'") ;
 			}
 			purl.pathname = val ;
-			purl.path = val + purl.search ;
+			purl.path = val + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "path", {get:_=>{

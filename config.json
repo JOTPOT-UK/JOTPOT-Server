@@ -25,7 +25,7 @@
 	"addVarsByDefault": false,
 	"doVarsForIfNotByDefault": ["default/index.html"],
 	
-	"cache": [],
+	"cache": ["default/test2.txt"],
 	
 	"errorTemplate": "errorTemp.jpt",
 	
