@@ -20,14 +20,14 @@ function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins
 	if (typeof protocols !== "number" || protocols > 2 || protocols < 0) {
 		throw new Error("protocols must be a Number that is 0, 1 or 2") ;
 	}
-	if (typeof pathYes !== "object" || pathYes.constructor !== RegExp) {
+	if (typeof pathYes !== "object" || pathYes.constructor.name !== "RegExp") {
 		if (typeof pathYes === "string") {
 			pathYes = new RegExp(pathYes, "g") ;
 		} else {
 			throw new Error("pathYes must be a RegExp or String") ;
 		}
 	}
-	if (pathNo !== null && (typeof pathNo !== "object" || pathNo.constructor !== RegExp)) {
+	if (pathNo !== null && (typeof pathNo !== "object" || pathNo.constructor.name !== "RegExp")) {
 		if (typeof pathNo === "string") {
 			pathNo = new RegExp(pathNo, "g") ;
 		} else {
@@ -37,16 +37,16 @@ function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins
 	if (typeof allowAllOrigins !== "boolean") {
 		throw new Error("allowAllOrigins must be a Boolean") ;
 	}
-	if (typeof allowOrigins !== "object" || allowOrigins.constructor !== Array) {
+	if (typeof allowOrigins !== "object" || allowOrigins.constructor.name !== "Array") {
 		throw new Error("allowOrigins must be an Array") ;
 	}
-	if (typeof allowMethods !== "object" || allowMethods.constructor !== Array) {
+	if (typeof allowMethods !== "object" || allowMethods.constructor.name !== "Array") {
 		throw new Error("allowMethods must be an Array") ;
 	}
-	if (typeof allowHeaders !== "object" || allowHeaders.constructor !== Array) {
+	if (typeof allowHeaders !== "object" || allowHeaders.constructor.name !== "Array") {
 		throw new Error("allowHeaders must be an Array") ;
 	}
-	if (typeof exposeHeaders !== "object" || exposeHeaders.constructor !== Array) {
+	if (typeof exposeHeaders !== "object" || exposeHeaders.constructor.name !== "Array") {
 		throw new Error("exposeHeaders must be an Array") ;
 	}
 	if (typeof allowCredentials !== "boolean") {
