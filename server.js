@@ -629,6 +629,8 @@ function sendFile(file,resp,customVars,req) {
 					//If it is the entire document, then don't bother with the ranges
 					if (ranges[0] === 0 && isNaN(ranges[1])) {
 						ranges = null ;
+					} else if (ranges[0] > ranges[1]) {
+						ranges = null ;
 					} else {
 						//Otherwise, set the status and relivent headers
 						status = 206 ;
@@ -661,6 +663,9 @@ function sendFile(file,resp,customVars,req) {
 					if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size - 1) {
 						cont = false ;
 						break ;
+					} else if (rangesArr[doing][0] > rangesArr[doing][1]) {
+						cont = false ;
+						break ;
 					}
 					//▀‗ð►╠Ä#/'╠╩♦♀0╦┐¶ýÄ↔A8─oeÀ╚Ä´Há*
 					//«Þø[§
@@ -677,7 +682,7 @@ function sendFile(file,resp,customVars,req) {
 									resolve(false, "DIR") ;
 									return ;
 								}
-								const boundary = "58dca288fd8c0f00" ;
+								const boundary = config.multipartResponseBoundary || "58dca288fd8c0f00" ;
 								const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 								const getBoundary = (start, end) => `\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${stats.size}\r\n\r\n` ;
 								let length = 0 ;
@@ -903,6 +908,8 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 					//If it is the entire document, then don't bother with the ranges
 					if (ranges[0] === 0 && ranges[1] === cache.length - 1) {
 						ranges = null ;
+					} else if (ranges[0] > ranges[1]) {
+						ranges = null ;
 					} else {
 						//Otherwise, set the status and relivent headers
 						status = 206 ;
@@ -935,10 +942,13 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 					if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === cache.length - 1) {
 						cont = false ;
 						break ;
+					} else if (rangesArr[doing][0] > rangesArr[doing][1]) {
+						cont = false ;
+						break ;
 					}
 				}
 				if (cont) {
-					const boundary = "58dca288fd8c0f00" ;
+					const boundary = config.multipartResponseBoundary || "58dca288fd8c0f00" ;
 					const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 					const getBoundary = (start, end) => `\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${cache.length}\r\n\r\n` ;
 					let length = 0 ;
@@ -976,8 +986,9 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 		}
 		
 		//Get the mime type.
-		let mime = getMimeType(file) ;
+		const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 		console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
+		
 		if (status === 206) {
 			resp.setHeader("Content-Range", `bytes ${ranges[0]}-${Math.min(ranges[1],cache.length-1)}/${cache.length}`) ;
 			resp.setHeader("Content-Length", Math.min(ranges[1],cache.length-1) - ranges[0] + 1) ;
