@@ -85,7 +85,9 @@ const defaultConfig = {
 	"behindLoadBalencer": false,
 	"fallbackToNoPort": true,
 	
-	"defaultHeaders": {}
+	"defaultHeaders": {},
+	
+	"CORS":[]
 	
 } ;
 
@@ -1714,6 +1716,188 @@ module.exports = {
 	//Function to init the server.
 	init:(clusterGiven) => {
 		
+		externals.generateServerObject =_=> {
+			
+			return {
+				
+				"pages": pages,
+				"vars": vars,
+				"sendError":(...eArgs)=>sendError(...eArgs),
+				"createAccountSystem":(args) => {
+					
+					let creatingAcc = new proc.proc(
+						
+						args.name,
+						args.db,
+						args.pages,
+						args.exclude,
+						args.loginURL,
+						args.loginPage,
+						args.logoutURL,
+						args.logoutPage,
+						args.regURL,
+						args.regPage,
+						args.loginRedirect,
+						args.https
+						
+					) ;
+					allAccountSystems.push(creatingAcc) ;
+					return creatingAcc ;
+					
+				},
+				"getUserID":(req,resp)=>{
+					
+					let userID = proc.getUserID(req) ;
+					if (userID) {
+						
+						return userID ;
+						
+					}
+					return proc.makeNewUID(req,resp) ;
+					
+				},
+				"getMimeType": (...args)=>getMimeType(...args),
+				"config": config,
+				"getData": req=>{
+					
+					let data = new Array() ;
+					req.on("data",d=>data.push(d)) ;
+					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+					
+				},
+				"reloadConfig": _=>loadConfig(),
+				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
+				"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
+				"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid),
+				"implementMethod": (method, checker, handler) => {
+					
+					//Check types
+					if (typeof checker !== "function" || typeof handler !== "function" || typeof method !== "string") {
+						
+						throw new Error("Both the checker and the handler has to be functions, and the method must be a string.") ;
+						
+					}
+					
+					//If there are no current implementations of this method, create it as an empty array.
+					if (typeof implementedMethods[method] !== "object") {
+						
+						implementedMethods[method] = new Array() ;
+						
+					}
+					
+					//Push the implementation
+					implementedMethods[method].push([checker, handler]) ;
+					
+				},
+				"addCORSRule": (...args) => CORS.addRule(...args)
+				
+			} ;
+			
+		} ;
+		
+		let currentLimitedAccountSystem = 0 ;
+		externals.generateLimitedServerObject = (domains, fs) => {
+			
+			return {
+				
+				"sendError":(...eArgs)=>sendError(...eArgs),
+				"createAccountSystem":(args) => {
+					
+					let toCheck = ["pages", "exclude","loginURL","loginPage","logoutURL","logoutPage","regURL","regPage","loginRedirect"] ;
+					
+					for (let checking of toCheck) {
+						
+						if (typeof args[checking] === "string") {
+							
+							let ok = false ;
+							for (let domain in domains) {
+								
+								if (args[checking].indexOf(domains[domain]) === 0) {
+									
+									ok = true ;
+									break ;
+									
+								}
+								
+							}
+							if (!ok) {
+								
+								throw new Error("You cannot set up an account system using these domains...") ;
+								
+							}
+							continue ;
+							
+						}
+						
+						for (let doing = 0 ; doing < args[checking].length ; doing++) {
+							
+							let ok = false ;
+							for (let domain in domains) {
+								
+								if (args[checking][doing].indexOf(domains[domain]) === 0) {
+									
+									ok = true ;
+									break ;
+									
+								}
+								
+							}
+							if (!ok) {
+								
+								throw new Error("You cannot set up an account system using these domains...") ;
+								
+							}
+							
+						}
+						
+					}
+					
+					let creatingAcc = new proc.proc(
+						
+						`limitedsystem-${++currentLimitedAccountSystem}`,
+						fs.realpathSync(args.db, {real:true}),
+						args.pages,
+						args.exclude,
+						args.loginURL,
+						args.loginPage,
+						args.logoutURL,
+						args.logoutPage,
+						args.regURL,
+						args.regPage,
+						args.loginRedirect,
+						args.https
+						
+					) ;
+					allAccountSystems.push(creatingAcc) ;
+					return creatingAcc ;
+					
+				},
+				"getUserID":(req,resp)=>{
+					
+					let userID = proc.getUserID(req) ;
+					if (userID) {
+						
+						return userID ;
+						
+					}
+					return proc.makeNewUID(req,resp) ;
+					
+				},
+				"getMimeType":(...args)=>getMimeType(...args),
+				"getData": req=>{
+					
+					let data = new Array() ;
+					req.on("data",d=>data.push(d)) ;
+					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+					
+				},
+				"multipartFormDataParser": require("./multipart-form-data-parser.js")//,
+				//"sendFile": (file, resp, req={jpid:""}) => sendFile(path.normalize(file).replace(/\.\./g,""), resp, resp.vars, req.jpid)
+				
+			} ;
+			
+		} ;
+		
 		//Load the extentions
 		let currentDir = fs.readdirSync(process.cwd()) ;
 		//Go through all the files in the cwd.
@@ -1721,188 +1905,6 @@ module.exports = {
 			
 			//If it is an extention, load it.
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
-				
-				externals.generateServerObject =_=> {
-					
-					return {
-						
-						"pages": pages,
-						"vars": vars,
-						"sendError":(...eArgs)=>sendError(...eArgs),
-						"createAccountSystem":(args) => {
-							
-							let creatingAcc = new proc.proc(
-								
-								args.name,
-								args.db,
-								args.pages,
-								args.exclude,
-								args.loginURL,
-								args.loginPage,
-								args.logoutURL,
-								args.logoutPage,
-								args.regURL,
-								args.regPage,
-								args.loginRedirect,
-								args.https
-								
-							) ;
-							allAccountSystems.push(creatingAcc) ;
-							return creatingAcc ;
-							
-						},
-						"getUserID":(req,resp)=>{
-							
-							let userID = proc.getUserID(req) ;
-							if (userID) {
-								
-								return userID ;
-								
-							}
-							return proc.makeNewUID(req,resp) ;
-							
-						},
-						"getMimeType": (...args)=>getMimeType(...args),
-						"config": config,
-						"getData": req=>{
-							
-							let data = new Array() ;
-							req.on("data",d=>data.push(d)) ;
-							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
-							
-						},
-						"reloadConfig": _=>loadConfig(),
-						"multipartFormDataParser": require("./multipart-form-data-parser.js"),
-						"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
-						"sendCache": (file, cache, resp, status=200, req={jpid:""}) => sendCache(file, cache, resp, resp.vars, status, req.jpid),
-						"implementMethod": (method, checker, handler) => {
-							
-							//Check types
-							if (typeof checker !== "function" || typeof handler !== "function" || typeof method !== "string") {
-								
-								throw new Error("Both the checker and the handler has to be functions, and the method must be a string.") ;
-								
-							}
-							
-							//If there are no current implementations of this method, create it as an empty array.
-							if (typeof implementedMethods[method] !== "object") {
-								
-								implementedMethods[method] = new Array() ;
-								
-							}
-							
-							//Push the implementation
-							implementedMethods[method].push([checker, handler]) ;
-							
-						},
-						"addCORSRule": (...args) => CORS.addRule(...args)
-						
-					} ;
-					
-				} ;
-				
-				let currentLimitedAccountSystem = 0 ;
-				externals.generateLimitedServerObject = (domains, fs) => {
-					
-					return {
-						
-						"sendError":(...eArgs)=>sendError(...eArgs),
-						"createAccountSystem":(args) => {
-							
-							let toCheck = ["pages", "exclude","loginURL","loginPage","logoutURL","logoutPage","regURL","regPage","loginRedirect"] ;
-							
-							for (let checking of toCheck) {
-								
-								if (typeof args[checking] === "string") {
-									
-									let ok = false ;
-									for (let domain in domains) {
-										
-										if (args[checking].indexOf(domains[domain]) === 0) {
-											
-											ok = true ;
-											break ;
-											
-										}
-										
-									}
-									if (!ok) {
-										
-										throw new Error("You cannot set up an account system using these domains...") ;
-										
-									}
-									continue ;
-									
-								}
-								
-								for (let doing = 0 ; doing < args[checking].length ; doing++) {
-									
-									let ok = false ;
-									for (let domain in domains) {
-										
-										if (args[checking][doing].indexOf(domains[domain]) === 0) {
-											
-											ok = true ;
-											break ;
-											
-										}
-										
-									}
-									if (!ok) {
-										
-										throw new Error("You cannot set up an account system using these domains...") ;
-										
-									}
-									
-								}
-								
-							}
-							
-							let creatingAcc = new proc.proc(
-								
-								`limitedsystem-${++currentLimitedAccountSystem}`,
-								fs.realpathSync(args.db, {real:true}),
-								args.pages,
-								args.exclude,
-								args.loginURL,
-								args.loginPage,
-								args.logoutURL,
-								args.logoutPage,
-								args.regURL,
-								args.regPage,
-								args.loginRedirect,
-								args.https
-								
-							) ;
-							allAccountSystems.push(creatingAcc) ;
-							return creatingAcc ;
-							
-						},
-						"getUserID":(req,resp)=>{
-							
-							let userID = proc.getUserID(req) ;
-							if (userID) {
-								
-								return userID ;
-								
-							}
-							return proc.makeNewUID(req,resp) ;
-							
-						},
-						"getMimeType":(...args)=>getMimeType(...args),
-						"getData": req=>{
-							
-							let data = new Array() ;
-							req.on("data",d=>data.push(d)) ;
-							return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
-							
-						},
-						"multipartFormDataParser": require("./multipart-form-data-parser.js")//,
-						//"sendFile": (file, resp, req={jpid:""}) => sendFile(path.normalize(file).replace(/\.\./g,""), resp, resp.vars, req.jpid)
-						
-					} ;
-					
-				} ;
 				
 				let currentLoad = externals.loadExt(currentDir[doing]) ;
 				
@@ -1915,6 +1917,21 @@ module.exports = {
 				
 			}
 			
+		}
+		
+		for (let doing in config.CORS) {
+			if (typeof config.CORS[doing] !== "object" || config.CORS[doing].constructor !== Array) {
+				console.warn(`Not adding CORS rule ${doing} as it is not an Array`) ;
+				continue ;
+			}
+			let thisOb = new Object() ;
+			Object.assign(thisOb, config.CORS[doing]) ;
+			for (let tRE in thisOb[5]) {
+				if (thisOb[5][tRE].indexOf('*') === 0) {
+					thisOb[5][tRE] = new RegExp(thisOb[5][tRE], "g") ;
+				}
+			}
+			CORS.addRule(...thisOb) ;
 		}
 		
 		//Set up the HTTP servers
@@ -1930,7 +1947,6 @@ module.exports = {
 			
 			http.createServer((req,resp) => {
 				
-				//req.overHttps = req.secure = req.secureToServer = false ;
 				req.port = options[0] ;
 				handleRequest(req,resp,false) ;
 				
@@ -1943,7 +1959,6 @@ module.exports = {
 			
 			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
 				
-				//req.overHttps = req.secure = req.secureToServer = true ;
 				req.port = config.httpsServers[doing].port ;
 				handleRequest(req,resp,true) ;
 				

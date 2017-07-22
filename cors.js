@@ -17,11 +17,54 @@ let corsEnabled = false ;
 //	Can be string or regexp
 //allowedMethods: array of allowed HTTP methods
 function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins, allowMethods, allowHeaders=[], exposeHeaders=[], allowCredentials=false, priority=0, maxAge=0) {
-	if (typeof host === "object" && typeof host[0] !== "undefined") {
+	if (typeof protocols !== "number" || protocols > 2 || protocols < 0) {
+		throw new Error("protocols must be a Number that is 0, 1 or 2") ;
+	}
+	if (typeof pathYes !== "object" || pathYes.constructor !== RegExp) {
+		if (typeof pathYes === "string") {
+			pathYes = new RegExp(pathYes, "g") ;
+		} else {
+			throw new Error("pathYes must be a RegExp or String") ;
+		}
+	}
+	if (pathNo !== null && (typeof pathNo !== "object" || pathNo.constructor !== RegExp)) {
+		if (typeof pathNo === "string") {
+			pathNo = new RegExp(pathNo, "g") ;
+		} else {
+			throw new Error("pathNo must be a RegExp, String or null") ;
+		}
+	}
+	if (typeof allowAllOrigins !== "boolean") {
+		throw new Error("allowAllOrigins must be a Boolean") ;
+	}
+	if (typeof allowOrigins !== "object" || allowOrigins.constructor !== Array) {
+		throw new Error("allowOrigins must be an Array") ;
+	}
+	if (typeof allowMethods !== "object" || allowMethods.constructor !== Array) {
+		throw new Error("allowMethods must be an Array") ;
+	}
+	if (typeof allowHeaders !== "object" || allowHeaders.constructor !== Array) {
+		throw new Error("allowHeaders must be an Array") ;
+	}
+	if (typeof exposeHeaders !== "object" || exposeHeaders.constructor !== Array) {
+		throw new Error("exposeHeaders must be an Array") ;
+	}
+	if (typeof allowCredentials !== "boolean") {
+		throw new Error("allowCredentials must be a Boolean") ;
+	}
+	if (typeof priority !== "number" || priority < -1 || priority > 1) {
+		throw new Error("priority must be a Number that is -1, 0 or 1") ;
+	}
+	if (typeof maxAge !== "number") {
+		throw new Error("maxAge must be a Number") ;
+	}
+	if (typeof host === "object" && host.constructor !== Array) {
 		for (let doing in host) {
 			addRule(protocols, host[doing], pathYes, pathNo, allowOrigins, allowMethods, allowHeaders, exposeHeaders, allowCredentials)
 		}
 		return ;
+	} else if (typeof host !== "string") {
+		throw new Error("host must be a String or Array of Strings.") ;
 	}
 	let allowOriginsRegExp = new Array() ;
 	for (let doing in allowOrigins) {
@@ -56,9 +99,7 @@ function allowed(rule, req, resp) {
 		if (rule[9]) {
 			resp.setHeader("Access-Control-Expose-Headers", rule[9]) ;
 		}
-		if (rule[11]) {
-			resp.setHeader("Access-Control-Max-Age", String(rules[11])) ;
-		}
+		resp.setHeader("Access-Control-Max-Age", String(rules[11])) ;
 	}
 }
 
@@ -91,6 +132,7 @@ function checkWith(rule, req, resp) {
 		//If it is a string value
 		if (rule[5].indexOf(req.headers.origin) !== -1) {
 			resp.setHeader("Access-Control-Allow-Origin", req.headers.origin) ;
+			resp.setHeader("Vary", "Origin") ;
 			allowed(rule, req, resp) ;
 			return true ;
 		}
@@ -98,6 +140,7 @@ function checkWith(rule, req, resp) {
 		for (let exp of rule[6]) {
 			if (req.headers.origin.match(exp)) {
 				resp.setHeader("Access-Control-Allow-Origin", req.headers.origin) ;
+				resp.setHeader("Vary", "Origin") ;
 				allowed(rule, req, resp) ;
 				return true ;
 			}
