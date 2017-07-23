@@ -171,9 +171,6 @@ if (config.useDefaultHostIfHostDoesNotExist || config.fallbackToNoPort) {
 let vars = new Object ;
 vars.Global = new Object() ;
 
-//Set up cache
-let pages = new Object() ;
-
 //Setup accounts
 let allAccountSystems = new Array() ;
 
@@ -1054,6 +1051,13 @@ function coughtError(err,resp,rID="") {
 	
 }
 
+function make6d(str, pad="0") {
+	while (str.length < 6) {
+		str = pad + str ;
+	}
+	return str ;
+}
+
 //Function to handle http requests.
 function handleRequest(req,resp,secure) {
 	
@@ -1267,7 +1271,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	}
 	
 	{
-		let rID = `#${(currentID++).toString(16).toUpperCase()}` ;
+		let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
 		Object.defineProperty(req, "jpid", {
 			configurable: false,
 			enumerable: false,
@@ -2007,7 +2011,6 @@ module.exports = {
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 				let currentLoad = externals.loadExt(currentDir[doing]) ;
 				if (currentLoad.loaded) {
-					pages = currentLoad.serverObj.pages ;
 					vars = currentLoad.serverObj.vars ;
 				}
 			}

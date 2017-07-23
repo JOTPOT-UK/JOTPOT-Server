@@ -234,12 +234,12 @@ function createResponse(req, resp) {
 		resp.setHeader("JP-Was-Learned", "0") ;
 		
 		//Get normilized file path, replaces ':' with ';' in the host and only includes the port if req.usePortInDirectory is true
-		let file = (req.usePortInDirectory?req.url.host:req.url.hostname).replace(/:/g, ";") + req.url.pathname ;
-		file = path.normalize(file) ;
+		let file ;
 		
 		let origValue = "" ;
 		let canLearn = module.exports.enableLearning ;
 		const handleeThing =_=> {
+			file = path.normalize((req.usePortInDirectory?req.url.host:req.url.hostname).replace(/:/g, ';') + req.url.pathname) ;
 			while (linksWS[req.url.fullvalue]) {
 				origValue = req.url.fullvalue ;
 				req.url.fullvalue = linksWS[req.url.fullvalue] ;
