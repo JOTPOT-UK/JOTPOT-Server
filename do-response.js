@@ -118,30 +118,30 @@ let funcs = new Object() ;
 let funcsWS = new Object() ;
 function handlePage(page, func, incSearch=false) {
 	if (incSearch) {
-		linksWS[page] = func ;
+		funcsWS[page] = func ;
 	} else {
-		links[page] = func ;
+		funcs[page] = func ;
 	}
 }
 function isHandled(page, incSearch=false) {
 	if (incSearch) {
-		return Boolean(linksWS[page]) ;
+		return Boolean(funcsWS[page]) ;
 	} else {
-		return Boolean(links[page]) ;
+		return Boolean(funcs[page]) ;
 	}
 }
 function handle(page, args, incSearch=false) {
 	if (incSearch) {
-		return linksWS[page](...args) ;
+		return funcsWS[page](...args) ;
 	} else {
-		return links[page](...args) ;
+		return funcs[page](...args) ;
 	}
 }
 function removePageHandler(page, incSearch=false) {
 	if (incSearch) {
-		delete linksWS[page] ;
+		delete funcsWS[page] ;
 	} else {
-		delete links[page] ;
+		delete funcs[page] ;
 	}
 }
 
@@ -182,6 +182,27 @@ function unlearn(url, level=0) {
 			}
 		}
 	}
+}
+
+function doLinks(req) {
+	let doTheLoop = false ;
+	do {
+		doTheLoop = false ;
+		while (linksWS[req.url.fullvalue]) {
+			origValue = req.url.fullvalue ;
+			req.url.fullvalue = linksWS[req.url.fullvalue] ;
+			if (req.url.fullvalue === origValue) {
+				break ;
+			}
+		}
+		if (links[req.url.fullvalue]) {
+			origValue = req.url.value ;
+			req.url.value = links[req.url.value] ;
+			if (req.url.value !== origValue) {
+				doTheLoop = true ;
+			}
+		}
+	} while (doTheLoop)
 }
 
 //Function that sends a response for the given request
@@ -239,25 +260,8 @@ function createResponse(req, resp) {
 		let origValue = "" ;
 		let canLearn = module.exports.enableLearning ;
 		const handleeThing =_=> {
+			doLinks(req) ;
 			file = path.normalize((req.usePortInDirectory?req.url.host:req.url.hostname).replace(/:/g, ';') + req.url.pathname) ;
-			while (linksWS[req.url.fullvalue]) {
-				origValue = req.url.fullvalue ;
-				req.url.fullvalue = linksWS[req.url.fullvalue] ;
-				if (req.url.fullvalue === origValue) {
-					break ;
-				} else {
-					return handleeThing() ;
-				}
-			}
-			while (links[req.url.fullvalue]) {
-				origValue = req.url.value ;
-				req.url.value = links[req.url.value] ;
-				if (req.url.value === origValue) {
-					break ;
-				} else {
-					return handleeThing() ;
-				}
-			}
 			while (funcsWS[req.url.fullvalue]) {
 				//As the function may have changed the URL, or headers etc. we can no longer learn from this request
 				canLearn = false ;
@@ -400,8 +404,9 @@ function createResponse(req, resp) {
 }
 
 module.exports = {
-	//Main export:
+	//Main exports:
 	createResponse,
+	doLinks,
 	
 	//Export functions
 	createLink,

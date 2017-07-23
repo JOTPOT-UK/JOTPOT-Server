@@ -365,7 +365,7 @@ module.exports.loadExt = (file,lock=null) => {
 			}
 			
 			//We can just handle the event now.
-			handle(evt,accFunc) ;
+			handle(evt,func) ;
 			return ;
 			
 		}

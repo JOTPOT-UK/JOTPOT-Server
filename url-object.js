@@ -99,7 +99,7 @@ class URL {
 			}
 			purl.search = val ;
 			purl.query = val.substring(1,val.length) ;
-			purl.path = purl.pathname + purl.search ;
+			purl.path = purl.pathname + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "query", {get:_=>{
@@ -107,7 +107,7 @@ class URL {
 		}, set:val=>{
 			purl.query = val ;
 			purl.search = "?" + val ;
-			purl.path = purl.pathname + purl.search ;
+			purl.path = purl.pathname + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "hash", {get:_=>{
@@ -238,7 +238,7 @@ class URL {
 			val = val.split("/") ;
 			purl.host = val.shift() ;
 			purl.pathname = "/" + val.join("/") ;
-			purl.path = purl.pathname + purl.search ;
+			purl.path = purl.pathname + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "fullvalue", {get:_=>{

@@ -30,7 +30,7 @@ console.log = console.warn = (...args) => {
 	
 	process.send(["log",args.join(" ")]) ;
 	
-}
+} ;
 
 //Modules
 let http = require("http") ;
@@ -42,7 +42,7 @@ let externals = require("./externals.js") ;
 let URL = require("./url-object.js") ;
 let CORS = require("./cors.js") ;
 let responseMaker = require("./do-response.js") ;
-let {Transform,Readable,PassThrough} = require("stream") ;
+let {Transform, Readable, PassThrough} = require("stream") ;
 let cluster ;
 
 //Load the config
@@ -1047,7 +1047,7 @@ function coughtError(err,resp,rID="") {
 		isUnknown = true ;
 	}
 	console.warn("---------------") ;
-	sendError(500,`A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't strust you."}.`,resp,rID) ;
+	sendError(500,`A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't trust you."}.`,resp,rID) ;
 	
 }
 
@@ -1076,7 +1076,7 @@ function handleRequest(req,resp,secure) {
 			
 			user_ip = (req.headers['x-forwarded-for'] || req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 			user_ip_remote = (req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-			req.overHttps = req.secure = req.headers["jp-source-secure"] === "https" ;
+			secure = req.headers["jp-source-secure"] === "https" ;
 			
 		} else {
 			
@@ -1239,36 +1239,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 	}
 	
-	let url ;
-	if (req.usePortInDirectory) {
-		
-		url = req.url.value ;
-		
-	}
-	
-	else {
-		
-		url = req.url.hostname + req.url.pathname ;
-		
-	}
-	
-	//Page alias?
-	if (typeof config.pageAlias[url] !== "undefined") {
-		
-		let changeTo = config.pageAlias[url] ;
-		if (changeTo.indexOf("?keep?") === changeTo.length - 6) {
-			
-			req.url.fullvalue = changeTo ;
-			
-		}
-		
-		else {
-			
-			req.url.value = changeTo ;
-			
-		}
-		
-	}
+	responseMaker.doLinks(req) ;
 	
 	{
 		let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
@@ -1305,7 +1276,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 		gotOtherPromise = true ;
 		
-	})
+	}) ;
 	
 	externals.doEvt(`${req.url.host}/fullrequest`,req,resp).then(d=>{
 		
