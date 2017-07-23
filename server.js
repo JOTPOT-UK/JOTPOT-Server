@@ -1623,6 +1623,16 @@ responseMaker.sendFile = sendFile ;
 responseMaker.sendError = sendError ;
 responseMaker.enableLearning = config.enableLearning ;
 
+for (let doing in config.cache) {
+	try {
+		responseMaker.cacheFileSync(config.cache[doing]) ;
+	} catch (err) {
+		console.info(`Failed to cache '${config.cache[doing]}'.`) ;
+		console.warn(`Failed to cache '${config.cache[doing]}':`) ;
+		console.warn(err) ;
+	}
+}
+
 module.exports = {
 	//Function to init the server.
 	init:(clusterGiven) => {

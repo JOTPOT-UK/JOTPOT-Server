@@ -85,6 +85,10 @@ function cacheFile(url) {
 		}
 	})) ;
 }
+function cacheFileSync(url) {
+	const data = fs.readFileSync(path.join(process.cwd(), "sites", url)) ;
+	addCache(url, data, false) ;
+}
 function isCache(url, incSearch=false) {
 	if (incSearch) {
 		return Boolean(pagesWS[from]) ;
@@ -406,6 +410,7 @@ module.exports = {
 	removeLink,
 	addCache,
 	cacheFile,
+	cacheFileSync,
 	isCache,
 	getCache,
 	removeCache,
