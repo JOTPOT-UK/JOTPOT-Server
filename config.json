@@ -33,6 +33,12 @@
 	"useDefaultHostIfHostDoesNotExist": true,
 	
 	"behindLoadBalencer": false,
-	"fallbackToNoPort": true
+	"fallbackToNoPort": true,
+	
+	"CORS": [],
+	
+	"enableLearning": true,
+	"learnIdealTimeout": 120000,
+	"learnHardTimeout": 180000
 	
 }

@@ -41,6 +41,7 @@ let proc = require("./accounts.js") ;
 let externals = require("./externals.js") ;
 let URL = require("./url-object.js") ;
 let CORS = require("./cors.js") ;
+let responseMaker = require("./do-response.js") ;
 let {Transform,Readable,PassThrough} = require("stream") ;
 let cluster ;
 
@@ -87,7 +88,9 @@ const defaultConfig = {
 	
 	"defaultHeaders": {},
 	
-	"CORS":[]
+	"CORS":[],
+	
+	"enableLearning": true
 	
 } ;
 
@@ -1491,338 +1494,134 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 
 //Should be called when a request is allowed.
 function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDone) {
-	
 	try {
-		
 		//Determine how to handle the method
 		if (typeof implementedMethods[req.method] !== "undefined" && implementedMethods[req.method][0](req)) {
-			
 			if (!postDone) {
-				
 				//If it is a custom method and it hasn't already run call it.
 				let rv =  implementedMethods[req.method][1](req) ;
-				
 				//Promise? If it resolved false, then rerun
 				if (typeof rv.then === "function") {
-					
 					rv.then(handled=>{
-						
 						if (!handled) {
-							
 							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
-							
 						}
-						
 					}) ;
 					return ;
-					
 				}
-				
 				//Dont run if we returned true
 				else if (rv) {
-					
 					return ;
-					
 				}
-				
 			}
-			
-		}
-		
-		else if (req.method === "GET") {
-			
+		} else if (req.method === "GET") {
 			//Do nothing, jsut dont check the rest lol
-			
-		}
-		
-		else if (req.method === "HEAD") {
-			
+		} else if (req.method === "HEAD") {
 			//Carry on, but don't send the body of the request.
 			resp.sendBody = false ;
-			
-		}
-		
-		else if (req.method === "POST") {
-			
+		} else if (req.method === "POST") {
 			//Only if we havn't already got the data
 			if (!postDone) {
-				
 				//Collect the data (optimise if content-length is set)
 				if (typeof req.headers["content-length"] !== "undefined") {
-					
 					let dLength = parseInt(req.headers["content-length"]) ;
 					if (isNaN(dLength)) {
-						
 						sendError(400, "Content-Length header must be a number") ;
 						return ;
-						
 					}
 					let data = Buffer.alloc(dLength) ;
 					let currentPos = 0 ;
 					let errorSent = false ;
 					req.on("data", d=>{
-						
 						if (currentPos + d.length > data.length) {
-							
 							if (errorSent) {
 								return ;
 							}
 							errorSent = true ;
 							sendError(400, "Request body was longer than the Content-Length header.") ;
 							return ;
-							
 						}
 						currentPos += d.copy(data, currentPos) ;
-						
 					}) ;
-					req.on("end", _ => {
-						
+					req.on("end", _=>{
 						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
-						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true)
-						
+						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
 					}) ;
 					return ;
-					
-				}
-				
-				else {
-					
+				} else {
 					let data = Buffer.alloc(0) ;
 					let errorSent = false ;
 					req.on("data", d=>{
-						
 						data = Buffer.concat([data, d], data.length + d.length) ;
-						
 					}) ;
-					req.on("end", _ => {
-						
+					req.on("end", _=>{
 						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
 						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true)
-						
 					}) ;
 					return ;
-					
 				}
-				
 			}
-			
-		}
-		
-		else if (req.method === "OPTIONS") {
-			
+		} else if (req.method === "OPTIONS") {
 			//What custom methods support this URL?
 			let suppMethods = [] ;
 			for (let doing in implementedMethods) {
-				
 				for (let theOne in implementedMethods[doing]) {
-					
 					//If this handler supports it, push this method to the array and move on to the next method
 					if (implementedMethods[doing][theOne][0](req)) {
-						
 						suppMethods.push(doing) ;
 						break ;
-						
 					}
-					
 				}
-				
 			}
 			//Send empty response with allow header as the sorted protocols
 			resp.writeHead(200,{
-				
 				"Allow": defaultMethods.concat(suppMethods).sort().join(", "),
 				"Content-Length": 0
-				
 			}) ;
 			resp.end() ;
 			return ;
-			
-		}
-		
-		else {
-			
+		} else {
 			//We cannot handle that protocol, so set the allow header (as in the OPTIONS method)
 			let suppMethods = [] ;
 			for (let doing in implementedMethods) {
-				
 				for (let theOne in implementedMethods[doing]) {
-					
 					if (implementedMethods[doing][theOne][0](req)) {
-						
 						suppMethods.push(doing) ;
 						break ;
-						
 					}
-					
 				}
-				
 			}
 			resp.setHeader("Allow", defaultMethods.concat(suppMethods).sort().join(", ")) ;
 			//And send a 405
 			sendError(405, "That method is not supported for this URL. Sorry :(") ;
 			return ;
-			
 		}
 		
-		let cachePath ;
-		
-		if (req.usePortInDirectory) {
-			
-			cachePath = req.url.host + req.url.path ;
-			
-		}
-		
-		else {
-			
-			cachePath = req.url.hostname + req.url.path ;
-			
-		}
-		
-		//Is cached or special page.
-		if (typeof pages[cachePath] === "object") {
-			
-			//Is just page alias.
-			if (pages[cachePath][0] === "file") {
-				
-				req.url.fullvalue = req.url.host + pages[cachePath][1] ;
-				
+		//Use responseMaker to generate the response, see do-response.js
+		responseMaker.createResponse(req, resp).then(hmmm=>{
+			//Log if it was leared from
+			if (hmmm[0]) {
+				console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
+			} else {
+				console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
 			}
-			
-			//Check that the page is still in the cache after a change.
-			if (typeof pages[cachePath] === "object") {
-				
-				let timeTaken = process.hrtime(timeRecieved) ;
-				console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
-				
-				//If it is a cached file send it.
-				if (pages[cachePath][0] === "cache") {
-					
-					sendCache(cachePath,pages[cachePath][1],resp,resp.vars,req,200) ;
-					let timeTaken = process.hrtime(timeRecieved) ;
-					console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-					return true ;
-					
-				}
-				
-				//If it is a function, then execute the function & dont continute if it returns true.
-				else if (pages[cachePath][0] === "func") {
-					
-					if (pages[cachePath][1](req,resp)) {
-						
-						let timeTaken = process.hrtime(timeRecieved) ;
-						console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-						return true ;
-						
-					}
-					
-				}
-				
-			}
-			
-		}
-		
-		let normPath ;
-		if (req.usePortInDirectory) {
-			
-			normPath = path.normalize(req.url.value) ;
-			
-		}
-		
-		else {
-			
-			normPath = path.normalize(req.url.hostname + req.url.pathname) ;
-			
-		}
-		
-		let rID = req.jpid ;
-		
-		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
-		
-		//Try the URL the user entered.
-		sendFile(normPath,resp,resp.vars,req).then(done=>{
-			
-			//If the file failed to send.
-			if (!done[0]) {
-				
-				//If it a directory, try index.html
-				if (done[1] === "DIR") {
-					
-					return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,req);
-					
-				}
-				
-				//Otherwise, try with .page extention.
-				return sendFile(`${normPath}.page`,resp,resp.vars,req);
-				
-			}
-			
-			else {
-				
-				return [true] ;
-				
-			}
-			
-		})/*.then(done=>{
-			
-			//If the file failed to send.
-			if (!done[0]) {
-				
-				//Try the index.html.
-				return sendFile(path.join(normPath,"/index.html"),resp,resp.vars,rID);
-				
-			}
-			
-			else {
-				
-				return [true] ;
-				
-			}
-			
-		})*/.then(done=>{
-			
-			//If it still hasn't worked.
-			if (!done[0]) {
-				
-				//Get the error code.
-				let code = 500 ;
-				if (done[1].code === "EACCES") {
-					
-					code = 403 ;
-					
-				}
-				else if (done[1].code === "ENOENT") {
-					
-					code = 404 ;
-					
-				}
-				//And send the error.
-				sendError(code,errorCodes[code],resp,rID) ;
-				
-			}
-			
-			timeTaken = process.hrtime(timeRecieved) ;
-			console.log(`${rID}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-			
-		}).catch(err=>{
-			
-			coughtError(err,resp,rID) ;
-			console.log("Error trace: Error in send promise.") ;
-			
+			//Log times
+			let timeTaken = process.hrtime(timeRecieved) ;
+			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 		}) ;
-		
-	}
-	
-	catch(err) {
-		
+		return ;
+	} catch (err) {
 		coughtError(err,resp,req.jpid) ;
 		console.log("Error trace: Request allowed, issue processubg headers.") ;
-		
 	}
-	
 }
+
+responseMaker.sendCache = sendCache ;
+responseMaker.sendFile = sendFile ;
+responseMaker.sendError = sendError ;
+responseMaker.enableLearning = config.enableLearning ;
 
 /*
 let testAccounts = new proc("dev","test.db",["www.jotpot.co.uk/software","www.jotpot.co.uk/games"],"www.jotpot.co.uk/testlogin","www.jotpot.co.uk/testloginpage.html","www.jotpot.co.uk/testlogout","www.jotpot.co.uk/testlogoutpage.html","www.jotpot.co.uk/testreg","www.jotpot.co.uk/testregpage.html") ;
