@@ -1623,37 +1623,33 @@ responseMaker.sendFile = sendFile ;
 responseMaker.sendError = sendError ;
 responseMaker.enableLearning = config.enableLearning ;
 
-/*
-let testAccounts = new proc("dev","test.db",["www.jotpot.co.uk/software","www.jotpot.co.uk/games"],"www.jotpot.co.uk/testlogin","www.jotpot.co.uk/testloginpage.html","www.jotpot.co.uk/testlogout","www.jotpot.co.uk/testlogoutpage.html","www.jotpot.co.uk/testreg","www.jotpot.co.uk/testregpage.html") ;
-let realmsLogin = new proc("realms","test.db",["realms.jotpot.co.uk*"],"realms.jotpot.co.uk/rlogin","realms.jotpot.co.uk/login.html","realms.jotpot.co.uk/logout","realms.jotpot.co.uk/login","realms.jotpot.co.uk/rreg","realms.jotpot.co.uk/login") ;
-
-allAccountSystems.push(testAccounts) ;
-allAccountSystems.push(realmsLogin) ;
-*/
-
-{
-	
-	for (let doing in config.cache) {
-		
-		pages[config.cache[doing]] = ["cache",fs.readFileSync(path.join("./sites",config.cache[doing]))]
-		
-	}
-
-}
-
-
 module.exports = {
-	
 	//Function to init the server.
 	init:(clusterGiven) => {
-		
 		externals.generateServerObject =_=> {
-			
 			return {
 				
-				"pages": pages,
-				"vars": vars,
+				//Server configuration
+				"config": config,
+				"reloadConfig": _=>loadConfig(),
+				
+				//Recieving requests
+				"getData": req=>{
+					
+					let data = new Array() ;
+					req.on("data",d=>data.push(d)) ;
+					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+					
+				},
+				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
+				
+				//Sending responses
+				"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
+				"sendCache": (file, cache, resp, req, status=200) => sendCache(file, cache, resp, resp.vars, req, status),
 				"sendError":(...eArgs)=>sendError(...eArgs),
+				"vars": vars,
+				
+				//Account handling
 				"createAccountSystem":(args) => {
 					
 					let creatingAcc = new proc.proc(
@@ -1687,19 +1683,9 @@ module.exports = {
 					return proc.makeNewUID(req,resp) ;
 					
 				},
-				"getMimeType": (...args)=>getMimeType(...args),
-				"config": config,
-				"getData": req=>{
-					
-					let data = new Array() ;
-					req.on("data",d=>data.push(d)) ;
-					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
-					
-				},
-				"reloadConfig": _=>loadConfig(),
-				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
-				"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
-				"sendCache": (file, cache, resp, req, status=200) => sendCache(file, cache, resp, resp.vars, req, status),
+				
+				//HTTP Stuff
+				//Methods
 				"implementMethod": (method, checker, handler) => {
 					
 					//Check types
@@ -1720,18 +1706,83 @@ module.exports = {
 					implementedMethods[method].push([checker, handler]) ;
 					
 				},
-				"addCORSRule": (...args) => CORS.addRule(...args)
+				//CORS
+				"addCORSRule": (...args) => CORS.addRule(...args),
+				
+				//Caching
+				"cache": {
+					"newCache": (url, cache, incSearch=false) => responseMaker.addCache(url, cache, incSearch),
+					"isCache": (url, incSearch=false) => responseMaker.isCache(url, incSearch),
+					"getCache": (url, incSearch=false) => responseMaker.getCache(url, incSearch),
+					"removeCache": (url, incSearch=false) => responseMaker.removeCache(url, incSearch),
+					"createLink": (from, to, incSearch=false) => responseMaker.createLink(from, to, incSearch),
+					"isLink": (from, incSearch=false) => responseMaker.isLink(from, incSearch),
+					"getLink": (from, incSearch=false) => responseMaker.getLink(from, incSearch),
+					"removeLink": (from, incSearch=false) => responseMaker.removeLink(from, incSearch)
+				},
+				
+				//Page handling
+				"handlePage": (url, handler, incSearch=false) => responseMaker.handlePage(url, handler, incSearch),
+				"isHandled": (url, incSearch=false) => responseMaker.isHandled(url, incSearch),
+				"removePageHandler": (url, incSearch=false) => responseMaker.removePageHandler(url, incSearch),
+				
+				//Linking
+				"isLearned": (url, checkLevel=0) => responseMaker.isLearned(url, checkLevel),
+				"unlearn": (url, level=0) => responseMaker.unlearn(url, level),
+				
+				//Other stuff
+				"getMimeType": (...args)=>getMimeType(...args)
 				
 			} ;
-			
 		} ;
-		
 		let currentLimitedAccountSystem = 0 ;
 		externals.generateLimitedServerObject = (domains, fs) => {
-			
+			const checkFile = file => {
+				const fp = path.join(process.cwd(), "sites", file) ;
+				let ok = false ;
+				for (let doing in domains) {
+					if (fp.indexOf(path.join(process.cwd(), "sites", domains[doing])) === 0) {
+						ok = true ;
+						break ;
+					}
+				}
+				return ok ;
+			} ;
+			const checkURLString = url => {
+				let ok = false ;
+				let host = url.split("/").shift() ;
+				return domain.indexOf(host) !== -1 ;
+			} ;
 			return {
 				
+				//Recieving requests
+				"getData": req=>{
+					
+					let data = new Array() ;
+					req.on("data",d=>data.push(d)) ;
+					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+					
+				},
+				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
+				
+				//Sending responses
+				"sendFile": (file, resp, req) => {
+					if (checkFile(file)) {
+						sendFile(file, resp, resp.vars, req) ;
+					} else {
+						throw new Error(`This limited extension doesn't have power over ${file}.`) ;
+					}
+				},
+				"sendCache": (file, cache, resp, req, status=200) => {
+					if (checkFile(file)) {
+						sendCache(file, cache, resp, resp.vars, req, status) ;
+					} else {
+						throw new Error(`This limited extension doesn't have power over ${file}.`) ;
+					}
+				},
 				"sendError":(...eArgs)=>sendError(...eArgs),
+				
+				//Account handling
 				"createAccountSystem":(args) => {
 					
 					let toCheck = ["pages", "exclude","loginURL","loginPage","logoutURL","logoutPage","regURL","regPage","loginRedirect"] ;
@@ -1814,42 +1865,135 @@ module.exports = {
 					return proc.makeNewUID(req,resp) ;
 					
 				},
-				"getMimeType":(...args)=>getMimeType(...args),
-				"getData": req=>{
-					
-					let data = new Array() ;
-					req.on("data",d=>data.push(d)) ;
-					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
-					
+				
+				//HTTP Stuff
+				//CORS
+				"addCORSRule": (...args) => {
+					if (domains.indexOf(args[1]) === -1) {
+						throw new Error(`This limited extension cannot set up CORS rules for the host: ${args[1]}.`) ;
+					} else {
+						CORS.addRule(...args) ;
+					}
 				},
-				"multipartFormDataParser": require("./multipart-form-data-parser.js")//,
-				//"sendFile": (file, resp, req={jpid:""}) => sendFile(path.normalize(file).replace(/\.\./g,""), resp, resp.vars, req.jpid)
+				
+				//Caching
+				"cache": {
+					"newCache": (url, cache, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.addCache(url, cache, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"isCache": (url, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.isCache(url, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"getCache": (url, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.getCache(url, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"removeCache": (url, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.removeCache(url, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot remove a cache for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"createLink": (from, to, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.createLink(from, to, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot create a link for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"isLink": (from, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.isLink(from, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot view a link for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"getLink": (from, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.getLink(from, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot view a link for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"removeLink": (from, incSearch=false) => {
+						if (checkURLString(url)) {
+							return responseMaker.removeLink(from, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot remove a link for the host '${url.split("/").shift()}'.`) ;
+						}
+					}
+				},
+				
+				//Page handling
+				"handlePage": (url, handler, incSearch=false) => {
+					if (checkURLString(url)) {
+						return responseMaker.handlePage(url, handler, incSearch) ;
+					} else {
+						throw new Error(`Sorry, you cannot handle a page for the host '${url.split("/").shift()}'.`) ;
+					}
+				},
+				"isHandled": (url, incSearch=false) => {
+					if (checkURLString(url)) {
+						return responseMaker.isHandled(url, incSearch) ;
+					} else {
+						throw new Error(`Sorry, you cannot view a handler for the host '${url.split("/").shift()}'.`) ;
+					}
+				},
+				"removePageHandler": (url, incSearch=false) => {
+					if (checkURLString(url)) {
+						return responseMaker.removePageHandler(url, incSearch) ;
+					} else {
+						throw new Error(`Sorry, you cannot remove a handler for the host '${url.split("/").shift()}'.`) ;
+					}
+				},
+				
+				//Linking
+				"isLearned": (url, checkLevel=0) => {
+					if (checkURLString(url)) {
+						return responseMaker.isLearned(url, checkLevel) ;
+					} else {
+						throw new Error(`Sorry, you cannot view learning details for the host '${url.split("/").shift()}'.`) ;
+					}
+				},
+				"unlearn": (url, level=0) => {
+					if (checkURLString(url)) {
+						return responseMaker.isLearned(url, level) ;
+					} else {
+						throw new Error(`Sorry, you cannot change learning details for the host '${url.split("/").shift()}'.`) ;
+					}
+				},
+				
+				//Other stuff
+				"getMimeType":(...args)=>getMimeType(...args),
 				
 			} ;
-			
 		} ;
 		
 		//Load the extentions
 		let currentDir = fs.readdirSync(process.cwd()) ;
 		//Go through all the files in the cwd.
 		for (let doing in currentDir) {
-			
 			//If it is an extention, load it.
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
-				
 				let currentLoad = externals.loadExt(currentDir[doing]) ;
-				
 				if (currentLoad.loaded) {
-					
 					pages = currentLoad.serverObj.pages ;
 					vars = currentLoad.serverObj.vars ;
-					
 				}
-				
 			}
-			
 		}
-		
 		for (let doing in config.CORS) {
 			if (typeof config.CORS[doing] !== "object" || config.CORS[doing].constructor !== Array) {
 				console.warn(`Not adding CORS rule ${doing} as it is not an Array`) ;
@@ -1864,45 +2008,29 @@ module.exports = {
 			}
 			CORS.addRule(...thisOb) ;
 		}
-		
 		//Set up the HTTP servers
 		for (let doing in config.httpServers) {
-			
 			let options = new Array() ;
 			options[0] = config.httpServers[doing].port ;
 			if (typeof config.httpServers[doing].host !== "undefined") {
-				
 				options[1] = config.httpServers[doing].host ;
-				
 			}
-			
 			http.createServer((req,resp) => {
-				
 				req.port = options[0] ;
 				handleRequest(req,resp,false) ;
-				
 			}).listen(...options) ;
-			
 		}
-		
 		//Set up the HTTPS servers
 		for (let doing in config.httpsServers) {
-			
 			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
-				
 				req.port = config.httpsServers[doing].port ;
 				handleRequest(req,resp,true) ;
-				
 			}).listen(config.httpsServers[doing].port) ;
-			
 		}
-		
 		//Get the cluster module of parent.
 		cluster = clusterGiven ;
 		vars.Global["thread_id"] = cluster.worker.id ;
-		
+		//Ready event
 		externals.doEvt("ready") ;
-
 	}
-
 }

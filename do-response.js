@@ -43,6 +43,13 @@ function createLink(from, to, incSearch=false) {
 		links[from] = to ;
 	}
 }
+function isLink(url, incSearch=false) {
+	if (incSearch) {
+		return Boolean(linksWS[from]) ;
+	} else {
+		return Boolean(links[from]) ;
+	}
+}
 function getLink(url, incSearch=false) {
 	if (incSearch) {
 		return linksWS[from] ;
@@ -66,6 +73,13 @@ function addCache(from, cache, incSearch=false) {
 		pagesWS[from] = cache ;
 	} else {
 		pages[from] = cache ;
+	}
+}
+function isCache(url, incSearch=false) {
+	if (incSearch) {
+		return Boolean(pagesWS[from]) ;
+	} else {
+		return Boolean(pages[from]) ;
 	}
 }
 function getCache(url, incSearch=false) {
@@ -377,9 +391,11 @@ module.exports = {
 	
 	//Export functions
 	createLink,
+	isLink,
 	getLink,
 	removeLink,
 	addCache,
+	isCache,
 	getCache,
 	removeCache,
 	handlePage,
