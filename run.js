@@ -36,10 +36,15 @@ console.log = console.warn = (...args) => {
 	
 }
 
-//Modules
+global.requireJPS = mod => require(path.join(__dirname, mod)) ;
+
+//Node Modules
 let fs = require("fs") ;
+const path = require("path") ;
 let cluster = require("cluster") ;
-let externals = require("./externals.js") ;
+
+//JPS Modules
+let externals = requireJPS("externals") ;
 
 //Load the config
 let config ;

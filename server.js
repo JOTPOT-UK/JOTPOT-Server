@@ -32,18 +32,29 @@ console.log = console.warn = (...args) => {
 	
 } ;
 
-//Modules
+global.requireJPS = mod => require(path.join(__dirname, mod)) ;
+const loadAJSONFile = p => {
+	if (fs.existsSync(p)) {
+		return fs.readFileSync(p).toString() ;
+	}
+	return fs.readFileSync(path.join(__dirname, p)).toString() ;
+} ;
+const doesAJSONFileExist = p => (fs.existsSync(p) || fs.existsSync(path.join(__dirname, p))) ;
+
+//Node Modules
 let http = require("http") ;
 let https = require("https") ;
 let fs = require("fs") ;
 let path = require("path") ;
-let proc = require("./accounts.js") ;
-let externals = require("./externals.js") ;
-let URL = require("./url-object.js") ;
-let CORS = require("./cors.js") ;
-let responseMaker = require("./do-response.js") ;
 let {Transform, Readable, PassThrough} = require("stream") ;
 let cluster ;
+
+//JPS Modules
+let proc = requireJPS("accounts") ;
+let externals = requireJPS("externals") ;
+let URL = requireJPS("url-object") ;
+let CORS = requireJPS("cors") ;
+let responseMaker = requireJPS("do-response") ;
 
 //Load the config
 let config ;
@@ -98,9 +109,9 @@ const defaultConfig = {
 function loadConfig() {
 	
 	//If it exists, load it, parse it and fill in any blanks or throw if the types aren't correct
-	if (fs.existsSync("config.json")) {
+	if (doesAJSONFileExist("config.json")) {
 		
-		config = fs.readFileSync("config.json").toString() ;
+		config = loadAJSONFile("config.json") ;
 		
 		try {
 			
@@ -197,7 +208,7 @@ let endOfVar = Buffer.from("::$") ;
 
 //Error file
 let errorFile ;
-if (!fs.existsSync(config.errorTemplate)) {
+if (!doesAJSONFileExist(config.errorTemplate)) {
 	
 	console.warn("Error template file does not exist, using the default.") ;
 	errorFile = `<html>
@@ -224,7 +235,7 @@ Error $:::error_code:::$ - $:::error_type:::$
 
 else {
 	
-	errorFile = fs.readFileSync(config.errorTemplate).toString() ;
+	errorFile = loadAJSONFile(config.errorTemplate) ;
 	 
 }
 
@@ -332,8 +343,12 @@ class addVars extends Transform {
 	
 }
 
+if (!doesAJSONFileExist("mimes.json")) {
+	throw new Error("mimes.json file not found in CWD in " + __dirname) ;
+}
+
 //Sorting out mime types.
-let mimes = JSON.parse(fs.readFileSync("./mimes.dat").toString()) ;
+let mimes = JSON.parse(loadAJSONFile("mimes.json")) ;
 function getMimeType(file) {
 	
 	try {

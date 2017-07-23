@@ -30,6 +30,7 @@
 
 const path = require("path") ;
 const fs = require("fs") ;
+
 let errorMessages = ["An unknown error occured."] ;
 errorMessages[403] = "Sorry, however you are not permitted to access this file." ;
 errorMessages[404] = "The page you are looking for may have been removed or moved to a new location!" ;

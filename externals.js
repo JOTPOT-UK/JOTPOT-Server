@@ -30,7 +30,8 @@
 let fs = require("fs") ;
 let vm = require("vm") ;
 let events = require("events") ;
-let fakefs = require("./ExtensionFileSystem.js") ;
+
+let fakefs = requireJPS("ExtensionFileSystem") ;
 
 let handles = new Object() ;
 let handleOver = new Object() ;

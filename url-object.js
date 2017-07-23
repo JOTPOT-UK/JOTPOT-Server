@@ -324,5 +324,3 @@ class URL {
 }
 
 module.exports = URL ;
-
-//req.host, req.accualHost, req.port, req.fullurl
