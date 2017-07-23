@@ -1712,6 +1712,7 @@ module.exports = {
 				//Caching
 				"cache": {
 					"newCache": (url, cache, incSearch=false) => responseMaker.addCache(url, cache, incSearch),
+					"cacheFile": url => responseMaker.cacheFile(url),
 					"isCache": (url, incSearch=false) => responseMaker.isCache(url, incSearch),
 					"getCache": (url, incSearch=false) => responseMaker.getCache(url, incSearch),
 					"removeCache": (url, incSearch=false) => responseMaker.removeCache(url, incSearch),
@@ -1881,6 +1882,13 @@ module.exports = {
 					"newCache": (url, cache, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.addCache(url, cache, incSearch) ;
+						} else {
+							throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
+						}
+					},
+					"cacheFile": (url) => {
+						if (checkURLString(url)) {
+							return responseMaker.cacheFile(url) ;
 						} else {
 							throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
 						}

@@ -29,6 +29,7 @@
 
 
 const path = require("path") ;
+const fs = require("fs") ;
 let errorMessages = ["An unknown error occured."] ;
 errorMessages[403] = "Sorry, however you are not permitted to access this file." ;
 errorMessages[404] = "The page you are looking for may have been removed or moved to a new location!" ;
@@ -74,6 +75,15 @@ function addCache(from, cache, incSearch=false) {
 	} else {
 		pages[from] = cache ;
 	}
+}
+function cacheFile(url) {
+	return new Promise((resolve, reject) => fs.readFile(path.join(process.cwd(), "sites", url), (err, data) => {
+		if (err) {
+			reject(err) ;
+		} else {
+			addCache(url, data, false) ;
+		}
+	})) ;
 }
 function isCache(url, incSearch=false) {
 	if (incSearch) {
@@ -395,6 +405,7 @@ module.exports = {
 	getLink,
 	removeLink,
 	addCache,
+	cacheFile,
 	isCache,
 	getCache,
 	removeCache,
