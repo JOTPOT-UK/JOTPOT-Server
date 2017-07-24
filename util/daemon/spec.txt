@@ -1,0 +1,22 @@
+Client->Server
+	9: List servers -> 9
+	10: Start server
+		[length] wd...
+	21: Check -> 123
+	22: Get logs -> 20
+		[id]
+	23: Get stdout -> 20
+		[id]
+	24: Get stderr -> 20
+		[id]
+	123: OK
+	124: Not OK
+	
+Server->Client
+	9: List OK
+		[amount] { id, running, [length] wd... }...
+	20: Logs OK
+		[length, 4 bytes] logs...
+	123: OK
+	124: Not OK
+	
