@@ -45,6 +45,7 @@ let cluster = require("cluster") ;
 
 //JPS Modules
 let externals = requireJPS("externals") ;
+let parseFlags = requireJPS("flag-parser") ;
 
 //Load the config
 let config ;
@@ -147,14 +148,13 @@ function loadConfig() {
 }
 loadConfig() ;
 
-if (process.argv[process.argv.length-1].indexOf("-jps-open-on-") === 0) {
-	config.httpServers = [
-		{
-			port: parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[0]),
-			host: "127.0.0.1"
-		}
-	] ;
-	config.dataPort = parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[1]) ;
+let flags = parseFlags() ;
+if (flags["-data"]) {
+	if (flags["-data"].length > 1) {
+		console.warn("Only 1 data server listener can be specified.") ;
+		throw new Error("Only 1 data server listener can be specified.") ;
+	}
+	config.dataPort = port ;
 }
 
 //Get stuff ready for user systems
@@ -581,7 +581,7 @@ if (cluster.isMaster) {
 	
 	//Create a server to get the loggs.
 	
-	if (config.dataPort > -1) {
+	if (!(typeof config.dataPort === "number" && config.dataPort < 0)) {
 		
 		net.createServer(s=>{
 			
@@ -626,7 +626,7 @@ else {
 	console.log("Worker " + cluster.worker.id + " loaded, starting up now...") ;
 	console.info("Worker " + cluster.worker.id + " loaded, starting up now...") ;
 	//Load the server module & init it.
-	require("./server.js").init(cluster) ;
+	requireJPS("server").init(cluster) ;
 	console.log(`Worker ${cluster.worker.id} running.`) ;
 	console.info(`Worker ${cluster.worker.id} running.`) ;
 	

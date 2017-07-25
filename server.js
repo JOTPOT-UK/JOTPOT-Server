@@ -55,6 +55,7 @@ let externals = requireJPS("externals") ;
 let URL = requireJPS("url-object") ;
 let CORS = requireJPS("cors") ;
 let responseMaker = requireJPS("do-response") ;
+let parseFlags = requireJPS("flag-parser") ;
 
 //Load the config
 let config ;
@@ -67,13 +68,9 @@ const defaultConfig = {
 	"dataPort": 500,
 	
 	"httpServers": [
-		
 		{
-			
 			"port": 80
-			
 		}
-		
 	],
 	"httpsServers": [],
 	
@@ -161,14 +158,25 @@ function loadConfig() {
 }
 loadConfig() ;
 
-if (process.argv[process.argv.length-1].indexOf("-jps-open-on-") === 0) {
-	config.httpServers = [
-		{
-			port: parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[0]),
-			host: "127.0.0.1"
+let flags = parseFlags() ;
+if (flags["-http-port"]) {
+	if (flags["-port"]) {
+		flags["-port"] = flags["-port"].concat(flags["-http-port"]) ;
+	} else {
+		flags["-port"] = flags["-http-port"] ;
+	}
+}
+if (flags["-port"]) {
+	config.httpServers = [] ;
+	let port ;
+	for (let doing in flags["-port"]) {
+		port = parseInt(flags["-port"][doing]) ;
+		if (!isNaN(port)) {
+			config.httpServers.push({
+				"port": port
+			}) ;
 		}
-	] ;
-	config.dataPort = parseInt(process.argv[process.argv.length-1].substring(13, process.argv[process.argv.length-1].length).split("-")[1]) ;
+	}
 }
 
 let availHosts = [] ;
