@@ -179,17 +179,45 @@ var commands = map[string]func(){
 		con.Close()
 	},
 	"read": func() {
+		if len(os.Args) < 3 {
+			fmt.Println("Second argument must be an int")
+			os.Exit(1)
+			return
+		}
+		toGet, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Println("Second argument must be an int")
+			os.Exit(1)
+			return
+		}
 		fmt.Print("Sending read request...")
 		con, err := net.Dial("tcp", ":50551")
 		if err != nil {
 			panic(err)
 		}
-		buff := []byte{40}
+		buff := []byte{22, byte(toGet)}
 		_, err = con.Write(buff)
 		if err != nil {
 			panic(err)
 		}
-		con.Close()
+		var n int
+		for n < 1 {
+			n, err = con.Read(buff)
+			if err != nil {
+				panic(err)
+			}
+		}
+		if buff[0] != 123 {
+			panic("123 not returned by read request")
+		}
+		buff = make([]byte, 1024)
+		for {
+			n, err = con.Read(buff)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Print(string(buff[:n]))
+		}
 	},
 }
 

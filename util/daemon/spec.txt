@@ -3,7 +3,7 @@ Client->Server
 	10: Start server
 		[length] wd...
 	21: Check -> 123
-	22: Get logs -> 20
+	22: Get logs -> 123 data... [end]
 		[id]
 	23: Get stdout -> 20
 		[id]

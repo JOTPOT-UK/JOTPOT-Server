@@ -154,7 +154,23 @@ if (flags["-data"]) {
 		console.warn("Only 1 data server listener can be specified.") ;
 		throw new Error("Only 1 data server listener can be specified.") ;
 	}
-	config.dataPort = port ;
+	let port = parseInt(flags["-data"][0]) ;
+	if (isNaN(port)) {
+		config.dataPort = flags["-data"][0] ;
+		if (process.platform === 'win32') {
+			config.dataPort = path.join("\\\\?\\pipe", config.dataPort) ;
+		}
+	} else {
+		config.dataPort = port ;
+	}
+}
+config.dataPort = [config.dataPort] ;
+if (typeof config.dataPort[0] === "string") {
+	if (config.dataPort[0].split(":").length > 1) {
+		let splitHost = config.dataPort[0].split(":") ;
+		config.dataPort[0] = splitHost.pop() ;
+		config.dataPort[1] = splitHost.join(":") ;
+	}
 }
 
 //Get stuff ready for user systems
@@ -581,7 +597,7 @@ if (cluster.isMaster) {
 	
 	//Create a server to get the loggs.
 	
-	if (!(typeof config.dataPort === "number" && config.dataPort < 0)) {
+	if (!(typeof config.dataPort[0] === "number" && config.dataPort[0] < 0)) {
 		
 		net.createServer(s=>{
 			
@@ -611,7 +627,7 @@ if (cluster.isMaster) {
 				
 			}) ;
 			
-		}).listen(config.dataPort || 500) ;
+		}).listen(...config.dataPort) ;
 		
 	}
 	

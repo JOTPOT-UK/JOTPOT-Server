@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -18,8 +19,7 @@ type proc struct {
 	stderr      string
 	index       int
 	running     byte
-	writeContol *os.File
-	readControl *os.File
+	controlAddr string
 }
 
 func (c *proc) startRead() {
@@ -63,6 +63,16 @@ func (c *proc) startRead() {
 }
 
 var procs []*proc
+var dir string
+
+func checkIP(addr string) bool {
+	con, err := net.Dial("tcp", addr)
+	if err != nil {
+		return false
+	}
+	con.Close()
+	return true
+}
 
 func newProc(wd string) bool {
 	for _, p := range procs {
@@ -74,18 +84,26 @@ func newProc(wd string) bool {
 	if err != nil {
 		panic(err)
 	}
-	c := exec.Command(getNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps", "run"))
+	var sock string
+	if runtime.GOOS == "windows" {
+		socks := [5]string{"127.5.5.5:5", "127.55.55.55:55", "127.7.7.7:7", "127.77.77.77:77", "127.3.5.7:9"}
+		done := false
+		for _, v := range socks {
+			if !checkIP(v) {
+				sock = v
+				done = true
+				break
+			}
+		}
+		if !done {
+			panic("No available addresses for data server")
+		}
+	} else {
+		sock = filepath.Join(dir, "data"+string(len(procs)+48)+".sock")
+	}
+	c := exec.Command(getNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps", "run"), "-data", sock)
 	c.Dir = wd
-	controlIn, writeControl, err := os.Pipe()
-	if err != nil {
-		panic(err)
-	}
-	readControl, controlOut, err := os.Pipe()
-	if err != nil {
-		panic(err)
-	}
-	c.ExtraFiles = append(c.ExtraFiles, controlIn, controlOut)
-	tp := proc{wd, c, "", "", len(procs), 2, writeControl, readControl}
+	tp := proc{wd, c, "", "", len(procs), 2, sock}
 	procs = append(procs, &tp)
 	go tp.startRead()
 	return true
@@ -158,6 +176,37 @@ var gotMessage = map[byte]func(net.Conn) ([]byte, bool){
 	21: func(_ net.Conn) ([]byte, bool) {
 		return []byte{123}, true
 	},
+	22: func(con net.Conn) ([]byte, bool) {
+		buff := make([]byte, 1)
+		var n int
+		var err error
+		println("Starting read...")
+		for n < 1 {
+			n, err = con.Read(buff)
+			if err != nil {
+				panic(err)
+			}
+		}
+		println("Done read...")
+		var scon net.Conn
+		if runtime.GOOS == "windows" {
+			scon, err = net.Dial("tcp", procs[int(buff[0])].controlAddr)
+		} else {
+			scon, err = net.Dial("unix", procs[int(buff[0])].controlAddr)
+		}
+		if err != nil {
+			panic(err)
+		}
+		println("123, as easy as ABC...")
+		con.Write([]byte{123})
+		scon.Write([]byte("getlogs"))
+		_, err = io.Copy(con, scon)
+		if err != nil {
+			panic(err)
+		}
+		con.Close()
+		return []byte{}, false
+	},
 	23: func(con net.Conn) ([]byte, bool) {
 		buff := make([]byte, 1)
 		var n int
@@ -187,18 +236,6 @@ var gotMessage = map[byte]func(net.Conn) ([]byte, bool){
 		buff = append([]byte{20}, uint32tobytes(uint32(len(procs[getting].stderr)))...)
 		buff = append(buff, []byte(procs[getting].stderr)...)
 		return buff, true
-	},
-	40: func(_ net.Conn) ([]byte, bool) {
-		buff := make([]byte, 5)
-		for {
-			//n, err := procs[0].lpR.Read(buff)
-			fmt.Println(n, string(buff))
-			if err != nil {
-				fmt.Println(err)
-				break
-			}
-		}
-		return []byte{123}, true
 	},
 }
 
@@ -230,7 +267,7 @@ func handler(conn net.Conn) {
 				toWrite, doWrite = []byte{124}, true
 			}
 			if doWrite {
-				n, err := conn.Write(toWrite)
+				_, err := conn.Write(toWrite)
 				if err != nil {
 					panic(err)
 				}
@@ -240,6 +277,11 @@ func handler(conn net.Conn) {
 }
 
 func main() {
+	var err error
+	dir, err = ioutil.TempDir("", "jps-")
+	if err != nil {
+		panic(err)
+	}
 	server, err := net.Listen("tcp", ":50551")
 	if err != nil {
 		panic(err)
