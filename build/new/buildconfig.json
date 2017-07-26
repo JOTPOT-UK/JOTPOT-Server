@@ -1,0 +1,17 @@
+{
+	"jps-files": [
+		"run.js",
+		"server.js",
+		"accounts.js",
+		"cors.js",
+		"do-response.js",
+		"ExtensionFileSystem.js",
+		"externals.js",
+		"flag-parser.js",
+		"multipart-form-data-parser.js",
+		"url-object.js",
+		"config.json",
+		"mimes.json",
+		"errorTemp.jpt"
+	]
+}
