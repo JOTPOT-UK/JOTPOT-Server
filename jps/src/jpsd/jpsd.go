@@ -1,9 +1,36 @@
-package main
+/*
+
+	JOTPOT Server
+	Version 25F
+
+	Copyright (c) 2016-2017 Jacob O'Toole
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+
+*/
+
+package jpsd
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
+	"jpsutil"
 	"net"
 	"os"
 	"os/exec"
@@ -21,6 +48,8 @@ type proc struct {
 	running     byte
 	controlAddr string
 }
+
+var procs []*proc
 
 func (c *proc) startRead() {
 	stdout, err := c.p.StdoutPipe()
@@ -62,18 +91,6 @@ func (c *proc) startRead() {
 	}
 }
 
-var procs []*proc
-var dir string
-
-func checkIP(addr string) bool {
-	con, err := net.Dial("tcp", addr)
-	if err != nil {
-		return false
-	}
-	con.Close()
-	return true
-}
-
 func newProc(wd string) bool {
 	for _, p := range procs {
 		if p.sDir == wd && p.running == 2 {
@@ -89,7 +106,7 @@ func newProc(wd string) bool {
 		socks := [5]string{"127.5.5.5:5", "127.55.55.55:55", "127.7.7.7:7", "127.77.77.77:77", "127.3.5.7:9"}
 		done := false
 		for _, v := range socks {
-			if !checkIP(v) {
+			if !jpsutil.CheckAddr(v) {
 				sock = v
 				done = true
 				break
@@ -101,7 +118,7 @@ func newProc(wd string) bool {
 	} else {
 		sock = filepath.Join(dir, "data"+string(len(procs)+48)+".sock")
 	}
-	c := exec.Command(getNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps", "run"), "-data", sock)
+	c := exec.Command(jpsutil.GetNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps", "run"), "-data", sock)
 	c.Dir = wd
 	tp := proc{wd, c, "", "", len(procs), 2, sock}
 	procs = append(procs, &tp)
@@ -118,33 +135,12 @@ func listProcs(_ net.Conn) ([]byte, bool) {
 	return out, true
 }
 
-func getNodePath() string {
-	var thisPath string
-	var err error
-	command := "node"
-	if runtime.GOOS == "windows" {
-		command = "node.exe"
-	}
-	for _, p := range filepath.SplitList(os.Getenv("PATH")) {
-		thisPath = filepath.Join(p, command)
-		_, err = os.Stat(thisPath)
-		if err != nil {
-			continue
-		}
-		return thisPath
-	}
-	thisPath, err = os.Getwd()
-	thisPath = filepath.Join(thisPath, "node", command)
-	_, err = os.Stat(thisPath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "No Node.js binary")
-		os.Exit(1)
-		panic("No Node.js binary")
-	}
-	return thisPath
-}
+var dir string
 
-var gotMessage = map[byte]func(net.Conn) ([]byte, bool){
+//GotMessage determines how each request is handled.
+//The request method is looked up in this map, and it's value called with the connection as the only argument.
+//THe function should return a slice of bytes and a bool, if the bool is true, the returned slice will be writen to the connection.
+var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 	9: listProcs,
 	10: func(con net.Conn) ([]byte, bool) {
 		buff := make([]byte, 1)
@@ -218,7 +214,7 @@ var gotMessage = map[byte]func(net.Conn) ([]byte, bool){
 			}
 		}
 		getting := buff[0]
-		buff = append([]byte{20}, uint32tobytes(uint32(len(procs[getting].stdout)))...)
+		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stdout)))...)
 		buff = append(buff, []byte(procs[getting].stdout)...)
 		return buff, true
 	},
@@ -233,14 +229,10 @@ var gotMessage = map[byte]func(net.Conn) ([]byte, bool){
 			}
 		}
 		getting := buff[0]
-		buff = append([]byte{20}, uint32tobytes(uint32(len(procs[getting].stderr)))...)
+		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stderr)))...)
 		buff = append(buff, []byte(procs[getting].stderr)...)
 		return buff, true
 	},
-}
-
-func uint32tobytes(in uint32) []byte {
-	return []byte{byte(in >> 24), byte((in >> 16) & 255), byte((in >> 8) & 255), byte(in & 255)}
 }
 
 func handler(conn net.Conn) {
@@ -260,7 +252,7 @@ func handler(conn net.Conn) {
 			panic(err)
 		}
 		if read > 0 {
-			toCall, ok = gotMessage[buff[0]]
+			toCall, ok = GotMessage[buff[0]]
 			if ok {
 				toWrite, doWrite = toCall(conn)
 			} else {
@@ -276,7 +268,8 @@ func handler(conn net.Conn) {
 	}
 }
 
-func main() {
+//Start starts the JOTPOT Server daemon
+func Start() {
 	var err error
 	dir, err = ioutil.TempDir("", "jps-")
 	if err != nil {

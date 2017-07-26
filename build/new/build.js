@@ -1,5 +1,30 @@
-const fs = require("fs") ;
-const path = require("path") ;
+/*
+	
+	JOTPOT Server
+	Version 25F
+	
+	Copyright (c) 2016-2017 Jacob O'Toole
+	
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+	
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+	
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+	
+*/
+
 const parseFlags = require("./flag-parser") ;
 
 const flags = parseFlags() ;
@@ -13,6 +38,9 @@ if (flags["-in"] && typeof flags["-in"][0] !== "string") {
 	throw new Error("-in option must be a string") ;
 }
 const src = (flags["-in"] || [process.cwd()])[0] ;
+
+const fs = require("fs") ;
+const path = require("path") ;
 
 let config ;
 function loadConfig(path) {
@@ -40,11 +68,20 @@ function createDir(...paths) {
 	}
 }
 
+function copy(p1, p2) {
+	fs.writeFileSync(p2, fs.readFileSync(p1)) ;
+}
+
 createDir(out, "daemon", "jps") ;
 
-fs.createReadStream(path.join(src, "util", "jps.go")).pipe(fs.createWriteStream(path.join(out, "jps.go"))) ;
-fs.createReadStream(path.join(src, "util", "daemon", "jpsd.go")).pipe(fs.createWriteStream(path.join(out, "daemon", "jpsd.go"))) ;
+copy(path.join(src, "util", "jps.go"), path.join(out, "jps.go")) ;
+copy(path.join(src, "util", "daemon", "jpsd.go"), path.join(out, "daemon", "jpsd.go")) ;
 
 for (let copyer of config["jps-files"]) {
-	fs.createReadStream(path.join(src, copyer)).pipe(fs.createWriteStream(path.join(out, "daemon", "jps", copyer))) ;
+	copy(path.join(src, copyer), path.join(out, "daemon", "jps", copyer)) ;
 }
+
+const cp = require("child_process") ;
+
+cp.execSync(`go build -o ${path.join(out, "jps" + (process.platform==="win32"?".exe":""))} ${path.join(out, "jps.go")}`) ;
+cp.execSync(`go build -o ${path.join(out, "daemon", "jpsd" + (process.platform==="win32"?".exe":""))} ${path.join(out, "daemon", "jpsd.go")}`) ;
