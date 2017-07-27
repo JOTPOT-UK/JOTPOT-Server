@@ -25,7 +25,7 @@
 	
 */
 
-module.exports = _ => {
+module.exports = () => {
 	let args = {} ;
 	let inArg = false ;
 	let argDone = false ;

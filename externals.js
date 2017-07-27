@@ -53,10 +53,10 @@ module.exports.allowedRequirePaths = [
 	"zlib"
 ] ;
 
-module.exports.generateServerObject = _ => {return {};} ;
-module.exports.generateLimitedServerObject = _ => {return {};} ;
-module.exports.generateMasterServerObject = _ => {return {};} ;
-module.exports.generateLimitedMasterServerObject = _ => {return {};} ;
+module.exports.generateServerObject = () => {return {};} ;
+module.exports.generateLimitedServerObject = () => {return {};} ;
+module.exports.generateMasterServerObject = () => {return {};} ;
+module.exports.generateLimitedMasterServerObject = () => {return {};} ;
 
 function handle(evt,func,allowOverwrite=true) {
 	
@@ -96,33 +96,77 @@ function handle(evt,func,allowOverwrite=true) {
 
 module.exports.doEvt = function (evt,...args) {
 	
-	return new Promise((resolve,reject)=>{
-	
-	//If the event has no handles.
-	if (typeof handles[evt] === "undefined") {
+	return new Promise((resolve)=>{
 		
-		//Carry on
-		resolve(false) ;
-		
-	}
-	
-	//Will resolve false if nothing returns true.
-	let rv = false ;
-	let totalPromises = 0 ;
-	
-	//Function to handle resolving promises
-	let handleResolved = (d) => {
-		
-		totalPromises-- ;
-		//If it is handled
-		if (d) {
+		//If the event has no handles.
+		if (typeof handles[evt] === "undefined") {
 			
-			//Then we need to resolve true, but not yet.
-			rv = true ;
+			//Carry on
+			resolve(false) ;
 			
 		}
 		
-		//If there aren't any pending promesses left, then resolve.
+		//Will resolve false if nothing returns true.
+		let rv = false ;
+		let totalPromises = 0 ;
+		
+		//Function to handle resolving promises
+		let handleResolved = (d) => {
+			
+			totalPromises-- ;
+			//If it is handled
+			if (d) {
+				
+				//Then we need to resolve true, but not yet.
+				rv = true ;
+				
+			}
+			
+			//If there aren't any pending promesses left, then resolve.
+			if (totalPromises === 0) {
+				
+				//resolve what we need to resolve.
+				resolve(rv) ;
+				
+			}
+			
+		} ;
+		
+		//Go through all the handles for the event.
+		for (let doing in handles[evt]) {
+			
+			//Call the handle
+			let val = handles[evt][doing](...args) ;
+			
+			//If it is falsey, then we cant check because it will error when we try to get .then.
+			if (!val) {
+				
+				continue ;
+				
+			}
+			
+			//Is it a promise?
+			if (typeof val.then === "function") {
+				
+				//One more pending promise.
+				totalPromises++ ;
+				
+				//Set up the handleResolved function when it resolves.
+				val.then(handleResolved) ;
+				
+			}
+			
+			//If it returns true
+			else if (val) {
+				
+				//Then we should resolve true... But later
+				rv = true ;
+				
+			}
+			
+		}
+		
+		//If there aren't any pending promesses, then resolve.
 		if (totalPromises === 0) {
 			
 			//resolve what we need to resolve.
@@ -130,53 +174,9 @@ module.exports.doEvt = function (evt,...args) {
 			
 		}
 		
-	}
-	
-	//Go through all the handles for the event.
-	for (let doing in handles[evt]) {
-		
-		//Call the handle
-		let val = handles[evt][doing](...args) ;
-		
-		//If it is falsey, then we cant check because it will error when we try to get .then.
-		if (!val) {
-			
-			continue ;
-			
-		}
-		
-		//Is it a promise?
-		if (typeof val.then === "function") {
-			
-			//One more pending promise.
-			totalPromises++ ;
-			
-			//Set up the handleResolved function when it resolves.
-			val.then(handleResolved) ;
-			
-		}
-		
-		//If it returns true
-		else if (val) {
-			
-			//Then we should resolve true... But later
-			rv = true ;
-			
-		}
-		
-	}
-	
-	//If there aren't any pending promesses, then resolve.
-	if (totalPromises === 0) {
-		
-		//resolve what we need to resolve.
-		resolve(rv) ;
-		
-	}
-	
 	}) ;
 	
-}
+} ;
 
 //Set up an event emmitor for recieving variable stuff.
 let varEvt = new events() ;
@@ -469,7 +469,7 @@ module.exports.loadExt = (file,lock=null) => {
 						return new Promise(resolve=>{
 							
 							//When it is set, resolve
-							varEvt.once("set " + varTG + (lock.vars===null?"":"---lock"+lock.vars) ,_=>resolve()) ;
+							varEvt.once("set " + varTG + (lock.vars===null?"":"---lock"+lock.vars), ()=>resolve()) ;
 							//Tell the master to set it.
 							process.send(["sv",varTG,val,lock.vars,true]) ;
 							
@@ -504,7 +504,7 @@ module.exports.loadExt = (file,lock=null) => {
 		return new Promise(resolve=>{
 			
 			//When it is set, resolve
-			varEvt.once("set " + varTS + (lock.vars===null?"":"---lock"+lock.vars) ,_=>resolve()) ;
+			varEvt.once("set " + varTS + (lock.vars===null?"":"---lock"+lock.vars), ()=>resolve()) ;
 			//Tell the master to set it.
 			process.send(["sv",varTS,val,lock.vars,false]) ;
 			
@@ -521,7 +521,7 @@ module.exports.loadExt = (file,lock=null) => {
 			//Return their server object.
 			return module.exports.loadExt(ePath,eLock) ;
 			
-		}
+		} ;
 		
 		//Create a clone of the lock class to add to the server object.
 		serverObj.lock = class extends module.exports.lock {} ;
@@ -554,7 +554,7 @@ module.exports.loadExt = (file,lock=null) => {
 		
 	}
 	
-}
+} ;
 
 //Function to load an extention in master mode. Similar to loadExt. vars arg is vars object for seting and getting globals.
 module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
@@ -748,7 +748,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 			//Return their server object.
 			return module.exports.loadMasterExt(ePath,eLock,vars) ;
 			
-		}
+		} ;
 		
 		//Create a clone of the lock class to add to the server object.
 		serverObj.lock = class extends module.exports.lock {} ;
@@ -780,7 +780,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 		
 	}
 	
-}
+} ;
 
 module.exports.lock = class {
 	
@@ -861,4 +861,4 @@ module.exports.lock = class {
 		
 	}
 	
-}
+} ;

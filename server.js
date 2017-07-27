@@ -46,7 +46,7 @@ let http = require("http") ;
 let https = require("https") ;
 let fs = require("fs") ;
 let path = require("path") ;
-let {Transform, Readable, PassThrough} = require("stream") ;
+let {Transform} = require("stream") ;
 let cluster ;
 
 //JPS Modules
@@ -124,7 +124,7 @@ function loadConfig() {
 			console.info(err) ;
 			console.warn("Exiting") ;
 			console.info("Exiting") ;
-			process.exit() ;
+			process.exit(1) ;
 			
 		}
 		
@@ -170,7 +170,7 @@ if (flags["-port"]) {
 	config.httpServers = [] ;
 	let port ;
 	for (let doing in flags["-port"]) {
-		port = parseInt(flags["-port"][doing]) ;
+		port = parseInt(flags["-port"][doing], 10) ;
 		if (!isNaN(port)) {
 			config.httpServers.push({
 				"port": port
@@ -201,7 +201,7 @@ for (let doing in doVarsFor) {
 	doVarsFor[doing] = path.join(process.cwd(),"sites",doVarsFor[doing]) ;
 	
 }
-let dontDoVarsFor = [] ;
+//let dontDoVarsFor = [] ;
 
 //Currently imprelemted methods
 const defaultMethods = ["GET", "POST", "HEAD", "OPTIONS"] ;
@@ -244,7 +244,7 @@ Error $:::error_code:::$ - $:::error_type:::$
 else {
 	
 	errorFile = loadAJSONFile(config.errorTemplate) ;
-	 
+	
 }
 
 let errorCodes = new Object() ;
@@ -260,8 +260,7 @@ class addVars extends Transform {
 		
 		if (typeof path === "undefined") {
 			
-			throw "DUDE!!! WHAT IS THE PATH YOU ARE PIPING TO ME??? (Top tip, first argument needs to be the path.)" ;
-			return false ;
+			throw new Error("DUDE!!! WHAT IS THE PATH YOU ARE PIPING TO ME??? (Top tip, first argument needs to be the path.)") ;
 			
 		}
 		super(arg) ;
@@ -278,13 +277,13 @@ class addVars extends Transform {
 			
 			let doPush = true ;
 			
-			do {
+			for (;;) {
 				
 				if (data.indexOf(startOfVar) !== -1) {
 					
 					if (data.indexOf(endOfVar) !== -1) {
 						
-						let dataString = this.lastData + data.toString() ;
+						let dataString = this.lastData.toString() + data.toString() ;
 						
 						let varsKeys = Object.keys(this.extraVars) ;
 						for (let doing in varsKeys) {
@@ -317,7 +316,7 @@ class addVars extends Transform {
 					
 					else {
 						
-						this.lastData = dataString ;
+						this.lastData = data ;
 						doPush = false ;
 						break ;
 						
@@ -331,19 +330,20 @@ class addVars extends Transform {
 					
 				}
 				
-			} while(1)
+			}
 			
 			if (doPush) {
 				this.push(data) ;
 			}
 			
 			callback() ;
+			return ;
 			
 		}
 		
 		catch(err) {
 			
-			coughtError(err,resp) ;
+			console.warn("Error in pipe that adds vars") ;
 			
 		}
 		
@@ -388,44 +388,8 @@ function getMimeType(file) {
 	
 	catch(err) {
 		
-		coughtError(err,resp) ;
-		
-	}
-	
-}
-
-//Proxy to other local server
-function forwardToOtherServer(req,resp,port) {
-	
-	try {
-		
-		let ended = false ;
-		let headersToSend = req.headers ;
-		headersToSend["x-forwarded-for"] = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
-		let forward = http.request({
-			
-			protocol:"http:",
-			host:"localhost",
-			port:port,
-			method:req.method,
-			path:req.url
-			
-		}) ;
-		forward.on("response",iResp=>{
-			
-			resp.writeHead(iResp.statusCode,iResp.headers) ;
-			iResp.pipe(resp) ;
-			iResp.on("end",_=>{if(ended){resp.end();ended=true;}}) ;
-			
-		}) ;
-		req.on("end",_=>{if(!ended){forward.socket.end();ended=true;}}) ;
-		req.pipe(forward) ;
-		
-	}
-	
-	catch(err) {
-		
-		coughtError(err,resp) ;
+		console.warn(err) ;
+		return "text/plain" ;
 		
 	}
 	
@@ -441,13 +405,13 @@ function wrapURL(req, secure) {
 		}
 	} ;
 	Object.defineProperty(req, "secure", {
-		get: _=>secure,
+		get: ()=>secure,
 		set: setSecure,
 		enumerable: true,
 		configurable: false
 	}) ;
 	Object.defineProperty(req, "overHttps", {
-		get: _=>secure,
+		get: ()=>secure,
 		set: setSecure,
 		enumerable: true,
 		configurable: false
@@ -463,8 +427,8 @@ function wrapURL(req, secure) {
 	Object.defineProperty(req, "url", {
 		enumerable: true,
 		configurable: false,
-		get: _=>url,
-		set: v=>url.value=v
+		get: ()=>url,
+		set: v=>{url.value=v;}
 	}) ;
 }
 
@@ -486,7 +450,7 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 			if (callWithStats(stats)) {
 				
 				let opts = {
-					flags: 'r',
+					flags: "r",
 					autoClose: true
 				} ;
 				
@@ -505,12 +469,14 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 				fs.createReadStream(file, opts).pipe(pipeTo) ;
 				
 				callback(true, null) ;
+				return ;
 				
 			}
 			
 			else {
 				
 				callback(false, "CBR") ;
+				return ;
 				
 			}
 			
@@ -519,6 +485,7 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 		else {
 			
 			callback(false,"DIR") ;
+			return ;
 			
 		}
 		
@@ -632,7 +599,7 @@ function sendFile(file,resp,customVars,req) {
 					if (rangesArr[0] === "") {
 						ranges[0] = 0 ;
 					} else {
-						let toSetTo = parseInt(rangesArr[0]) ;
+						let toSetTo = parseInt(rangesArr[0], 10) ;
 						if (isNaN(toSetTo)) {
 							ranges[0] = 0 ;
 						} else {
@@ -642,7 +609,7 @@ function sendFile(file,resp,customVars,req) {
 					if (rangesArr[1] === "") {
 						rangesArr[1] = NaN ;
 					} else {
-						let toSetTo = parseInt(rangesArr[1]) ;
+						let toSetTo = parseInt(rangesArr[1], 10) ;
 						if (isNaN(toSetTo)) {
 							ranges[1] = NaN ;
 						} else {
@@ -660,51 +627,51 @@ function sendFile(file,resp,customVars,req) {
 					}
 				}
 			} else if (rangesArr.length > 1) {
-				let cont = true ;
-				for (let doing in rangesArr) {
-					rangesArr[doing] = rangesArr[doing].split("-") ;
-					if (rangesArr[doing][0] === "") {
-						rangesArr[doing][0] = 0 ;
-					} else {
-						let toStartAt = parseInt(rangesArr[doing][0]) ;
-						if (isNaN(toStartAt)) {
-							rangesArr[doing][0] = 0 ;
-						} else {
-							rangesArr[doing][0] = toStartAt ;
+				return new Promise((resolve, reject)=>{
+					fs.stat(file, (err, stats) => {
+						if (err) {
+							resolve(false, err) ;
+							return ;
 						}
-					}
-					if (rangesArr[doing][1] === "") {
-						rangesArr[doing][1] = stats.size - 1 ;
-					} else {
-						let toEndAt = parseInt(rangesArr[doing][1]) ;
-						if (isNaN(toEndAt)) {
-							rangesArr[doing][1] = stats.size - 1 ;
-						} else {
-							rangesArr[doing][1] = toEndAt ;
+						if (!stats.isFile()) {
+							resolve(false, "DIR") ;
+							return ;
 						}
-					}
-					if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size - 1) {
-						cont = false ;
-						break ;
-					} else if (rangesArr[doing][0] > rangesArr[doing][1]) {
-						cont = false ;
-						break ;
-					}
-					//▀‗ð►╠Ä#/'╠╩♦♀0╦┐¶ýÄ↔A8─oeÀ╚Ä´Há*
-					//«Þø[§
-				}
-				if (cont) {
-					return new Promise((resolve, reject)=>{
-						try {
-							fs.stat(file, (err, stats) => {
-								if (err) {
-									resolve(false, err) ;
-									return ;
+						let cont = true ;
+						for (let doing in rangesArr) {
+							rangesArr[doing] = rangesArr[doing].split("-") ;
+							if (rangesArr[doing][0] === "") {
+								rangesArr[doing][0] = 0 ;
+							} else {
+								let toStartAt = parseInt(rangesArr[doing][0], 10) ;
+								if (isNaN(toStartAt)) {
+									rangesArr[doing][0] = 0 ;
+								} else {
+									rangesArr[doing][0] = toStartAt ;
 								}
-								if (!stats.isFile()) {
-									resolve(false, "DIR") ;
-									return ;
+							}
+							if (rangesArr[doing][1] === "") {
+								rangesArr[doing][1] = stats.size - 1 ;
+							} else {
+								let toEndAt = parseInt(rangesArr[doing][1], 10) ;
+								if (isNaN(toEndAt)) {
+									rangesArr[doing][1] = stats.size - 1 ;
+								} else {
+									rangesArr[doing][1] = toEndAt ;
 								}
+							}
+							if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size - 1) {
+								cont = false ;
+								break ;
+							} else if (rangesArr[doing][0] > rangesArr[doing][1]) {
+								cont = false ;
+								break ;
+							}
+							//▀‗ð►╠Ä#/'╠╩♦♀0╦┐¶ýÄ↔A8─oeÀ╚Ä´Há*
+							//«Þø[§
+						}
+						if (cont) {
+							try {
 								const boundary = config.multipartResponseBoundary || "58dca288fd8c0f00" ;
 								const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 								const getBoundary = (start, end) => `\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${stats.size}\r\n\r\n` ;
@@ -719,13 +686,13 @@ function sendFile(file,resp,customVars,req) {
 									"Content-Type": `multipart/byteranges; boundary=${boundary}`,
 									"Content-Length": length,
 									"Status": 206
-								}) ;0
+								}) ;
 								if (!resp.sendBody) {
 									resp.end() ;
 									return ;
 								}
 								let doing = -1 ;
-								const next =_=> {
+								const nextWrite = () => {
 									doing++ ;
 									if (doing >= rangesArr.length) {
 										resp.write(`\r\n--${boundary}--\r\n`) ;
@@ -734,26 +701,26 @@ function sendFile(file,resp,customVars,req) {
 									}
 									resp.write(getBoundary(rangesArr[doing][0], rangesArr[doing][1])) ;
 									let reader = fs.createReadStream(file, {
-										flags: 'r',
+										flags: "r",
 										autoClose: true,
 										start: rangesArr[doing][0],
 										end: rangesArr[doing][1]
 									}) ;
 									reader.on("data", d=>resp.write(d)) ;
-									reader.on("end", next) ;
+									reader.on("end", nextWrite) ;
 								} ;
-								next() ;
+								nextWrite() ;
 								resolve([true, null]) ;
-							}) ;
-						} catch (err) {
-							reject(err) ;
+							} catch (err) {
+								reject(err) ;
+							}
 						}
 					}) ;
-				}
+				}) ;
 			}
 		}
 		
-		return new Promise((resolve,reject) => {
+		return new Promise(resolve => {
 				
 			getFile(file,stats => {
 				
@@ -911,7 +878,7 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 					if (rangesArr[0] === "") {
 						ranges[0] = 0 ;
 					} else {
-						let toSetTo = parseInt(rangesArr[0]) ;
+						let toSetTo = parseInt(rangesArr[0], 10) ;
 						if (isNaN(toSetTo)) {
 							ranges[0] = 0 ;
 						} else {
@@ -921,7 +888,7 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 					if (rangesArr[1] === "") {
 						rangesArr[1] = cache.length - 1 ;
 					} else {
-						let toSetTo = parseInt(rangesArr[1]) ;
+						let toSetTo = parseInt(rangesArr[1], 10) ;
 						if (isNaN(toSetTo)) {
 							ranges[1] = cache.length - 1 ;
 						} else {
@@ -945,7 +912,7 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 					if (rangesArr[doing][0] === "") {
 						rangesArr[doing][0] = 0 ;
 					} else {
-						let toStartAt = parseInt(rangesArr[doing][0]) ;
+						let toStartAt = parseInt(rangesArr[doing][0], 10) ;
 						if (isNaN(toStartAt)) {
 							rangesArr[doing][0] = 0 ;
 						} else {
@@ -955,7 +922,7 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 					if (rangesArr[doing][1] === "") {
 						rangesArr[doing][1] = cache.length - 1 ;
 					} else {
-						let toEndAt = parseInt(rangesArr[doing][1]) ;
+						let toEndAt = parseInt(rangesArr[doing][1], 10) ;
 						if (isNaN(toEndAt)) {
 							rangesArr[doing][1] = cache.length - 1 ;
 						} else {
@@ -991,7 +958,7 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 						return ;
 					}
 					let doing = -1 ;
-					const next =_=> {
+					const next = () => {
 						doing++ ;
 						if (doing >= rangesArr.length) {
 							resp.write(`\r\n--${boundary}--\r\n`) ;
@@ -1097,13 +1064,13 @@ function handleRequest(req,resp,secure) {
 		let user_ip, user_ip_remote ;
 		if (config.behindLoadBalancer) {
 			
-			user_ip = (req.headers['x-forwarded-for'] || req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+			user_ip = (req.headers["x-forwarded-for"] || req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 			user_ip_remote = (req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 			secure = req.headers["jp-source-secure"] === "https" ;
 			
 		} else {
 			
-			user_ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+			user_ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 			user_ip_remote = (req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
 			
 		}
@@ -1144,7 +1111,7 @@ function handleRequest(req,resp,secure) {
 			
 			gotOtherPromise = true ;
 			
-		})
+		}) ;
 		
 		externals.doEvt(`${req.url.host}/request`,req,resp).then(d=>{
 			
@@ -1256,7 +1223,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		resp.end() ;
 		
 		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${rID}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 		
 		return ;
 		
@@ -1373,7 +1340,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	let checkingSystem = 0 ;
 	
 	//Function to load next check.
-	let nextCheck =_=>{
+	let nextCheck = () =>{
 		
 		//Ask account system what to do.
 		allAccountSystems[checkingSystem].doAnything(req,resp).then(returned=>{
@@ -1431,7 +1398,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 						
 						gotOtherPromise = true ;
 						
-					})
+					}) ;
 					
 					externals.doEvt(`${req.url.host}/allowedrequest`,req,resp).then(d=>{
 						
@@ -1522,7 +1489,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 			if (!postDone) {
 				//Collect the data (optimise if content-length is set)
 				if (typeof req.headers["content-length"] !== "undefined") {
-					let dLength = parseInt(req.headers["content-length"]) ;
+					let dLength = parseInt(req.headers["content-length"], 10) ;
 					if (isNaN(dLength)) {
 						sendError(400, "Content-Length header must be a number") ;
 						return ;
@@ -1541,7 +1508,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 						}
 						currentPos += d.copy(data, currentPos) ;
 					}) ;
-					req.on("end", _=>{
+					req.on("end", ()=>{
 						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
 						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
@@ -1549,14 +1516,13 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 					return ;
 				} else {
 					let data = Buffer.alloc(0) ;
-					let errorSent = false ;
 					req.on("data", d=>{
 						data = Buffer.concat([data, d], data.length + d.length) ;
 					}) ;
-					req.on("end", _=>{
+					req.on("end", ()=>{
 						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
-						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true)
+						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
 					}) ;
 					return ;
 				}
@@ -1634,19 +1600,19 @@ for (let doing in config.cache) {
 module.exports = {
 	//Function to init the server.
 	init:(clusterGiven) => {
-		externals.generateServerObject =_=> {
+		externals.generateServerObject = () => {
 			return {
 				
 				//Server configuration
 				"config": config,
-				"reloadConfig": _=>loadConfig(),
+				"reloadConfig": ()=>loadConfig(),
 				
 				//Recieving requests
 				"getData": req=>{
 					
 					let data = new Array() ;
 					req.on("data",d=>data.push(d)) ;
-					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+					return new Promise(resolve=>req.on("end",()=>resolve(Buffer.concat(data)))) ;
 					
 				},
 				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
@@ -1758,9 +1724,8 @@ module.exports = {
 				return ok ;
 			} ;
 			const checkURLString = url => {
-				let ok = false ;
 				let host = url.split("/").shift() ;
-				return domain.indexOf(host) !== -1 ;
+				return domains.indexOf(host) !== -1 ;
 			} ;
 			return {
 				
@@ -1769,7 +1734,7 @@ module.exports = {
 					
 					let data = new Array() ;
 					req.on("data",d=>data.push(d)) ;
-					return new Promise(resolve=>req.on("end",_=>resolve(Buffer.concat(data)))) ;
+					return new Promise(resolve=>req.on("end", ()=>resolve(Buffer.concat(data)))) ;
 					
 				},
 				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
@@ -1923,31 +1888,31 @@ module.exports = {
 						}
 					},
 					"createLink": (from, to, incSearch=false) => {
-						if (checkURLString(url)) {
+						if (checkURLString(from)) {
 							return responseMaker.createLink(from, to, incSearch) ;
 						} else {
-							throw new Error(`Sorry, you cannot create a link for the host '${url.split("/").shift()}'.`) ;
+							throw new Error(`Sorry, you cannot create a link for the host '${from.split("/").shift()}'.`) ;
 						}
 					},
 					"isLink": (from, incSearch=false) => {
-						if (checkURLString(url)) {
+						if (checkURLString(from)) {
 							return responseMaker.isLink(from, incSearch) ;
 						} else {
-							throw new Error(`Sorry, you cannot view a link for the host '${url.split("/").shift()}'.`) ;
+							throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
 						}
 					},
 					"getLink": (from, incSearch=false) => {
-						if (checkURLString(url)) {
+						if (checkURLString(from)) {
 							return responseMaker.getLink(from, incSearch) ;
 						} else {
-							throw new Error(`Sorry, you cannot view a link for the host '${url.split("/").shift()}'.`) ;
+							throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
 						}
 					},
 					"removeLink": (from, incSearch=false) => {
-						if (checkURLString(url)) {
+						if (checkURLString(from)) {
 							return responseMaker.removeLink(from, incSearch) ;
 						} else {
-							throw new Error(`Sorry, you cannot remove a link for the host '${url.split("/").shift()}'.`) ;
+							throw new Error(`Sorry, you cannot remove a link for the host '${from.split("/").shift()}'.`) ;
 						}
 					}
 				},
@@ -1992,7 +1957,7 @@ module.exports = {
 				},
 				
 				//Other stuff
-				"getMimeType":(...args)=>getMimeType(...args),
+				"getMimeType":(...args)=>getMimeType(...args)
 				
 			} ;
 		} ;
@@ -2017,14 +1982,14 @@ module.exports = {
 			let thisOb = new Object() ;
 			Object.assign(thisOb, config.CORS[doing]) ;
 			for (let tRE in thisOb[5]) {
-				if (thisOb[5][tRE].indexOf('*') === 0) {
+				if (thisOb[5][tRE].indexOf("*") === 0) {
 					thisOb[5][tRE] = new RegExp(thisOb[5][tRE].substring(1, thisOb[5][tRE].length), "g") ;
 				}
 			}
 			CORS.addRule(...thisOb) ;
 		}
 		//Set up the HTTP servers
-		for (let doing in config.httpServers) {
+		for (const doing in config.httpServers) {
 			let options = new Array() ;
 			options[0] = config.httpServers[doing].port ;
 			if (typeof config.httpServers[doing].host !== "undefined") {
@@ -2036,8 +2001,8 @@ module.exports = {
 			}).listen(...options) ;
 		}
 		//Set up the HTTPS servers
-		for (let doing in config.httpsServers) {
-			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")},(req,resp) => {
+		for (const doing in config.httpsServers) {
+			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")}, (req,resp) => {
 				req.port = config.httpsServers[doing].port ;
 				handleRequest(req,resp,true) ;
 			}).listen(config.httpsServers[doing].port) ;
@@ -2048,4 +2013,4 @@ module.exports = {
 		//Ready event
 		externals.doEvt("ready") ;
 	}
-}
+} ;

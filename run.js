@@ -34,7 +34,7 @@ console.log = console.warn = (...args) => {
 	
 	logs.push(args.join(" ")) ;
 	
-}
+} ;
 
 global.requireJPS = mod => require(path.join(__dirname, mod)) ;
 
@@ -154,10 +154,10 @@ if (flags["-data"]) {
 		console.warn("Only 1 data server listener can be specified.") ;
 		throw new Error("Only 1 data server listener can be specified.") ;
 	}
-	let port = parseInt(flags["-data"][0]) ;
+	let port = parseInt(flags["-data"][0], 10) ;
 	if (isNaN(port)) {
 		config.dataPort = flags["-data"][0] ;
-		if (process.platform === 'win32') {
+		if (process.platform === "win32") {
 			config.dataPort = path.join("\\\\?\\pipe", config.dataPort) ;
 		}
 	} else {
@@ -189,7 +189,7 @@ if (cluster.isMaster) {
 	let waitingForAvail = new Object() ;
 	
 	//Add the function to the que for v to be available
-	function whenAvail(v,func) {
+	const whenAvail = (v,func) => {
 		
 		//If it isn't in the waiting list, call func imediatally
 		// and return false because there is no que
@@ -216,7 +216,7 @@ if (cluster.isMaster) {
 			
 		}
 		
-	}
+	} ;
 	
 	let funcs = new Object() ;
 	
@@ -228,25 +228,25 @@ if (cluster.isMaster) {
 		//If it is an extention, load it.
 		if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
 			
-			externals.generateMasterServerObject = _ => {
+			externals.generateMasterServerObject = () => {
 				
 				return {
 					
 					"config": config,
-					"reloadConfig":_=>loadConfig()
+					"reloadConfig":()=>loadConfig()
 					
 				} ;
 				
 			} ;
 			
-			let currentLoad = externals.loadMasterExt(currentDir[doing],null,vars,funcs) ;
+			externals.loadMasterExt(currentDir[doing],null,vars,funcs) ;
 			
 		}
 		
 	}
 	
 	//Function to create a new worker.
-	function newFork() {
+	const newFork = () => {
 		
 		console.log("Creating a new worker.") ;
 		let thisFork = cluster.fork() ;
@@ -319,7 +319,7 @@ if (cluster.isMaster) {
 			else if (toDo[0] === "gv") {
 				
 				//Run when var is available
-				whenAvail(toDo[2]===null?toDo[1]:toDo[1]+"---lock"+toDo[2],_=>{
+				whenAvail(toDo[2]===null?toDo[1]:toDo[1]+"---lock"+toDo[2],()=>{
 					
 					//If there isn't a lock
 					if (toDo[2] === null) {
@@ -395,7 +395,7 @@ if (cluster.isMaster) {
 			else if (toDo[0] === "sv") {
 				
 				//Function to accualy set the variable
-				const go =_=> {
+				const go =()=> {
 					
 					//If there isn't a lock
 					if (toDo[3] === null) {
@@ -530,7 +530,7 @@ if (cluster.isMaster) {
 				//Add a user as autherised to the account system.
 				else if (toDo[1] === "add") {
 					
-					let addTheUser =_=> {
+					let addTheUser =()=> {
 						
 						try {
 							
@@ -551,7 +551,7 @@ if (cluster.isMaster) {
 							
 						}
 						
-					}
+					} ;
 					
 					return addTheUser() ;
 					
@@ -569,7 +569,7 @@ if (cluster.isMaster) {
 			
 		}) ;
 		//When a worker exits.
-		thisFork.on("exit",(workerClosed)=>{
+		thisFork.on("exit",()=>{
 			
 			console.info("A worker died!!!") ;
 			console.log("A worker died!!!") ;
@@ -578,15 +578,11 @@ if (cluster.isMaster) {
 			
 		}) ;
 		
-	}
+	} ;
 	
 	//Modules for master.
 	let os = require("os") ;
-	let cp = require("child_process") ;
 	let net = require("net") ;
-	
-	//Set up an array for storing the workers.
-	let workers = new Array() ;
 	
 	//Create a worker for every core that is not being used by the master or another child process.
 	for (let doing = 0 ; doing < Math.max(os.cpus().length, 1) ; doing++) {

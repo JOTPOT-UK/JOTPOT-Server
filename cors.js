@@ -87,7 +87,7 @@ function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins
 	}
 	if (typeof host === "object" && host.constructor !== Array) {
 		for (let doing in host) {
-			addRule(protocols, host[doing], pathYes, pathNo, allowOrigins, allowMethods, allowHeaders, exposeHeaders, allowCredentials)
+			addRule(protocols, host[doing], pathYes, pathNo, allowOrigins, allowMethods, allowHeaders, exposeHeaders, allowCredentials) ;
 		}
 		return ;
 	} else if (typeof host !== "string") {
@@ -96,7 +96,7 @@ function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins
 	let allowOriginsRegExp = new Array() ;
 	for (let doing in allowOrigins) {
 		if (allowOrigins[doing].constructor === RegExp) {
-			allowOriginsRegExp.push(allowOrigins.splice(parseInt(doing), 1)) ;
+			allowOriginsRegExp.push(allowOrigins.splice(parseInt(doing, 10), 1)) ;
 		}
 	}
 	if (priority === 1) {
@@ -126,7 +126,7 @@ function allowed(rule, req, resp) {
 		if (rule[9]) {
 			resp.setHeader("Access-Control-Expose-Headers", rule[9]) ;
 		}
-		resp.setHeader("Access-Control-Max-Age", String(rules[11])) ;
+		resp.setHeader("Access-Control-Max-Age", String(rule[11])) ;
 	}
 }
 
@@ -150,7 +150,7 @@ function checkWith(rule, req, resp) {
 	//OK, so we now apply
 	//If it allows anything, allow wildcard
 	if (rule[4]) {
-		resp.setHeader("Access-Control-Allow-Origin", '*') ;
+		resp.setHeader("Access-Control-Allow-Origin", "*") ;
 		allowed(rule, req, resp) ;
 		return true ;
 	}

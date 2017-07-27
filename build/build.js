@@ -1,7 +1,7 @@
 console.log("Welcome to the JOTPOT Server automated build tool.") ;
 console.log("Please make sure that the command 'python' points to Python 2.7!") ;
 console.log("Build will start in 5 seconds...") ;
-setTimeout(_=>{
+setTimeout(()=>{
 
 	const p = "J:\\JOTPOT-Server" ;
 
@@ -29,15 +29,15 @@ setTimeout(_=>{
 		fs.writeFileSync("./lib/internal/jps/accounts.js",sortPaths(fs.readFileSync(path.join(p,"accounts.js")))) ;
 		fs.writeFileSync("./lib/internal/jps/ExtensionFileSystem.js",sortPaths(fs.readFileSync(path.join(p,"ExtensionFileSystem.js")))) ;
 		fs.writeFileSync("./src/res/node.rc",fs.readFileSync("./src/res/node.rc").toString()
-																							.replace(/Node\.js: Server-side JavaScript/g,"JOTPOT Server")
-																							.replace(/VALUE "ProductName", ".*"/g,`VALUE "ProductName", "JOTPOT Server"`)
-																							.replace(/VALUE "CompanyName", ".*"/g,`VALUE "CompanyName", "JOTPOT"`)
-																							.replace(/VALUE "OriginalFilename", ".*"/g,`VALUE "OriginalFilename", "jps.exe"`)
-																							.replace(/VALUE "LegalCopyright", ".*"/g,`VALUE "LegalCopyright", "JOTPOT Server Copyright Jacob O'Toole. MIT Licence. Node.js Copyright Node.js contributors. MIT license."`)
-																							.replace(/Node\.js: Server-side JavaScript/g,"JOTPOT Server")
-																							.replace(/node\.ico/g,"jps.ico")) ;
+			.replace(/Node\.js: Server-side JavaScript/g,"JOTPOT Server")
+			.replace(/VALUE "ProductName", ".*"/g,`VALUE "ProductName", "JOTPOT Server"`)
+			.replace(/VALUE "CompanyName", ".*"/g,`VALUE "CompanyName", "JOTPOT"`)
+			.replace(/VALUE "OriginalFilename", ".*"/g,`VALUE "OriginalFilename", "jps.exe"`)
+			.replace(/VALUE "LegalCopyright", ".*"/g,`VALUE "LegalCopyright", "JOTPOT Server Copyright Jacob O'Toole. MIT Licence. Node.js Copyright Node.js contributors. MIT license."`)
+			.replace(/Node\.js: Server-side JavaScript/g,"JOTPOT Server")
+			.replace(/node\.ico/g,"jps.ico")) ;
 		fs.writeFileSync("./src/res/jps.ico",fs.readFileSync(path.join(p,"jps.ico"))) ;
-		fs.writeFileSync("./node.gyp",fs.readFileSync("./node.gyp").toString().replace(/      'lib\/internal\/bootstrap_node\.js',/g,"      'lib/internal/bootstrap_node.js',\n      'lib/internal/jps/run.js',\n      'lib/internal/jps/server.js',\n      'lib/internal/jps/externals.js',\n      'lib/internal/jps/ExtensionFileSystem.js',\n      'lib/internal/jps/accounts.js',")) ;
+		fs.writeFileSync("./node.gyp",fs.readFileSync("./node.gyp").toString().replace(/ {6}'lib\/internal\/bootstrap_node\.js',/g,"      'lib/internal/bootstrap_node.js',\n      'lib/internal/jps/run.js',\n      'lib/internal/jps/server.js',\n      'lib/internal/jps/externals.js',\n      'lib/internal/jps/ExtensionFileSystem.js',\n      'lib/internal/jps/accounts.js',")) ;
 		fs.unlinkSync("./src/res/node.ico") ;
 		fs.writeFileSync("./lib/internal/bootstrap_node.js",fs.readFileSync("./lib/internal/bootstrap_node.js").toString().replace(/if \(NativeModule.exists\('_third_party_main'\)\) {/g,"if (true) {if (process.argv[1] && process.env.NODE_UNIQUE_ID) {const cluster=NativeModule.require('cluster');cluster._setupWorker();delete process.env.NODE_UNIQUE_ID;}process.nextTick(function(){NativeModule.require('internal/jps/run');})} else if (NativeModule.exists('_third_party_main')) {")) ;
 		if (spawnArgs[0]){

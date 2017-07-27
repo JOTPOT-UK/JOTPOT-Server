@@ -45,21 +45,21 @@ function createLink(from, to, incSearch=false) {
 		links[from] = to ;
 	}
 }
-function isLink(url, incSearch=false) {
+function isLink(from, incSearch=false) {
 	if (incSearch) {
 		return Boolean(linksWS[from]) ;
 	} else {
 		return Boolean(links[from]) ;
 	}
 }
-function getLink(url, incSearch=false) {
+function getLink(from, incSearch=false) {
 	if (incSearch) {
 		return linksWS[from] ;
 	} else {
 		return links[from] ;
 	}
 }
-function removeLink(url, incSearch=false) {
+function removeLink(from, incSearch=false) {
 	if (incSearch) {
 		delete linksWS[from] ;
 	} else {
@@ -92,23 +92,23 @@ function cacheFileSync(url) {
 }
 function isCache(url, incSearch=false) {
 	if (incSearch) {
-		return Boolean(pagesWS[from]) ;
+		return Boolean(pagesWS[url]) ;
 	} else {
-		return Boolean(pages[from]) ;
+		return Boolean(pages[url]) ;
 	}
 }
 function getCache(url, incSearch=false) {
 	if (incSearch) {
-		return pagesWS[from] ;
+		return pagesWS[url] ;
 	} else {
-		return pages[from] ;
+		return pages[url] ;
 	}
 }
 function removeCache(url, incSearch=false) {
 	if (incSearch) {
-		delete pagesWS[from] ;
+		delete pagesWS[url] ;
 	} else {
-		delete pages[from] ;
+		delete pages[url] ;
 	}
 }
 
@@ -154,7 +154,7 @@ let learning = new Object() ;
 //			 1: URL but with any search
 //			 2: Any subpath with an search
 function isLearned(url, checkLevel=0) {
-	if (checkSearches === 0) {
+	if (checkLevel === 0) {
 		return Boolean(learning[url]) ;
 	} else {
 		let isLearned = false ;
@@ -174,7 +174,7 @@ function isLearned(url, checkLevel=0) {
 //		1: URL but with any search
 //		2: Any subpath with an search
 function unlearn(url, level=0) {
-	if (checkSearches === 0) {
+	if (level === 0) {
 		delete learning[url] ;
 	} else {
 		for (let doing in learning) {
@@ -187,6 +187,7 @@ function unlearn(url, level=0) {
 
 function doLinks(req) {
 	let doTheLoop = false ;
+	let origValue ;
 	do {
 		doTheLoop = false ;
 		while (linksWS[req.url.fullvalue]) {
@@ -203,12 +204,12 @@ function doLinks(req) {
 				doTheLoop = true ;
 			}
 		}
-	} while (doTheLoop)
+	} while (doTheLoop) ;
 }
 
 //Function that sends a response for the given request
 function createResponse(req, resp) {
-	return new Promise((resolve, reject)=>{
+	return new Promise((resolve)=>{
 		//If we have leared how to handle the request
 		if (module.exports.enableLearning && learning[req.url.fullvalue]) {
 			resp.setHeader("JP-Was-Learned", "1") ;
@@ -260,9 +261,9 @@ function createResponse(req, resp) {
 		
 		let origValue = "" ;
 		let canLearn = module.exports.enableLearning ;
-		const handleeThing =_=> {
+		const handleeThing =()=> {
 			doLinks(req) ;
-			file = path.normalize((req.usePortInDirectory?req.url.host:req.url.hostname).replace(/:/g, ';') + req.url.pathname) ;
+			file = path.normalize((req.usePortInDirectory?req.url.host:req.url.hostname).replace(/:/g, ";") + req.url.pathname) ;
 			while (funcsWS[req.url.fullvalue]) {
 				//As the function may have changed the URL, or headers etc. we can no longer learn from this request
 				canLearn = false ;
@@ -339,7 +340,7 @@ function createResponse(req, resp) {
 			}
 			return [false] ;
 		} ;
-		const toDo =_=> {
+		const toDo =()=> {
 			let code = 500 ;
 			//Try sending
 			module.exports.sendFile(file, resp, resp.vars, req).then(done=>{
@@ -428,8 +429,8 @@ module.exports = {
 	unlearn,
 	
 	//To get functions and config from loader of the module
-	sendFile: _=>{},
-	sendCache: _=>{},
-	sendError: _=>{},
+	sendFile: ()=>{},
+	sendCache: ()=>{},
+	sendError: ()=>{},
 	enableLearning: true
 } ;

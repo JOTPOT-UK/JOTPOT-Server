@@ -34,7 +34,7 @@ function parseHost(host, https) {
 		return [`${host}:${https?443:80}`, host, https?443:80] ;
 	} else {
 		let portshouldbe = splithost.pop() ;
-		if (parseInt(portshouldbe).toString() === portshouldbe) {
+		if (parseInt(portshouldbe, 10).toString() === portshouldbe) {
 			return [host, splithost.join(":"), portshouldbe] ;
 		} else {
 			return [`${host}:${https?443:80}`, host, https?443:80] ;
@@ -68,7 +68,7 @@ class URL {
 		purl.hostname = parsedHost[1] ;
 		purl.port = parsedHost[2] ;
 		
-		Object.defineProperty(this, "pathname", {get:_=>{
+		Object.defineProperty(this, "pathname", {get:()=>{
 			return purl.pathname ;
 		}, set:val=>{
 			if (val.indexOf("/") !== 0) {
@@ -78,7 +78,7 @@ class URL {
 			purl.path = val + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "path", {get:_=>{
+		Object.defineProperty(this, "path", {get:()=>{
 			return purl.path ;
 		}, set:val=>{
 			if (val.indexOf("/") !== 0) {
@@ -91,7 +91,7 @@ class URL {
 			purl.query = npurl.query ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "search", {get:_=>{
+		Object.defineProperty(this, "search", {get:()=>{
 			return purl.search ;
 		}, set:val=>{
 			if (val.indexOf("?") !== 0) {
@@ -102,7 +102,7 @@ class URL {
 			purl.path = purl.pathname + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "query", {get:_=>{
+		Object.defineProperty(this, "query", {get:()=>{
 			return purl.query ;
 		}, set:val=>{
 			purl.query = val ;
@@ -110,7 +110,7 @@ class URL {
 			purl.path = purl.pathname + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "hash", {get:_=>{
+		Object.defineProperty(this, "hash", {get:()=>{
 			return purl.hash ;
 		}, set:val=>{
 			if (val.indexOf("#") !== 0) {
@@ -132,7 +132,7 @@ class URL {
 			value: `http${req.secureToServer?"s":""}:`,
 			writable: false
 		}) ;
-		Object.defineProperty(this, "protocol", {get:_=>{
+		Object.defineProperty(this, "protocol", {get:()=>{
 			return purl.protocol ;
 		}, set:val=>{
 			if (validProtocols.indexOf(val) === -1) {
@@ -141,7 +141,7 @@ class URL {
 			purl.protocol = val ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "slashes", {get:_=>{
+		Object.defineProperty(this, "slashes", {get:()=>{
 			return purl.slashes ;
 		}, set:val=>{
 			if (typeof slashes !== "boolean") {
@@ -150,7 +150,7 @@ class URL {
 			purl.slashes = val ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "href", {get:_=>{
+		Object.defineProperty(this, "href", {get:()=>{
 			return url.format(purl) ;
 		}, set:val=>{
 			if (!hostLocked) {
@@ -165,7 +165,7 @@ class URL {
 			}
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "hrefnoport", {get:_=>{
+		Object.defineProperty(this, "hrefnoport", {get:()=>{
 			return url.format(purl).replace(purl.host, purl.hostname) ;
 		}, set:val=>{
 			const port = purl.port ;
@@ -187,7 +187,7 @@ class URL {
 			}
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "location", {get:_=>{
+		Object.defineProperty(this, "location", {get:()=>{
 			if ((purl.port === 80 && purl.protocol === "http:") || purl.port === 443 && purl.protocol === "https:") {
 				return url.format(purl).replace(purl.host, purl.hostname) ;
 			} else {
@@ -197,7 +197,7 @@ class URL {
 			purl = url.parse(val) ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "host", {get:_=>{
+		Object.defineProperty(this, "host", {get:()=>{
 			return purl.host ;
 		}, set:val=>{
 			if (!hostLocked) {
@@ -210,7 +210,7 @@ class URL {
 			}
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "hostname", {get:_=>{
+		Object.defineProperty(this, "hostname", {get:()=>{
 			return purl.hostname ;
 		}, set:val=>{
 			if (!hostLocked) {
@@ -221,7 +221,7 @@ class URL {
 			}
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "port", {get:_=>{
+		Object.defineProperty(this, "port", {get:()=>{
 			return purl.port ;
 		}, set:val=>{
 			if (!hostLocked) {
@@ -232,7 +232,7 @@ class URL {
 			}
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "value", {get:_=>{
+		Object.defineProperty(this, "value", {get:()=>{
 			return purl.host + purl.pathname ;
 		}, set:val=>{
 			val = val.split("/") ;
@@ -241,7 +241,7 @@ class URL {
 			purl.path = purl.pathname + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "fullvalue", {get:_=>{
+		Object.defineProperty(this, "fullvalue", {get:()=>{
 			return purl.host + purl.path ;
 		}, set:val=>{
 			val = val.split("/") ;
@@ -253,42 +253,42 @@ class URL {
 			purl.query = npurl.query ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "origin", {get:_=>{
+		Object.defineProperty(this, "origin", {get:()=>{
 			return purl.protocol + purl.slashes?"//":"" + purl.host ;
 		}, set:val=>{
-			let spliter = ":" ;
+			let splitter = ":" ;
 			if (val.indexOf(":") === val.indexOf("://")) {
 				splitter = "://" ;
 				purl.slashes = true ;
 			} else {
 				purl.slashes = false ;
 			}
-			purl.protocol = val.substring(0, val.indexOf(spliter)) + ":" ;
+			purl.protocol = val.substring(0, val.indexOf(splitter)) + ":" ;
 			if (validProtocols.indexOf(purl.protocol) === -1) {
 				console.warn("Protocol has been changed to", val, "this is not a valid web protocol (http: or https:)") ;
 			}
 			this.host = val.substring(val.indexOf(splitter), val.length) ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "username", {get:_=>{
+		Object.defineProperty(this, "username", {get:()=>{
 			return purl.auth.split(":")[0] ;
 		}, set:val=>{
 			if (val.indexOf(":") !== -1) {
 				throw new Error("username/password must not contain ':'") ;
 			}
-			purl.auth = val + ":" + this.password
+			purl.auth = val + ":" + this.password ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "password", {get:_=>{
+		Object.defineProperty(this, "password", {get:()=>{
 			return purl.auth.split(":")[1] ;
 		}, set:val=>{
 			if (val.indexOf(":") !== -1) {
 				throw new Error("username/password must not contain ':'") ;
 			}
-			purl.auth = this.username + ":" + val
+			purl.auth = this.username + ":" + val ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "auth", {get:_=>{
+		Object.defineProperty(this, "auth", {get:()=>{
 			return purl.auth ;
 		}, set:val=>{
 			if (val.match(/:/g).length !== 2) {
@@ -297,12 +297,12 @@ class URL {
 			purl.auth = val ;
 		}, enumerable:true, configurable:false}) ;
 		
-		Object.defineProperty(this, "lockHost", {value:_=>{
+		Object.defineProperty(this, "lockHost", {value:()=>{
 			if (hostLocked) {
-				return _ => {} ;
+				return () => {} ;
 			} else {
 				hostLocked = true ;
-				return _ => hostLocked = false ;
+				return () => hostLocked = false ;
 			}
 		}, enumerable: false, configurable: false, writable: false}) ;
 		

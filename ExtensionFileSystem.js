@@ -157,7 +157,7 @@ class FileSystem {
 			},
 			realpath: (p, ...args) => {
 				p = path.normalize("/"+p) ;
-				process.nextTick(_=>{
+				process.nextTick(()=>{
 					(args[1]||args[0])(null, p) ;
 				}) ;
 			},
@@ -183,9 +183,10 @@ class FileSystem {
 						}
 						origCB(err, dir.sort()) ;
 					} ;
+					fs.readdir(...args) ;
+				} else {
+					fs.readdir(...args) ;
 				}
-				//Return a sorted output
-				return dirr.sort() ;
 			},
 			readdirSync: (...args) => {
 				args[0] = this.getPath(args[0]) ;
@@ -213,7 +214,7 @@ class FileSystem {
 	//Function to get real path
 	getPath(p) {
 		//Split thr path up
-		p = path.normalize(p).split(path.sep)
+		p = path.normalize(p).split(path.sep) ;
 		//Remove the start if we are at the root
 		while (p[0] === "") {
 			p.shift() ;
@@ -229,7 +230,7 @@ class FileSystem {
 			}
 		}
 		//Join the root and the path
-		return path.join(root, ...p)
+		return path.join(root, ...p) ;
 	}
 	createPublic(func) {
 		this.public[func] = (...args) => {

@@ -38,7 +38,7 @@ class Data extends readable {
 		
 	}
 	
-	_read(s) {
+	_read() {
 		
 		if (!this.setup && this.isPaused()) {
 			
@@ -88,13 +88,11 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 	let dataString = new String() ;
 	let endReady = false ;
 	let reqEnded = false ;
-	let output = new Object() ;
 	let stage = 0 ;
-	let fields = new Object() ;
 	let newLineMade = false ;
 	let currentHeaders = new Object() ;
 	let currentDataPipe = null ;
-	const parseTick =_=> {
+	const parseTick =()=> {
 		
 		if (dataString.indexOf(boundary) === 0 && stage === 0) {
 			
@@ -108,7 +106,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 		
 		else if (stage === 1) {
 			
-			do {
+			for (;;) {
 				
 				if (!dataString) {
 					
@@ -135,9 +133,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 					let name = null ;
 					if (typeof currentHeaders["content-disposition"] !== "undefined") {
 						
-						name = currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0]
-																	.substring(8,
-																			   currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].length-1) ;
+						name = currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].substring(8, currentHeaders["content-disposition"].match(/; name="(\\"|[^"])*"/g)[0].length-1) ;
 						
 					}
 					currentDataPipe = new Data(name,currentHeaders) ;
@@ -152,7 +148,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 					
 				}
 				
-			} while (1)
+			}
 			
 		}
 		
@@ -208,7 +204,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 		}
 		
 	}) ;
-	req.on("end",_=>{
+	req.on("end",()=>{
 		
 		if (endReady) {
 			

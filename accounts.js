@@ -111,7 +111,7 @@ function getUserID(req) {
 	}
 	
 	//Otherwise, generate their ID.
-	return `${req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${cookies.JOTPOTUID}` ;
+	return `${req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${cookies.JOTPOTUID}` ;
 	
 }
 
@@ -133,7 +133,7 @@ function makeNewUID(req,resp) {
 	resp.setHeader("Set-Cookie","JOTPOTUID=" + Math.round(newUID).toString(36)) ;
 	
 	//Return their ID.
-	return `${req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${newUID}` ; ;
+	return `${req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${newUID}` ;
 	
 }
 
@@ -269,7 +269,7 @@ class proc {
 	//Resolves true if the user has permission to access it from this system, false if not.
 	doAnything(req,resp) {
 		
-		return new Promise((resolve,regect) => {
+		return new Promise((resolve) => {
 			
 			let page = req.url.value ;
 			
@@ -301,7 +301,7 @@ class proc {
 			//If it is a special page, then we dont need to check.
 			//if (typeof this.specialPages[page] !== "undefined" ) {
 				
-				//shouldCheckBlock = false ;
+			//	shouldCheckBlock = false ;
 				
 			//}
 			
@@ -396,7 +396,7 @@ class proc {
 	isAuthed (user) {
 		
 		let thisStamp = stamp++ ;
-		return new Promise((resolve,reject) => {
+		return new Promise((resolve) => {
 			
 			procUpdate.once(`authed-${this.ID}-${user}-${thisStamp}`,rv=>{
 				
@@ -411,7 +411,7 @@ class proc {
 	
 	getUsername (user) {
 		
-		return new Promise((resolve,reject) => {
+		return new Promise((resolve) => {
 			
 			procUpdate.once(`username-${this.ID}-${user}`,rv=>{
 				
@@ -436,7 +436,7 @@ class proc {
 	
 	login (req,resp,user) {
 		
-		return new Promise((resolve,reject)=>{req.on("data",(d)=>{
+		return new Promise((resolve)=>{req.on("data",(d)=>{
 			
 			d = decodeURIComponent(decodeURI(d.toString()).replace(/\+/g," ")).split("&") ;
 			let args = new Object() ;
@@ -447,22 +447,22 @@ class proc {
 				
 			}
 			
-			let sendIUOP =_=> {
+			let sendIUOP =()=> {
 				
 				//resp.writeHead(200,{"Content-Type":"text/plain"}) ;
 				//resp.write("Incorrect username or password...") ;
 				//resp.end() ;
 				resolve([false,"redirect",(this.https?"https://":"http://") + removeCommonPorts(this.specialPagesP.loginPage, this.https)]) ;
 				
-			}
+			} ;
 			
-			let isLoggedIn =_=> {
+			let isLoggedIn =()=> {
 				
 				loggedIn[this.ID][user] = args.username ;
 				//resp.writeHead(200,{"Content-Type":"text/plain"}) ;
 				//resp.write("You are logged in...") ;
 				//resp.end() ;
-				procUpdate.once(`added-${user}`,_=>{
+				procUpdate.once(`added-${user}`, ()=>{
 					
 					resolve( [false,"redirect",(this.https?"https://":"http://") + removeCommonPorts(this.loginRedirect, this.https)]) ;
 					
@@ -500,8 +500,7 @@ class proc {
 				
 			}
 			
-		}) ;}) ;
-		return [null] ;
+		});});
 		
 	}
 	
@@ -511,7 +510,7 @@ class proc {
 			
 			delete loggedIn[this.ID][user] ;
 			
-			procUpdate.once(`deled-${user}`,_=>{
+			procUpdate.once(`deled-${user}`, ()=>{
 				
 				resolve([false,"redirect",(this.https?"https://":"http://") + this.specialPagesP.logoutPage]) ;
 				
@@ -523,9 +522,10 @@ class proc {
 		
 	}
 	
-	register (req,resp,user) {
+	register () {
 		
 		//Coming soon.
+		//To a cinima near you.
 		
 	}
 	
