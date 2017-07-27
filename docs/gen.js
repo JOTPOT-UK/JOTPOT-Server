@@ -21,7 +21,7 @@ function formatObject(file) {
 		out += `<div ID="${t.id}"><h3 class="func-h3">${t.title}</h3><div class="details">${t.support?`Availability:<ul>${supportList}</ul>`:''}Added: ${t.added}${t.extra?`<br>${t.extra}`:""}</div><ul class="args-list">${argsList}</ul><div class="desc">${t.desc}</div></div>` ;
 		
 	}
-	return eval(`\`${out}\``)
+	return eval(`\`${out}\``) ;
 	
 }
 
