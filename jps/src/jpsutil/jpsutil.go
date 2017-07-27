@@ -91,6 +91,8 @@ func GetData(con net.Conn, toGet int) (out []byte) {
 		n, err = con.Read(buff)
 		if err != nil && err != io.EOF {
 			panic(err)
+		} else if n == 0 && err == io.EOF {
+			panic(err)
 		}
 		got += n
 		out = append(out, buff[:n]...)
@@ -106,4 +108,47 @@ func CheckAddr(addr string) bool {
 	}
 	con.Close()
 	return true
+}
+
+//CopyFile copies file p1 to p2
+func CopyFile(p1, p2 string) error {
+	src, err := os.Open(p1)
+	if err != nil {
+		return err
+	}
+	dest, err := os.OpenFile(p2, os.O_WRONLY|os.O_CREATE, 0664)
+	if err != nil {
+		return err
+	}
+	stats, err := src.Stat()
+	if err != nil {
+		return err
+	}
+	err = dest.Truncate(stats.Size())
+	if err != nil {
+		return err
+	}
+	buff := make([]byte, 1024)
+	var n int
+	var err2 error
+	for {
+		n, err = src.Read(buff)
+		if err != nil && err != io.EOF {
+			return err
+		}
+		_, err2 = dest.Write(buff[:n])
+		if err2 != nil {
+			return err2
+		}
+		if err == io.EOF {
+			break
+		}
+	}
+	if err = src.Close(); err != nil {
+		return err
+	}
+	if err = dest.Close(); err != nil {
+		return err
+	}
+	return nil
 }

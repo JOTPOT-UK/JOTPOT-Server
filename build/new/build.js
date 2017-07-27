@@ -72,16 +72,22 @@ function copy(p1, p2) {
 	fs.writeFileSync(p2, fs.readFileSync(p1)) ;
 }
 
-createDir(out, "daemon", "jps") ;
-
-copy(path.join(src, "util", "jps.go"), path.join(out, "jps.go")) ;
-copy(path.join(src, "util", "daemon", "jpsd.go"), path.join(out, "daemon", "jpsd.go")) ;
+createDir(out, "jps") ;
 
 for (let copyer of config["jps-files"]) {
-	copy(path.join(src, copyer), path.join(out, "daemon", "jps", copyer)) ;
+	copy(path.join(src, copyer), path.join(out, "jps", copyer)) ;
 }
+copy(path.join(src, "config.json"), path.join(out, "jps", "defaultConfig.json")) ;
+copy(path.join(src, "errorTemp.jpt"), path.join(out, "jps", "defaultErrorTemp.jpt")) ;
+copy(path.join(src, "sites", "default", "index.html"), path.join(out, "jps", "defaultIndex.html")) ;
 
 const cp = require("child_process") ;
 
-cp.execSync(`go build -o ${path.join(out, "jps" + (process.platform==="win32"?".exe":""))} ${path.join(out, "jps.go")}`) ;
-cp.execSync(`go build -o ${path.join(out, "daemon", "jpsd" + (process.platform==="win32"?".exe":""))} ${path.join(out, "daemon", "jpsd.go")}`) ;
+cp.execSync(`go build -o ${path.join(out, "jps" + (process.platform==="win32"?".exe":""))} ${path.join(src, "jps", "jps-main.go")}`, {
+	env: {
+		"GOPATH": path.join(src, "jps")
+	}
+}) ;
+
+process.chdir(out) ;
+fs.linkSync("./jps" + (process.platform==="win32"?".exe":""), "jpsd" + (process.platform==="win32"?".exe":"")) ;

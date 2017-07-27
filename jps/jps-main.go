@@ -28,14 +28,28 @@
 package main
 
 import (
+	"fmt"
 	"jps"
 	"jpsd"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
+func endHandler() {
+	err := recover()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "\nProcess panicing!")
+		fmt.Fprintln(os.Stderr, err)
+	}
+}
+
 func main() {
-	if os.Args[0] == "jpsd" {
+	defer endHandler()
+	if strings.Index(filepath.Base(os.Args[0]), "jpsd") == 0 {
 		jpsd.Start()
+	} else if len(os.Args) < 2 {
+		jps.StartSync()
 	} else {
 		if os.Args[1] == "start-daemon" {
 			jpsd.Start()

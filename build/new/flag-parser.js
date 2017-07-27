@@ -31,7 +31,6 @@ module.exports = _ => {
 	let argDone = false ;
 	let cArg = new String() ;
 	for (let arg of process.argv) {
-		console.log(inArg, argDone, cArg) ;
 		if (arg.indexOf("-") === 0) {
 			if (inArg && !argDone) {
 				args[cArg].push(true) ;

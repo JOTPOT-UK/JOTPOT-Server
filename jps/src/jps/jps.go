@@ -222,6 +222,33 @@ var Commands = map[string]func(){
 			fmt.Print(string(buff[:n]))
 		}
 	},
+	"setup": func() {
+		fmt.Println("Setting this directory up as a simple server...")
+		srcDir := path.Dir(os.Args[0])
+		dstDir, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		os.MkdirAll(filepath.Join(dstDir, "sites", "default"), 0664)
+		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps", "defaultConfig.json"), filepath.Join(dstDir, "config.json"))
+		if err != nil {
+			panic(err)
+		}
+		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps", "defaultErrorTemp.jpt"), filepath.Join(dstDir, "errorTemp.jpt"))
+		if err != nil {
+			panic(err)
+		}
+		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps", "defaultIndex.html"), filepath.Join(dstDir, "sites", "default", "index.html"))
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Successfully set up :)")
+	},
+}
+
+//StartSync runs the startsync command
+func StartSync() {
+	Commands["startsync"]()
 }
 
 //Go runs the utility

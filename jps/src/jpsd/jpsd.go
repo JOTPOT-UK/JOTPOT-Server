@@ -28,6 +28,7 @@
 package jpsd
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"jpsutil"
@@ -36,60 +37,35 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"syscall"
 )
+
+type procReader struct {
+	value string
+}
+
+func (r *procReader) Write(data []byte) (n int, err error) {
+	defer func() {
+		rerr := recover()
+		if rerr != nil {
+			n = 0
+			err = rerr.(error)
+		}
+	}()
+	r.value += string(data)
+	return len(data), nil
+}
 
 type proc struct {
 	sDir        string
 	p           *exec.Cmd
-	stdout      string
-	stderr      string
+	stdout      *procReader
+	stderr      *procReader
 	index       int
 	running     byte
 	controlAddr string
 }
 
 var procs []*proc
-
-func (c *proc) startRead() {
-	stdout, err := c.p.StdoutPipe()
-	if err != nil {
-		panic(err)
-	}
-	stderr, err := c.p.StderrPipe()
-	if err != nil {
-		panic(err)
-	}
-	err = c.p.Start()
-	if err != nil {
-		panic(err)
-	}
-	buff := make([]byte, 1024)
-	var n1 int
-	var n2 int
-	for {
-		n1, err = stdout.Read(buff)
-		if err != nil && err != io.EOF {
-			panic(err)
-		}
-		c.stdout += string(buff[:n1])
-		n2, err = stderr.Read(buff)
-		if err != nil && err != io.EOF {
-			panic(err)
-		}
-		c.stderr += string(buff[:n2])
-		err = c.p.Process.Signal(syscall.Signal(0))
-		if n1 == 0 && n2 == 0 && err != nil {
-			break
-		}
-	}
-	err = c.p.Wait()
-	if err != nil {
-		c.running = 0
-	} else {
-		c.running = 1
-	}
-}
 
 func newProc(wd string) bool {
 	for _, p := range procs {
@@ -118,11 +94,15 @@ func newProc(wd string) bool {
 	} else {
 		sock = filepath.Join(dir, "data"+string(len(procs)+48)+".sock")
 	}
+	stdout := &procReader{""}
+	stderr := &procReader{""}
 	c := exec.Command(jpsutil.GetNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps", "run"), "-data", sock)
+	c.Stdout = stdout
+	c.Stderr = stderr
 	c.Dir = wd
-	tp := proc{wd, c, "", "", len(procs), 2, sock}
+	tp := proc{wd, c, stdout, stderr, len(procs), 2, sock}
 	procs = append(procs, &tp)
-	go tp.startRead()
+	c.Start()
 	return true
 }
 
@@ -214,8 +194,8 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 			}
 		}
 		getting := buff[0]
-		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stdout)))...)
-		buff = append(buff, []byte(procs[getting].stdout)...)
+		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stdout.value)))...)
+		buff = append(buff, []byte(procs[getting].stdout.value)...)
 		return buff, true
 	},
 	24: func(con net.Conn) ([]byte, bool) {
@@ -229,13 +209,21 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 			}
 		}
 		getting := buff[0]
-		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stderr)))...)
-		buff = append(buff, []byte(procs[getting].stderr)...)
+		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stderr.value)))...)
+		buff = append(buff, []byte(procs[getting].stderr.value)...)
 		return buff, true
 	},
 }
 
 func handler(conn net.Conn) {
+	defer func() {
+		err := recover()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "\nHandler panicing!")
+			fmt.Fprintln(os.Stderr, err)
+			conn.Close()
+		}
+	}()
 	buff := make([]byte, 1)
 	var read int
 	var err error
