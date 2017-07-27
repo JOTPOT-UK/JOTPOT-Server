@@ -2,7 +2,7 @@
 if (!server.isMaster) {
 
 	server.pages["localhost/testpage"] = ["cache","OK"] ;
-	server.handle("fullrequest",_=>{
+	server.handle("fullrequest",()=>{
 		
 		console.info("Done") ;
 		server.pages["localhost/testpage"] = ["cache","YAY!!!"] ;

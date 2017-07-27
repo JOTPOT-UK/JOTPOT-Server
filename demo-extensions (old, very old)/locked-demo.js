@@ -8,7 +8,7 @@ else {
 	
 	console.info("Locked demo loaded as a worker, but limited is",server.limited) ;
 	
-	server.handle("request",_=>{
+	server.handle("request",()=>{
 		
 		console.info("Locked demo got the request!!!") ;
 		
@@ -22,7 +22,7 @@ server.getGlobal("set_in_master").then(d=>{
 	console.info("What the limited extention sees as \"set_in_master\":",d) ;
 	
 	//Lets set a var, you will see this accessed from the demo.jpe.js too.
-	server.setGlobal("limited","YAY").then(_=>{
+	server.setGlobal("limited","YAY").then(()=>{
 		
 		//The global is set, so lets read it:
 		server.getGlobal("limited").then(d=>{

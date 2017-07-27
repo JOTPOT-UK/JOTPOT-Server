@@ -41,7 +41,7 @@ for (let doing in config.servers) {
 
 let http = require("http") ;
 
-function sendToServer(req,resp,server,st) {
+function sendToServer(req,resp,server) {
 	
 	config.servers[server].load += config.servers[server].capacity ;
 	req.headers["jp-source"] = req.headers["jp-source"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
@@ -69,7 +69,7 @@ function sendToServer(req,resp,server,st) {
 		
 		resp.writeHead(r.statusCode,r.headers) ;
 		r.on("data",d=>resp.write(d)) ;
-		r.on("end",_=>{
+		r.on("end",()=>{
 			
 			resp.end() ;
 			config.servers[server].load -= config.servers[server].capacity ;
@@ -78,7 +78,7 @@ function sendToServer(req,resp,server,st) {
 		
 	}) ;
 	req.on("data",d=>f.write(d)) ;
-	req.on("end",_=>f.end()) ;
+	req.on("end",()=>f.end()) ;
 	
 }
 

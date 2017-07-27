@@ -4,7 +4,7 @@ if (server.isMaster) {
 	console.info("Master extention loading!!!") ;
 	
 	//Set the global variable "set_in_master" to the value "Hello :)".
-	server.setGlobal("set_in_master","Hello :)").then(_=>{
+	server.setGlobal("set_in_master","Hello :)").then(()=>{
 		
 		//When it is set, get the variable and log it.
 		server.getGlobal("set_in_master").then(d=>console.info(d)) ;
@@ -75,7 +75,7 @@ else {
 		
 	}) ;
 	
-	server.handle("request",(req,resp)=>{
+	server.handle("request",()=>{
 		
 		//Multiple handles can be set, they will all get fired, even if 1 returns true, so remember that.
 		console.info("This also gets triggered!") ;
