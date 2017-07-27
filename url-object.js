@@ -32,14 +32,14 @@ function parseHost(host, https) {
 	//If the host doesn't conatain the port, add 80/443
 	if (splithost.length < 2) {
 		return [`${host}:${https?443:80}`, host, https?443:80] ;
-	} else {
-		let portshouldbe = splithost.pop() ;
-		if (parseInt(portshouldbe, 10).toString() === portshouldbe) {
-			return [host, splithost.join(":"), portshouldbe] ;
-		} else {
-			return [`${host}:${https?443:80}`, host, https?443:80] ;
-		}
-	}
+	} 
+	let portshouldbe = splithost.pop() ;
+	if (parseInt(portshouldbe, 10).toString() === portshouldbe) {
+		return [host, splithost.join(":"), portshouldbe] ;
+	} 
+	return [`${host}:${https?443:80}`, host, https?443:80] ;
+		
+	
 }
 
 class URL {
@@ -190,9 +190,9 @@ class URL {
 		Object.defineProperty(this, "location", {get:()=>{
 			if ((purl.port === 80 && purl.protocol === "http:") || purl.port === 443 && purl.protocol === "https:") {
 				return url.format(purl).replace(purl.host, purl.hostname) ;
-			} else {
-				return url.format(purl) ;
-			}
+			} 
+			return url.format(purl) ;
+			
 		}, set:val=>{
 			purl = url.parse(val) ;
 		}, enumerable:true, configurable:false}) ;
@@ -254,7 +254,7 @@ class URL {
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "origin", {get:()=>{
-			return purl.protocol + purl.slashes?"//":"" + purl.host ;
+			return purl.protocol + purl.slashes?"//":String(purl.host) ;
 		}, set:val=>{
 			let splitter = ":" ;
 			if (val.indexOf(":") === val.indexOf("://")) {
@@ -300,10 +300,10 @@ class URL {
 		Object.defineProperty(this, "lockHost", {value:()=>{
 			if (hostLocked) {
 				return () => {} ;
-			} else {
-				hostLocked = true ;
-				return () => hostLocked = false ;
-			}
+			} 
+			hostLocked = true ;
+			return () => hostLocked = false ;
+			
 		}, enumerable: false, configurable: false, writable: false}) ;
 		
 		Object.seal(this) ;

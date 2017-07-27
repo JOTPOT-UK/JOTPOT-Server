@@ -141,7 +141,7 @@ function loadConfig() {
 		console.warn("Config file does not exist, using default config.") ;
 		config = new Object() ;
 		Object.assign(config, defaultConfig) ;
-		return ;
+		
 		
 	}
 	
@@ -174,6 +174,7 @@ if (typeof config.dataPort[0] === "string") {
 }
 
 //Get stuff ready for user systems
+// eslint-disable-next-line
 let UIDs = new Array() ;
 let authedUsers = new Object() ;
 
@@ -202,19 +203,19 @@ if (cluster.isMaster) {
 		
 		//If not, add it to the waiting list for this variable
 		// and return true because there is a que
-		else {
+		
 			
-			//But if the waiting list doesn't ecist, create it
-			if (typeof waitingForAvail[v] === "undefined") {
+		//But if the waiting list doesn't ecist, create it
+		if (typeof waitingForAvail[v] === "undefined") {
 				
-				waitingForAvail[v] = new Array() ;
+			waitingForAvail[v] = new Array() ;
 				
-			}
-			
-			waitingForAvail[v].push(func) ;
-			return true ;
-			
 		}
+			
+		waitingForAvail[v].push(func) ;
+		return true ;
+			
+		
 		
 	} ;
 	
@@ -250,6 +251,7 @@ if (cluster.isMaster) {
 		
 		console.log("Creating a new worker.") ;
 		let thisFork = cluster.fork() ;
+		//eslint-disable-next-line consistent-return
 		thisFork.on("message",(...args)=>{
 			
 			let toDo = args[0] ;
@@ -519,11 +521,7 @@ if (cluster.isMaster) {
 						
 					}
 					
-					else {
-						
-						return false ;
-						
-					}
+					return false ;
 					
 				}
 				

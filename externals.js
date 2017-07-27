@@ -276,11 +276,11 @@ module.exports.loadExt = (file,lock=null) => {
 				
 			}
 			
-			else {
+			
 				
-				throw new Error(`Cannot find module '${path}'`) ;
+			throw new Error(`Cannot find module '${path}'`) ;
 				
-			}
+			
 			
 		} ;
 		
@@ -618,11 +618,11 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 				
 			}
 			
-			else {
+			
 				
-				throw new Error(`Cannot find module '${path}'`) ;
+			throw new Error(`Cannot find module '${path}'`) ;
 				
-			}
+			
 			
 		} ;
 		

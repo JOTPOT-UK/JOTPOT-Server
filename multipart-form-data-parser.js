@@ -92,7 +92,9 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 	let newLineMade = false ;
 	let currentHeaders = new Object() ;
 	let currentDataPipe = null ;
-	const parseTick =()=> {
+	// Cannot return at the end, because the code is unreachable
+	// eslint-disable-next-line consistent-return
+	const parseTick = () => {
 		
 		if (dataString.indexOf(boundary) === 0 && stage === 0) {
 			
@@ -141,12 +143,10 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 					return parseTick() ;
 					
 				}
-				else {
+				
 					
-					thisBit = thisBit.split(": ") ;
-					currentHeaders[thisBit[0].toLowerCase()] = thisBit[1] ;
-					
-				}
+				thisBit = thisBit.split(": ") ;
+				currentHeaders[thisBit[0].toLowerCase()] = thisBit[1] ;
 				
 			}
 			

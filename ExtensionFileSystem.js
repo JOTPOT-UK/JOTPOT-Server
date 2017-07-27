@@ -128,7 +128,7 @@ class FileSystem {
 			close: (...args) => {
 				//Check we own it
 				if (this.ownedFDs.indexOf(args[0]) === -1) {
-					throw "You can only use FDs that you have opened." ;
+					throw new Error("You can only use FDs that you have opened.") ;
 				} else {
 					//We no longer own the FD we are closing
 					this.ownedFDs.splice(this.ownedFDs.indexOf(args[0]), 1) ;
@@ -138,7 +138,7 @@ class FileSystem {
 			closeSync: (...args) => {
 				//Check we own it
 				if (this.ownedFDs.indexOf(args[0]) === -1) {
-					throw "You can only use FDs that you have opened." ;
+					throw new Error("You can only use FDs that you have opened.") ;
 				} else {
 					//We no longer own the FD we are closing
 					this.ownedFDs.splice(this.ownedFDs.indexOf(args[0]), 1) ;

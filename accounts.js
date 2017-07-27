@@ -376,14 +376,14 @@ class proc {
 				if (isAuthed) {
 					
 					resolve([true]) ;
-					return ;
+					
 					
 				}
 				
 				else {
 					
 					resolve([false,"redirect",(this.https?"https://":"http://") + removeCommonPorts(this.specialPagesP["loginPage"], this.https)]) ;
-					return ;
+					
 					
 				}
 				

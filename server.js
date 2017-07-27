@@ -151,7 +151,7 @@ function loadConfig() {
 		console.warn("Config file does not exist, using default config.") ;
 		config = new Object() ;
 		Object.assign(config, defaultConfig) ;
-		return ;
+		
 		
 	}
 	
@@ -378,11 +378,11 @@ function getMimeType(file) {
 			
 		}
 		
-		else {
+		
 			
-			return "text/plain" ;
+		return "text/plain" ;
 			
-		}
+		
 		
 	}
 	
@@ -441,7 +441,7 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 		if (err) {
 			
 			callback(false,err) ;
-			return false ;
+			return ;
 			
 		}
 		
@@ -473,21 +473,11 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 				
 			}
 			
-			else {
-				
-				callback(false, "CBR") ;
-				return ;
-				
-			}
-			
-		}
-		
-		else {
-			
-			callback(false,"DIR") ;
+			callback(false, "CBR") ;
 			return ;
 			
 		}
+		callback(false,"DIR") ;
 		
 	}) ;
 	
@@ -582,7 +572,7 @@ function sendFile(file,resp,customVars,req) {
 			//We can only use bytes as a range value
 			if (rangesArr[0] !== "bytes") {
 				sendError(416, `${rangesArr[0]} is not a valid range unit.`, resp, req.jpid) ;
-				return ;
+				return new Promise((_, reject)=>reject()) ;
 			}
 			
 			//Create array of all the range values
@@ -1018,7 +1008,7 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 function sendError(code,message,resp,rID="") {
 	
 	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},{jpid:rID,headers:{}},code) ;
-	return ;
+	
 	
 }
 
@@ -1331,7 +1321,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 		}) ;
 		
-		return true ;
+		return ;
 		
 	}
 	
@@ -1356,7 +1346,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 					resp.writeHead(302,{"Content-Type":"text/plain",location:returned[2]}) ;
 					resp.write("Redirecting you to the login page.") ;
 					resp.end() ;
-					return ;
+					
 					
 				}
 				
@@ -1366,7 +1356,6 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 					resp.writeHead(401,{"Content-Type":"text/plain"}) ;
 					resp.write("Nope.") ;
 					resp.end() ;
-					return false ;
 					
 				}
 				
@@ -1432,7 +1421,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			//Dunnow ;)
 			else if (canAccess === null) {
 				
-				return ;
+				//nothing
 				
 			}
 			
@@ -1443,7 +1432,6 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 				resp.writeHead(401,{"Content-Type":"text/plain"}) ;
 				resp.write("Nope.") ;
 				resp.end() ;
-				return false ;
 				
 			}
 			
@@ -1453,7 +1441,7 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	//Check
 	nextCheck() ;
 	
-	return ;
+	
 	
 }
 
@@ -1514,18 +1502,18 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
 					}) ;
 					return ;
-				} else {
-					let data = Buffer.alloc(0) ;
-					req.on("data", d=>{
-						data = Buffer.concat([data, d], data.length + d.length) ;
-					}) ;
-					req.on("end", ()=>{
-						//Encode data in base64 and add it to resp.vars
-						resp.vars.body = data.toString("base64") ;
-						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
-					}) ;
-					return ;
-				}
+				} 
+				let data = Buffer.alloc(0) ;
+				req.on("data", d=>{
+					data = Buffer.concat([data, d], data.length + d.length) ;
+				}) ;
+				req.on("end", ()=>{
+					//Encode data in base64 and add it to resp.vars
+					resp.vars.body = data.toString("base64") ;
+					allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
+				}) ;
+				return ;
+				
 			}
 		} else if (req.method === "OPTIONS") {
 			//What custom methods support this URL?
@@ -1742,17 +1730,15 @@ module.exports = {
 				//Sending responses
 				"sendFile": (file, resp, req) => {
 					if (checkFile(file)) {
-						sendFile(file, resp, resp.vars, req) ;
-					} else {
-						throw new Error(`This limited extension doesn't have power over ${file}.`) ;
+						return sendFile(file, resp, resp.vars, req) ;
 					}
+					throw new Error(`This limited extension doesn't have power over ${file}.`) ;
 				},
 				"sendCache": (file, cache, resp, req, status=200) => {
 					if (checkFile(file)) {
-						sendCache(file, cache, resp, resp.vars, req, status) ;
-					} else {
-						throw new Error(`This limited extension doesn't have power over ${file}.`) ;
+						return sendCache(file, cache, resp, resp.vars, req, status) ;
 					}
+					throw new Error(`This limited extension doesn't have power over ${file}.`) ;
 				},
 				"sendError":(...eArgs)=>sendError(...eArgs),
 				
@@ -1855,65 +1841,65 @@ module.exports = {
 					"newCache": (url, cache, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.addCache(url, cache, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
+						
 					},
 					"cacheFile": (url) => {
 						if (checkURLString(url)) {
 							return responseMaker.cacheFile(url) ;
-						} else {
-							throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
+						
 					},
 					"isCache": (url, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.isCache(url, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
+						
 					},
 					"getCache": (url, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.getCache(url, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
+						
 					},
 					"removeCache": (url, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.removeCache(url, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot remove a cache for the host '${url.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot remove a cache for the host '${url.split("/").shift()}'.`) ;
+						
 					},
 					"createLink": (from, to, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.createLink(from, to, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot create a link for the host '${from.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot create a link for the host '${from.split("/").shift()}'.`) ;
+						
 					},
 					"isLink": (from, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.isLink(from, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
+						
 					},
 					"getLink": (from, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.getLink(from, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
+						
 					},
 					"removeLink": (from, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.removeLink(from, incSearch) ;
-						} else {
-							throw new Error(`Sorry, you cannot remove a link for the host '${from.split("/").shift()}'.`) ;
-						}
+						} 
+						throw new Error(`Sorry, you cannot remove a link for the host '${from.split("/").shift()}'.`) ;
+						
 					}
 				},
 				
@@ -1921,39 +1907,39 @@ module.exports = {
 				"handlePage": (url, handler, incSearch=false) => {
 					if (checkURLString(url)) {
 						return responseMaker.handlePage(url, handler, incSearch) ;
-					} else {
-						throw new Error(`Sorry, you cannot handle a page for the host '${url.split("/").shift()}'.`) ;
-					}
+					} 
+					throw new Error(`Sorry, you cannot handle a page for the host '${url.split("/").shift()}'.`) ;
+					
 				},
 				"isHandled": (url, incSearch=false) => {
 					if (checkURLString(url)) {
 						return responseMaker.isHandled(url, incSearch) ;
-					} else {
-						throw new Error(`Sorry, you cannot view a handler for the host '${url.split("/").shift()}'.`) ;
-					}
+					} 
+					throw new Error(`Sorry, you cannot view a handler for the host '${url.split("/").shift()}'.`) ;
+					
 				},
 				"removePageHandler": (url, incSearch=false) => {
 					if (checkURLString(url)) {
 						return responseMaker.removePageHandler(url, incSearch) ;
-					} else {
-						throw new Error(`Sorry, you cannot remove a handler for the host '${url.split("/").shift()}'.`) ;
-					}
+					} 
+					throw new Error(`Sorry, you cannot remove a handler for the host '${url.split("/").shift()}'.`) ;
+					
 				},
 				
 				//Linking
 				"isLearned": (url, checkLevel=0) => {
 					if (checkURLString(url)) {
 						return responseMaker.isLearned(url, checkLevel) ;
-					} else {
-						throw new Error(`Sorry, you cannot view learning details for the host '${url.split("/").shift()}'.`) ;
-					}
+					} 
+					throw new Error(`Sorry, you cannot view learning details for the host '${url.split("/").shift()}'.`) ;
+					
 				},
 				"unlearn": (url, level=0) => {
 					if (checkURLString(url)) {
 						return responseMaker.isLearned(url, level) ;
-					} else {
-						throw new Error(`Sorry, you cannot change learning details for the host '${url.split("/").shift()}'.`) ;
-					}
+					} 
+					throw new Error(`Sorry, you cannot change learning details for the host '${url.split("/").shift()}'.`) ;
+					
 				},
 				
 				//Other stuff

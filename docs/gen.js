@@ -1,5 +1,6 @@
 const fs = require("fs") ;
 
+/* eslint-disable */
 function formatObject(file) {
 	
 	let docs = JSON.parse(fs.readFileSync(file).toString()) ;
@@ -26,3 +27,4 @@ function formatObject(file) {
 }
 
 fs.writeFileSync("out.html",eval(`\`${fs.readFileSync("template.html").toString()}\``)) ;
+/* eslint-enable */

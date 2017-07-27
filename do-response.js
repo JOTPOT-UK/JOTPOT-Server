@@ -48,16 +48,16 @@ function createLink(from, to, incSearch=false) {
 function isLink(from, incSearch=false) {
 	if (incSearch) {
 		return Boolean(linksWS[from]) ;
-	} else {
-		return Boolean(links[from]) ;
-	}
+	} 
+	return Boolean(links[from]) ;
+	
 }
 function getLink(from, incSearch=false) {
 	if (incSearch) {
 		return linksWS[from] ;
-	} else {
-		return links[from] ;
-	}
+	} 
+	return links[from] ;
+	
 }
 function removeLink(from, incSearch=false) {
 	if (incSearch) {
@@ -93,16 +93,16 @@ function cacheFileSync(url) {
 function isCache(url, incSearch=false) {
 	if (incSearch) {
 		return Boolean(pagesWS[url]) ;
-	} else {
-		return Boolean(pages[url]) ;
-	}
+	} 
+	return Boolean(pages[url]) ;
+	
 }
 function getCache(url, incSearch=false) {
 	if (incSearch) {
 		return pagesWS[url] ;
-	} else {
-		return pages[url] ;
-	}
+	} 
+	return pages[url] ;
+	
 }
 function removeCache(url, incSearch=false) {
 	if (incSearch) {
@@ -127,16 +127,16 @@ function handlePage(page, func, incSearch=false) {
 function isHandled(page, incSearch=false) {
 	if (incSearch) {
 		return Boolean(funcsWS[page]) ;
-	} else {
-		return Boolean(funcs[page]) ;
-	}
+	} 
+	return Boolean(funcs[page]) ;
+	
 }
 function handle(page, args, incSearch=false) {
 	if (incSearch) {
 		return funcsWS[page](...args) ;
-	} else {
-		return funcs[page](...args) ;
-	}
+	} 
+	return funcs[page](...args) ;
+	
 }
 function removePageHandler(page, incSearch=false) {
 	if (incSearch) {
@@ -156,16 +156,16 @@ let learning = new Object() ;
 function isLearned(url, checkLevel=0) {
 	if (checkLevel === 0) {
 		return Boolean(learning[url]) ;
-	} else {
-		let isLearned = false ;
-		for (let doing in learning) {
-			if (doing.indexOf(url + (checkLevel===1)?"?":"") === 0) {
-				isLearned = true ;
-				break ;
-			}
+	} 
+	let isLearned = false ;
+	for (let doing in learning) {
+		if (doing.indexOf(url + (checkLevel===1)?"?":"") === 0) {
+			isLearned = true ;
+			break ;
 		}
-		return isLearned ;
 	}
+	return isLearned ;
+	
 }
 
 //Unlearn, will be releared on next request?
@@ -209,6 +209,7 @@ function doLinks(req) {
 
 //Function that sends a response for the given request
 function createResponse(req, resp) {
+	/* eslint-disable consistent-return */
 	return new Promise((resolve)=>{
 		//If we have leared how to handle the request
 		if (module.exports.enableLearning && learning[req.url.fullvalue]) {
@@ -240,9 +241,9 @@ function createResponse(req, resp) {
 					if (!done[0]) {
 						delete learning[req.url.fullvalue] ;
 						return createResponse(req, resp) ;
-					} else {
-						resolve([200, true]) ;
-					}
+					} 
+					resolve([200, true]) ;
+					
 				}) ;
 			} else if (learning[req.url.fullvalue][0] === 3) {
 				module.exports.sendError(404, errorMessages[404] || errorMessages[0], resp, req.jpid) ;
@@ -282,12 +283,12 @@ function createResponse(req, resp) {
 							if (req.url.value === origValue) {
 								//break ;
 								return handleeThing() ;
-							} else {
-								return handleeThing() ;
-							}
-						} else {
-							return [true, 0] ;
-						}
+							} 
+							return handleeThing() ;
+							
+						} 
+						return [true, 0] ;
+						
 					}) ;
 				} else {
 					return [true, 0] ;
@@ -319,12 +320,12 @@ function createResponse(req, resp) {
 							if (req.url.value === origValue) {
 								//break ;
 								return handleeThing() ;
-							} else {
-								return handleeThing() ;
-							}
-						} else {
-							return [true, 0] ;
-						}
+							} 
+							return handleeThing() ;
+							
+						} 
+						return [true, 0] ;
+						
 					}) ;
 				} else {
 					return [true, 0] ;
@@ -403,6 +404,7 @@ function createResponse(req, resp) {
 			toDo() ;
 		}
 	}) ;
+	/* eslint-enable consistent-return */
 }
 
 module.exports = {
