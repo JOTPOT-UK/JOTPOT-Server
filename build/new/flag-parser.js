@@ -29,7 +29,7 @@ module.exports = () => {
 	let args = {} ;
 	let inArg = false ;
 	let argDone = false ;
-	let cArg = new String() ;
+	let cArg = "" ;
 	for (let arg of process.argv) {
 		if (arg.indexOf("-") === 0) {
 			if (inArg && !argDone) {

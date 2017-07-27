@@ -3,16 +3,16 @@ const fs = require("fs") ;
 function formatObject(file) {
 	
 	let docs = JSON.parse(fs.readFileSync(file).toString()) ;
-	let out = new String() ;
+	let out = "" ;
 	for (let t of docs) {
 		
-		let supportList = new String() ;
+		let supportList = "" ;
 		for (let doing in t.support) {
 			
 			supportList += `<li>${["Master","Worker","Limited master","Limited worker"][doing]} extention: <span class="${t.support[doing]?"supported":"notsupported"}">${t.support[doing]?"Yes":"No"}</span></li>` ;
 			
 		}
-		let argsList = new String() ;
+		let argsList = "" ;
 		for (let doing in t.args) {
 			
 			argsList += `<li>${t.args[doing]}</li>` ;

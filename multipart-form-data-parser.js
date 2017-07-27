@@ -85,7 +85,7 @@ module.exports = (req,cb) => new Promise((resolve,reject)=>{
 	}
 	let boundaryB = Buffer.from(boundary) ;
 	let data = Buffer.alloc(0) ;
-	let dataString = new String() ;
+	let dataString = "" ;
 	let endReady = false ;
 	let reqEnded = false ;
 	let stage = 0 ;
