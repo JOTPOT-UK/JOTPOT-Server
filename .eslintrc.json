@@ -5,12 +5,7 @@
         "node": true
 	},
 	"extends": "eslint:recommended",
-    "parserOptions": {
-        "ecmaFeatures": {
-            "jsx": true
-        },
-        "sourceType": "module"
-    },
+    "parserOptions": {},
     "rules": {
         "no-const-assign": "warn",
         "no-this-before-super": "warn",
@@ -36,5 +31,9 @@
             "always"
         ],
 		"no-console": 0
-    }
+	},
+	"globals": {
+		"server": true,
+		"requireJPS": false
+	}
 }
