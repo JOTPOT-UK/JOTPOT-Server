@@ -5,3 +5,7 @@ engines:
     enabled: true
   duplication:
     enabled: false
+ratings:
+  paths:
+  - "**.go"
+  - "**.js"
