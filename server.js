@@ -63,8 +63,6 @@ let config ;
 //Default configuration
 const defaultConfig = {
 	
-	"otherProcesses": [],
-	
 	"dataPort": 500,
 	
 	"httpServers": [
@@ -79,6 +77,7 @@ const defaultConfig = {
 	"dontRedirect": [],
 	
 	"hostRedirects":{},
+	"hostnameRedirects":{},
 	"hostAlias":{},
 	"pageAlias":{},
 	
@@ -841,9 +840,10 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 		}
 		
 		else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
-			
 			lengthknown = true ;
-			
+			mainPipe = resp ;
+		} else {
+			mainPipe = resp ;
 		}
 		
 		if (lengthknown && typeof req.headers.range === "string") {
@@ -1066,6 +1066,10 @@ function handleRequest(req,resp,secure) {
 			
 		}
 		
+		//Add stuff to the req object
+		req.ip = user_ip ;
+		req.remoteAddress = user_ip_remote ;
+		req.usePortInDirectory = true ;
 		//Create URL object and secure, and overHttps and secureToServer
 		wrapURL(req, secure) ;
 		
@@ -1074,9 +1078,6 @@ function handleRequest(req,resp,secure) {
 		resp.pipeThrough = new Array() ;
 		resp.forceDownload = false ;
 		resp.sendBody = true ;
-		req.ip = user_ip ;
-		req.remoteAddress = user_ip_remote ;
-		req.usePortInDirectory = true ;
 		
 		//Set default headers
 		for (let doing in config.defaultHeaders) {
@@ -1136,7 +1137,13 @@ function handleRequest(req,resp,secure) {
 function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) {
 	
 	//Secure URL. Remove '..' to prevent it from going to a parent directory.
-	req.url.pathname = req.url.pathname.replace(/\.\./g,"") ;
+	//And replace // with /, along with removing any trailing /
+	do {
+		req.url.pathname = req.url.pathname.replace(/\.\./g, "").replace(/\/\//g, "/") ;
+	} while (req.url.pathname.indexOf("//") !== -1) ;
+	while (req.url.pathname.length > 1 && req.url.pathname.indexOf("/") === req.url.pathname.length - 1) {
+		req.url.pathname = req.url.pathname.substring(0, req.url.pathname.length - 1) ;
+	}
 	
 	//Should we redirect to https.
 	
@@ -1190,10 +1197,10 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 		//But if we ignore the port and it still doesn't, and we should fallback to default, then fallback to default.
 		if (availHosts.indexOf(URL.toDir(req.url.hostname)) === -1 && config.useDefaultHostIfHostDoesNotExist) {
-			
 			req.url.host = config.defaultHost || "default:0" ;
-			req.usePortInDirectory = false ;
-			
+			if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+				req.usePortInDirectory = false ;
+			}
 		}
 		
 		//Otherwise, it does exist so lets not use the port
@@ -1222,10 +1229,34 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		
 		//Set new host
-		req.url.hostname = config.hostRedirects[req.url.hostname] ;
+		req.url.host = config.hostRedirects[req.url.host] ;
 		
 		//Set correct protocol
-		let isRedirectHttps = config.redirectToHttps.indexOf(req.url.host) !== -1 && config.canBeHttp.indexOf(req.url.value) === -1 ;
+		let isRedirectHttps = req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && (config.redirectToHttps.indexOf(req.url.host) !== -1 || config.mustRedirectToHttps.indexOf(req.url.host) !== -1) ;
+		req.url.protocol = isRedirectHttps?"https:":"http:" ;
+		
+		//And send response
+		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
+		resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
+		resp.write("Redirecting you to " + req.url.location + "...") ;
+		resp.end() ;
+		
+		let timeTaken = process.hrtime(timeRecieved) ;
+		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+		
+		return ;
+		
+	}
+	
+	if (typeof config.hostnameRedirects[req.url.hostname] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
+		
+		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
+		
+		//Set new host
+		req.url.hostname = config.hostnameRedirects[req.url.hostname] ;
+		
+		//Set correct protocol
+		let isRedirectHttps = req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && (config.redirectToHttps.indexOf(req.url.host) !== -1 || config.mustRedirectToHttps.indexOf(req.url.host) !== -1) ;
 		req.url.protocol = isRedirectHttps?"https:":"http:" ;
 		
 		//And send response
@@ -1574,7 +1605,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 		}
 		
 		//Use responseMaker to generate the response, see do-response.js
-		responseMaker.createResponse(req, resp).then(hmmm=>{
+		responseMaker.createResponse(req, resp, timeRecieved).then(hmmm=>{
 			//Log if it was leared from
 			if (hmmm[0]) {
 				console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
@@ -1697,6 +1728,7 @@ module.exports = {
 				"cache": {
 					"newCache": (url, cache, incSearch=false) => responseMaker.addCache(url, cache, incSearch),
 					"cacheFile": url => responseMaker.cacheFile(url),
+					"cacheFileAs": (url, file) => responseMaker.cacheFileAs(url, file),
 					"isCache": (url, incSearch=false) => responseMaker.isCache(url, incSearch),
 					"getCache": (url, incSearch=false) => responseMaker.getCache(url, incSearch),
 					"removeCache": (url, incSearch=false) => responseMaker.removeCache(url, incSearch),
@@ -1872,6 +1904,13 @@ module.exports = {
 							return responseMaker.cacheFile(url) ;
 						} 
 						throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
+						
+					},
+					"cacheFileAs": (url, file) => {
+						if (checkURLString(url) && checkURLString(file)) {
+							return responseMaker.cacheFileAs(url, file) ;
+						} 
+						throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}' or '${file.split("/").shift()}'.`) ;
 						
 					},
 					"isCache": (url, incSearch=false) => {

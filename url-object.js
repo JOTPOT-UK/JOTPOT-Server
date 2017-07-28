@@ -236,7 +236,7 @@ class URL {
 			return purl.host + purl.pathname ;
 		}, set:val=>{
 			val = val.split("/") ;
-			purl.host = val.shift() ;
+			this.host = val.shift() ;
 			purl.pathname = "/" + val.join("/") ;
 			purl.path = purl.pathname + (purl.search || "") ;
 		}, enumerable:true, configurable:false}) ;
@@ -245,7 +245,28 @@ class URL {
 			return purl.host + purl.path ;
 		}, set:val=>{
 			val = val.split("/") ;
-			purl.host = val.shift() ;
+			this.host = val.shift() ;
+			purl.path = "/" + val.join("/") ;
+			let npurl = url.parse(val) ;
+			purl.pathname = npurl.pathname ;
+			purl.search = npurl.search ;
+			purl.query = npurl.query ;
+		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "valuenoport", {get:()=>{
+			return purl.hostname + purl.pathname ;
+		}, set:val=>{
+			val = val.split("/") ;
+			this.hostname = val.shift() ;
+			purl.pathname = "/" + val.join("/") ;
+			purl.path = purl.pathname + (purl.search || "") ;
+		}, enumerable:true, configurable:false}) ;
+		
+		Object.defineProperty(this, "fullvaluenoport", {get:()=>{
+			return purl.hostname + purl.path ;
+		}, set:val=>{
+			val = val.split("/") ;
+			this.hostname = val.shift() ;
 			purl.path = "/" + val.join("/") ;
 			let npurl = url.parse(val) ;
 			purl.pathname = npurl.pathname ;
