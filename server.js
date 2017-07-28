@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 25F
+	Version 26A-0
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -75,7 +75,8 @@ const defaultConfig = {
 	"httpsServers": [],
 	
 	"redirectToHttps": [],
-	"canBeHttp": [],
+	"mustRedirectToHttps": [],
+	"dontRedirect": [],
 	
 	"hostRedirects":{},
 	"hostAlias":{},
@@ -1138,21 +1139,42 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	req.url.pathname = req.url.pathname.replace(/\.\./g,"") ;
 	
 	//Should we redirect to https.
-	if (req.overHttps === false && config.redirectToHttps.indexOf(req.url.host) !== -1 && config.canBeHttp.indexOf(req.url.value) === -1) {
+	
+	if (req.overHttps === false && config.dontRedirect.indexOf(req.url.value) === -1) {
 		
-		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
-		
-		req.url.protocol = "https:" ;
-		
-		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location,"Status":301}) ;
-		resp.write("Redirecting you to our secure site...") ;
-		resp.end() ;
-		
-		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-		
-		return ;
+		if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
+			
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+			console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
+			
+			req.url.protocol = "https:" ;
+			
+			resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
+			resp.write("Redirecting you to our secure site...") ;
+			resp.end() ;
+			
+			let timeTaken = process.hrtime(timeRecieved) ;
+			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+			
+			return ;
+			
+		} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
+			
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+			console.log(`${req.jpid}\t307 Moved Temporarily.   Redirecting to ${req.url.location}.`) ;
+			
+			req.url.protocol = "https:" ;
+			
+			resp.writeHead(307,{"Content-Type": "text/plain", "location": req.url.location, "Status": 307, "Vary": "Upgrade-Insecure-Requests"}) ;
+			resp.write("Redirecting you to our secure site...") ;
+			resp.end() ;
+			
+			let timeTaken = process.hrtime(timeRecieved) ;
+			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+			
+			return ;
+			
+		}
 		
 	}
 	
@@ -1195,7 +1217,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	}
 	
 	//Should we redirect to another host.
-	if (typeof config.hostRedirects[req.url.host] !== "undefined") {
+	if (typeof config.hostRedirects[req.url.host] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
 		
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		
@@ -1208,7 +1230,7 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 		//And send response
 		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
-		resp.writeHead(301,{"Content-Type":"text/plain","location":req.url.location, "Status":301}) ;
+		resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
 		resp.write("Redirecting you to " + req.url.location + "...") ;
 		resp.end() ;
 		
