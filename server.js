@@ -1152,9 +1152,12 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
 			
 			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-			console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
+			console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because this page MUST be HTTPS.`) ;
 			
 			req.url.protocol = "https:" ;
+			if (req.url.port === 80) {
+				req.url.port = 443 ;
+			}
 			
 			resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
 			resp.write("Redirecting you to our secure site...") ;
@@ -1168,9 +1171,12 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
 			
 			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-			console.log(`${req.jpid}\t307 Moved Temporarily.   Redirecting to ${req.url.location}.`) ;
+			console.log(`${req.jpid}\t307 Moved Temporarily.   Redirecting to ${req.url.location} because the user requested an upgrade.`) ;
 			
 			req.url.protocol = "https:" ;
+			if (req.url.port === 80) {
+				req.url.port = 443 ;
+			}
 			
 			resp.writeHead(307,{"Content-Type": "text/plain", "location": req.url.location, "Status": 307, "Vary": "Upgrade-Insecure-Requests"}) ;
 			resp.write("Redirecting you to our secure site...") ;
@@ -1233,10 +1239,13 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 		//Set correct protocol
 		let isRedirectHttps = req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && (config.redirectToHttps.indexOf(req.url.host) !== -1 || config.mustRedirectToHttps.indexOf(req.url.host) !== -1) ;
-		req.url.protocol = isRedirectHttps?"https:":"http:" ;
+		req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
+		if ((isRedirectHttps||req.secure) && req.url.port === 80) {
+			req.url.port = 443 ;
+		}
 		
 		//And send response
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
+		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because of a host redirect.`) ;
 		resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
 		resp.write("Redirecting you to " + req.url.location + "...") ;
 		resp.end() ;
@@ -1257,10 +1266,13 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 		//Set correct protocol
 		let isRedirectHttps = req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && (config.redirectToHttps.indexOf(req.url.host) !== -1 || config.mustRedirectToHttps.indexOf(req.url.host) !== -1) ;
-		req.url.protocol = isRedirectHttps?"https:":"http:" ;
+		req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
+		if ((isRedirectHttps||req.secure) && req.url.port === 80) {
+			req.url.port = 443 ;
+		}
 		
 		//And send response
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location}.`) ;
+		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because of a hostname redirect.`) ;
 		resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
 		resp.write("Redirecting you to " + req.url.location + "...") ;
 		resp.end() ;
@@ -1395,11 +1407,10 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 				
 				if (returned[1] === "redirect") {
 					
-					console.log(`\t302 Found.   Redirecting to ${returned[2]}.`) ;
+					console.log(`\t302 Found.   Redirecting to ${returned[2]} because of account system.`) ;
 					resp.writeHead(302,{"Content-Type":"text/plain",location:returned[2]}) ;
 					resp.write("Redirecting you to the login page.") ;
 					resp.end() ;
-					
 					
 				}
 				

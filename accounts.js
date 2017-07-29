@@ -384,7 +384,6 @@ class proc {
 					
 					resolve([false,"redirect",(this.https?"https://":"http://") + removeCommonPorts(this.specialPagesP["loginPage"], this.https)]) ;
 					
-					
 				}
 				
 			}) ;
@@ -449,9 +448,6 @@ class proc {
 			
 			let sendIUOP =()=> {
 				
-				//resp.writeHead(200,{"Content-Type":"text/plain"}) ;
-				//resp.write("Incorrect username or password...") ;
-				//resp.end() ;
 				resolve([false,"redirect",(this.https?"https://":"http://") + removeCommonPorts(this.specialPagesP.loginPage, this.https)]) ;
 				
 			} ;
@@ -535,7 +531,7 @@ function removeCommonPorts(path, https) {
 	path = path.split("/") ;
 	path[0] = path[0].split(":") ;
 	if (path[path.length-1] === https?"443":"80") {
-		path.pop() ;
+		path[0].pop() ;
 	}
 	path[0] = path[0].join(":") ;
 	path = path.join("/") ;

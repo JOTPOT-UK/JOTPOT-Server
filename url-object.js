@@ -188,7 +188,7 @@ class URL {
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "location", {get:()=>{
-			if ((purl.port === 80 && purl.protocol === "http:") || purl.port === 443 && purl.protocol === "https:") {
+			if ((purl.port === 80 && purl.protocol === "http:") || (purl.port === 443 && purl.protocol === "https:")) {
 				return url.format(purl).replace(purl.host, purl.hostname) ;
 			} 
 			return url.format(purl) ;
