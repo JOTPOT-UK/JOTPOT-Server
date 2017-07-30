@@ -1,0 +1,50 @@
+[
+	{
+		"title": "request.accualHost",
+		"id":"request-accualHost",
+		"added": "Pre 25A",
+		"extra": "Removed in 26A, use request.orig_url.host to get the origional host.",
+		"desc": "Similar to request.orig_url pre 26A, it is the host the request was originally made with, thus this is without the host alias applied.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.fullurl",
+		"id":"request-fullurl",
+		"added": "25A",
+		"extra": "Removed in 26A, use request.url.href instead, or request.url.location to get the value without :80/:443 if the protocol is http:/https:",
+		"desc": "This is what will appear in the users URL bar, for example 'https://www.example.com:443/path/to/page.html'. Note that these elements will always be included.",
+		"args": []
+	},
+	{
+		"title": "request.host",
+		"id":"request-host",
+		"added": "Pre 25A",
+		"extra": "Removed in 26A, use request.url.host instead.",
+		"desc": "request.host will be equal to the domain the request is been made to, after aliases have been handled, so for the fullrequest and allowedrequest events, it will be the alias.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.path",
+		"id":"request-path",
+		"added": "Pre 25A",
+		"extra": "Removed in 26A, use request.url.path instead.",
+		"desc": "The requested path (thus without the host) with all occurrences of '..' removed.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.pathname",
+		"id":"request-pathname",
+		"added": "25E",
+		"extra": "Removed in 26A, use request.url.pathname instead.",
+		"desc": "<a href=\"#request-path\">request.path</a> however without the query.<br>This is not available for the request handle.",
+		"args": []
+	},
+	{
+		"title": "request.port",
+		"id":"request-port",
+		"added": "26A",
+		"extra": "Removed in 26A, use request.url.port instead.",
+		"desc": "This is set to the port that the request was recieved on. Note that this is not nessiserily the same as request.url.port as that is based on the host header, whereas request.port is based on the accual port the listener that handled this request was listening on.",
+		"args": []
+	}
+]

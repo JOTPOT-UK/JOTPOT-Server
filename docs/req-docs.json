@@ -1,73 +1,33 @@
 [
 	{
-		"title": "request.accualHost",
-		"id":"request-accualHost",
-		"added": "Pre 25A",
-		"extra": "",
-		"desc": "Similar to request.orig_url, it is the host the request was originally made with, thus this is without the host alias applied.<br>This is not available for the request handle.",
-		"args": []
-	},
-	{
-		"title": "request.fullurl",
-		"id":"request-fullurl",
-		"added": "25A",
-		"extra": "",
-		"desc": "This is what will appear in the users URL bar, for example 'https://www.example.com:443/path/to/page.html'. Note that these elements will always be included.",
-		"args": []
-	},
-	{
-		"title": "request.host",
-		"id":"request-host",
-		"added": "Pre 25A",
-		"extra": "",
-		"desc": "request.host will be equal to the domain the request is been made to, after aliases have been handled, so for the fullrequest and allowedrequest events, it will be the alias.<br>This is not available for the request handle.",
-		"args": []
-	},
-	{
 		"title": "request.ip",
 		"id":"request-ip",
 		"added": "25E",
 		"extra": "",
-		"desc": "request.ip if the IP address of the user making the request. If there is an x-forwarded-for header, the IP address is set the that over the accual IP address.<br>If config.behindLoadBalancer is true, the jp-source-ip header set by the load balancer will be used as the source IP.<br>Also see <a href=\"#request-sourceIp\">request.sourceIp</a>.",
+		"desc": "request.ip if the IP address of the user making the request. If there is an x-forwarded-for header, the IP address is set the that over the accual IP address.<br>If config.behindLoadBalancer is true, the jp-source-ip header set by the load balancer will be used as the source IP.<br>Also see <a href=\"#request-remoteAddress\">request.remoteAddress</a>.",
 		"args": []
 	},
 	{
 		"title": "request.orig_url",
 		"id":"request-orig_url",
 		"added": "Pre 25A",
-		"extra": "",
-		"desc": "This will be the original URL requested by the client. See <a href=\"#request-url\">request.url</a> for details on how it is changed.<br>This is not available for the request handle.",
+		"extra": "Note that before 26A this was the initial string value of request.url",
+		"desc": "This is the initial value of the request.url object.",
 		"args": []
 	},
 	{
 		"title": "request.overHttps",
 		"id":"request-overHttps",
 		"added": "Pre 25A",
-		"extra": "",
-		"desc": "Alias for <a href=\"request-secure\">request.secure</a> (was added before request.secure and left in for backwards compatibility purposes), so true if the request was made over HTTPS and false if not.",
-		"args": []
-	},
-	{
-		"title": "request.path",
-		"id":"request-path",
-		"added": "Pre 25A",
-		"extra": "",
-		"desc": "The requested path (thus without the host) with all occurrences of '..' removed.<br>This is not available for the request handle.",
-		"args": []
-	},
-	{
-		"title": "request.pathname",
-		"id":"request-pathname",
-		"added": "25E",
-		"extra": "",
-		"desc": "<a href=\"#request-path\">request.path</a> however without the query.<br>This is not available for the request handle.",
+		"extra": "Note that before 26A, it did not check or set req.url in any way.",
+		"desc": "Boolean that represents if the request was made over HTTPS. When changed, request.value.protocol will be changed to the https: if it is set to true or http: if it is set to false. This change only occurs if the user hasn't set it to a protocol such as ftp:. When getting the value, it checks request.url.protocol and if it is https: or sftp: it returns true, else, false.<br>If there is another protocol you would like to make appear as secure, just post an issue or create a pull request on <a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server\" target=\"_blank\">GitHub</a> adding the protocol to the secureProtocols array.<br>If config.behindLoadBalencer is true, it will be set dependent on the load balencer headers.",
 		"args": []
 	},
 	{
 		"title": "request.purl",
 		"id":"request-purl",
 		"added": "25A",
-		"extra": "",
+		"extra": "Removed in 26A as the request.url object has all of these properties.",
 		"desc": "Equivalent to if request.fullurl was passed to <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/url.html\">Node.js's url.parse</a>.",
 		"args": []
 	},
@@ -76,14 +36,14 @@
 		"id":"request-secure",
 		"added": "25D",
 		"extra": "",
-		"desc": "Whether or not the request and response is secure, so true if the request was made over HTTPS and false if not.<br>From 25E onwards, if config.behindLoadBalancer is true, the jp-source-secure header set by the load balancer will be set, even if the load balancer made the request via HTTP to the server, the value will be determined by the clients connection to the load balancer.",
+		"desc": "Alias for <a href=\"#request-overHttps\">request.overHttps</a>.<!--Whether or not the request and response is secure, so true if the request was made over HTTPS and false if not.<br>From 25E onwards, if config.behindLoadBalancer is true, the jp-source-secure header set by the load balancer will be set, even if the load balancer made the request via HTTP to the server, the value will be determined by the clients connection to the load balancer.-->",
 		"args": []
 	},{
 		"title": "request.secureToServer",
 		"id":"request-secureToServer",
 		"added": "25D",
 		"extra": "",
-		"desc": "Whether or not the connection to the load balancer is HTTPS. If there is no load balancer, it is equal to <a href=\"#request-secure\">request.secure</a>",
+		"desc": "Whether or not the connection from the load balancer to the server is HTTPS. If there is no load balancer, it is equal to <a href=\"#request-secure\">request.secure</a>",
 		"args": []
 	},
 	{
@@ -95,11 +55,27 @@
 		"args": []
 	},
 	{
+		"title": "request.uri",
+		"id":"request-uri",
+		"added": "26A",
+		"extra": "",
+		"desc": "This sets/gets the URI from the request body. So for example if the first line of the request is 'GET /hello/world?test=ok HTTP/1.1', then request.URI will be '/hello/world?test=ok'. When set, it will modify the request.url object and when the request.url object is modified, this will be modified.",
+		"args": []
+	},
+	{
 		"title": "request.url",
 		"id":"request-url",
 		"added": "Pre 25A",
-		"extra": "Note: Before 1.2.0, request.url was all lower case.",
-		"desc": "The URL that the client requested, however with all occurrences of '..' removed to prevent the request from going into a parent directory. It also has the host concatenated before the path, so a request for '/hello.html' with the host 'www.example.com', req.url would be 'www.example.com/hello.html'.<br>This is not modified for the request handle.",
+		"extra": "Notes:<br>Before 1.2.0, request.url was all lower case.<br>Before 26A, request.url was the same as the current request.url.fullvalue. So was a string, rather than an object.",
+		"desc": "This is a JOTPOT Server URL object that represents the URL that was requested by the client.<br>Limited extensions may not change the host of the request.url object. Between the request event and the fullrequest event, the pathname property has all occurences of '..', double slashes and any trailing slashes removed.",
+		"args": []
+	},
+	{
+		"title": "request.usePortInDirectory",
+		"id":"request-usePortInDirectory",
+		"added": "26A",
+		"extra": "",
+		"desc": "Boolean, it determines if the port is used when responding the the request. So if the user requests 'www.example.com:80/example.html' and request.usePortInDirectory is true, handlers for 'www.example.com:80/example.html' will be checked, and the file is searches for will be 'www.example.com;80/example.html', however if false, it will check hadlers for 'www.example.com/example.html' and look for the file 'www.example.com/example.html'. Please note that other checks follow these rules, such as links and caching.<br>For the request event, this is set to true every time, then between the request event and the fullrequest event, if config.fallbackToNoPort is true and a directory with the port doesn't exist, request.usePortInDirectory is set to false.<br>So, you can set it to false an any point and have it stick, however if you want to force the value to be true, you must set it after the request event. However if you do this, a 404 response is garenteed as it will only be set to false if the directory doesn't exist.",
 		"args": []
 	},
 	{
@@ -107,7 +83,7 @@
 		"id":"request-user",
 		"added": "Pre 25A",
 		"extra": "",
-		"desc": "This is the user ID of the user of the current user, please note that this is only set when it is required for the user to be authenticated for the page. And thus also only available in the allowedrequest handle.",
+		"desc": "This is the user ID of the user of the current user, please note that this is only set when it is required for the user to be authenticated for the page. And thus also only available in the allowedrequest handle and is not garenteed to be available.",
 		"args": []
 	}
 ]

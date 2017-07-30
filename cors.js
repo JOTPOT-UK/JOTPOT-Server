@@ -43,7 +43,7 @@ let corsEnabled = false ;
 //allowedOrigings: Array of origins that can access the resource
 //	Can be string or regexp
 //allowedMethods: array of allowed HTTP methods
-function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins, allowMethods, allowHeaders=[], exposeHeaders=[], allowCredentials=false, priority=0, maxAge=0) {
+function addRule(protocols, host, pathYes, pathNo, allowAllOrigins, allowOrigins, allowMethods, allowHeaders=[], exposeHeaders=[], allowCredentials=false, priority=0, maxAge=-1) {
 	if (typeof protocols !== "number" || protocols > 2 || protocols < 0) {
 		throw new Error("protocols must be a Number that is 0, 1 or 2") ;
 	}

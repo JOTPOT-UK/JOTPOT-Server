@@ -52,10 +52,12 @@ let cluster ;
 //JPS Modules
 let proc = requireJPS("accounts") ;
 let externals = requireJPS("externals") ;
-let URL = requireJPS("url-object") ;
 let CORS = requireJPS("cors") ;
 let responseMaker = requireJPS("do-response") ;
 let parseFlags = requireJPS("flag-parser") ;
+let jpsUtil = requireJPS("jps-util") ;
+let urlObject = requireJPS("url-object") ;
+let {URL} = urlObject ;
 
 //Load the config
 let config ;
@@ -397,21 +399,22 @@ function getMimeType(file) {
 
 //Add the URL property to a request object. Make it so that if it is set, it sets the value instead.
 function wrapURL(req, secure) {
-	const defaultProtocols = ["http:","https:"] ;
+	const defaultProtocols = ["http:", "https:"] ;
+	const secureProtocols = ["https:", "sftp:"] ;
 	const setSecure = val => {
-		secure = Boolean(val) ;
 		if (defaultProtocols.indexOf(req.url.protocol) !== -1) {
-			req.url.protocol = secure?"https:":"http:" ;
+			req.url.protocol = val?"https:":"http:" ;
 		}
 	} ;
+	const getSecure = () => secureProtocols.indexOf(req.url.protocol) !== -1 ;
 	Object.defineProperty(req, "secure", {
-		get: ()=>secure,
+		get: getSecure,
 		set: setSecure,
 		enumerable: true,
 		configurable: false
 	}) ;
 	Object.defineProperty(req, "overHttps", {
-		get: ()=>secure,
+		get: getSecure,
 		set: setSecure,
 		enumerable: true,
 		configurable: false
@@ -429,6 +432,13 @@ function wrapURL(req, secure) {
 		configurable: false,
 		get: ()=>url,
 		set: v=>{url.value=v;}
+	}) ;
+	
+	Object.defineProperty(req, "uri", {
+		get: ()=>req.url.path,
+		set: val=>req.url.path=val,
+		enumerable: true,
+		configurable: false
 	}) ;
 }
 
@@ -1010,7 +1020,6 @@ function sendError(code,message,resp,rID="") {
 	
 	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},{jpid:rID,headers:{}},code) ;
 	
-	
 }
 
 function coughtError(err,resp,rID="") {
@@ -1072,6 +1081,15 @@ function handleRequest(req,resp,secure) {
 		req.usePortInDirectory = true ;
 		//Create URL object and secure, and overHttps and secureToServer
 		wrapURL(req, secure) ;
+		//orig_url object
+		let orig_url = new Object() ;
+		Object.assign(orig_url, req.url) ;
+		Object.defineProperty(req, "orig_url", {
+			enumerable: true,
+			configurable: false,
+			writable: false,
+			value: orig_url
+		}) ;
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"time":requestTime.getTime().toString(),"href":req.url.href,"method":req.method} ;
@@ -1513,22 +1531,26 @@ function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDone) {
 	try {
 		//Determine how to handle the method
-		if (typeof implementedMethods[req.method] !== "undefined" && implementedMethods[req.method][0](req)) {
+		if (typeof implementedMethods[req.method] !== "undefined") {
 			if (!postDone) {
-				//If it is a custom method and it hasn't already run call it.
-				let rv =  implementedMethods[req.method][1](req) ;
-				//Promise? If it resolved false, then rerun
-				if (typeof rv.then === "function") {
-					rv.then(handled=>{
-						if (!handled) {
-							allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
+				for (let doing in implementedMethods[req.method]) {
+					if (implementedMethods[req.method][doing][0](req, resp)) {
+						//If it is a custom method and it hasn't already run call it.
+						let rv =  implementedMethods[req.method][doing][1](req, resp) ;
+						//Promise? If it resolved false, then rerun
+						if (typeof rv.then === "function") {
+							rv.then(handled=>{
+								if (!handled) {
+									allowedRequest(host, req, resp, user_ip, user_ip_remote, timeRecieved, true) ;
+								}
+							}) ;
+							return ;
 						}
-					}) ;
-					return ;
-				}
-				//Dont run if we returned true
-				else if (rv) {
-					return ;
+						//Dont run if we returned true
+						else if (rv) {
+							return ;
+						}
+					}
 				}
 			}
 		} else if (req.method === "GET") {
@@ -1577,7 +1599,6 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 					allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
 				}) ;
 				return ;
-				
 			}
 		} else if (req.method === "OPTIONS") {
 			//What custom methods support this URL?
@@ -1660,19 +1681,13 @@ module.exports = {
 				"reloadConfig": ()=>loadConfig(),
 				
 				//Recieving requests
-				"getData": req=>{
-					
-					let data = new Array() ;
-					req.on("data",d=>data.push(d)) ;
-					return new Promise(resolve=>req.on("end",()=>resolve(Buffer.concat(data)))) ;
-					
-				},
+				"getData": req=>jpsUtil.getData(req),
 				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
 				
 				//Sending responses
 				"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
 				"sendCache": (file, cache, resp, req, status=200) => sendCache(file, cache, resp, resp.vars, req, status),
-				"sendError":(...eArgs)=>sendError(...eArgs),
+				"sendError":(code, message, resp, req={jpid:""})=>sendError(code, message, resp, req.jpid),
 				"vars": vars,
 				
 				//Account handling
@@ -1713,6 +1728,8 @@ module.exports = {
 				//HTTP Stuff
 				//Methods
 				"implementMethod": (method, checker, handler) => {
+					
+					method = method.toUpperCase() ;
 					
 					//Check types
 					if (typeof checker !== "function" || typeof handler !== "function" || typeof method !== "string") {
@@ -1759,7 +1776,11 @@ module.exports = {
 				"unlearn": (url, level=0) => responseMaker.unlearn(url, level),
 				
 				//Other stuff
-				"getMimeType": (...args)=>getMimeType(...args)
+				"getMimeType": (...args)=>getMimeType(...args),
+				"createURL": opts=>{
+					urlObject.defaultHost = config.defaultHost ;
+					urlObject.createURL(opts) ;
+				}
 				
 			} ;
 		} ;
@@ -1783,13 +1804,7 @@ module.exports = {
 			return {
 				
 				//Recieving requests
-				"getData": req=>{
-					
-					let data = new Array() ;
-					req.on("data",d=>data.push(d)) ;
-					return new Promise(resolve=>req.on("end", ()=>resolve(Buffer.concat(data)))) ;
-					
-				},
+				"getData": req=>jpsUtil.getData(req),
 				"multipartFormDataParser": require("./multipart-form-data-parser.js"),
 				
 				//Sending responses
@@ -2015,7 +2030,11 @@ module.exports = {
 				},
 				
 				//Other stuff
-				"getMimeType":(...args)=>getMimeType(...args)
+				"getMimeType":(...args)=>getMimeType(...args),
+				"createURL": opts=>{
+					urlObject.defaultHost = config.defaultHost ;
+					urlObject.createURL(opts) ;
+				}
 				
 			} ;
 		} ;

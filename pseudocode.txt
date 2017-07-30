@@ -1,0 +1,105 @@
+Request Comes In
+
+Header Server set to JOTPOT Server
+
+If config.behindLoadBalencer:
+	Load balencer headers parsed
+
+Add to req:  url, overHttps, secure, secureToServer,
+             ip, remoteAddress, usePortInDirectory
+Add to resp: vars, pipeThrough=[],
+             forceDownload=false, sendBody=true
+
+Add headers from config.defaultHeaders
+
+EVENT: request
+
+'..' removed from pathname
+
+//Do redirects to HTTPS
+If request is not HTTPS and req.url.value is not in config.dontRedirect:
+	If req.url.host is in config.mustRedirectToHttps:
+		302 Found response redirecting user to HTTPS version.
+		Done.
+	If req.url.host is in config.redirectToHttps and Upgrade-Insecure-Requests header is 1:
+		307 Moved Temporarily response redirecting user to HTTPS version.
+		Done.
+
+//Apply host alias
+while req.url.host in config.hostAlias:
+	req.url.host = config.hostAlias[req.url.host]
+
+//Host fallbacks dependent of contents of sites directory
+//Please note that the contents of the sites directory
+// are loaded on startup and cached, rather then reading
+// every time, this means that this could be out of date.
+If config.fallbackToNoPort:
+	If sites/req.url.hostname;req.url.port doesn't exist:
+		If sites/req.url.hostname exists:
+			req.usePortInDirectory = false
+		Else if config.useDefaultHostIfHostDoesNotExist:
+			req.url.host = config.defaultHost
+			If sites/req.url.host doesn't exist:
+				req.usePortInDirectory = false
+Else if cofig.useDefaultHostIfHostDoesNotExist:
+	If sites/req.url.hostname;req.url.port doesn't exist:
+		req.url.host = config.defaultHost
+
+//Host redirects
+If req.url.host is in config.hostRedirects and req.url.value is not in config.dontRedirect:
+	//Note that this redirect also follows the logic in the
+	// HTTPS redirect section for the new host to reduce
+	// the ammount of redirects.
+	302 Found response redirecting to the new host followed by the bath
+	Done.
+
+Apply page links
+
+Add to req:  jpid
+jpid is in the format: `#$WORKER_ID-$REQUEST_NUMBER_IN_HEX`
+
+Set CORS headers
+
+EVENT: fullrequest
+
+Check user authentification
+If the user is not authenticated:
+	Redirect to login page
+	Done.
+
+EVENT: allowedrequest
+
+If request method has user implementation:
+	Call the checker function with the request object.
+	If the checker function returned true:
+		Call the handler function
+	Else if the method is GET:
+		Do nothing
+	Else if the method is HEAD:
+		req.sendBody = false
+	Else if the method is POST:
+		//Data will be base64 encoded
+		Collect request body and put the data into resp.vars.body
+	Else if the method is OPTIONS:
+		Set allow header to list of implemented methods
+		Send empty response body
+		Done.
+	Else:
+		Send 405 Method Not Allowed error response
+		Done.
+
+Response maker:
+	If this request has been made before and is thus learned:
+		Use the leaned data to send the request
+		Done.
+	:check //If anything changes in one of the checks, it startf from here again.
+		Check links with search
+		Check links without search
+		Check handlers with search
+		Check cache with search
+		Check handlers without search
+		Check cache without search
+	Try to load file
+	Try to load file with .page if it doesn't exist or /index.html if it is dir
+	If that doesn't exist, send a 404.
+	If this response can be used again, learn it for next time.

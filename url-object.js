@@ -344,4 +344,19 @@ class URL {
 	}
 }
 
-module.exports = URL ;
+function createURL(opts) {
+	return new URL({
+		url: opts.path || "/",
+		overHttps: opts.https || opts.overHttps || opts.overHTTPS || opts.secure || false,
+		secureToServer: opts.overHttps || opts.overHTTPS || opts.secure || false,
+		headers: {
+			host: opts.host || module.exports.defaultHost || "default:0"
+		}
+	}, module.exports.defaultHost) ;
+}
+
+module.exports = {
+	URL,
+	createURL,
+	defaultHost: "default:0"
+} ;
