@@ -348,9 +348,21 @@ function createURL(opts) {
 	return new URL({
 		url: opts.path || "/",
 		overHttps: opts.https || opts.overHttps || opts.overHTTPS || opts.secure || false,
-		secureToServer: opts.overHttps || opts.overHTTPS || opts.secure || false,
+		secureToServer: opts.https || opts.overHttps || opts.overHTTPS || opts.secure || false,
 		headers: {
 			host: opts.host || module.exports.defaultHost || "default:0"
+		}
+	}, module.exports.defaultHost) ;
+}
+
+function createURLFromString(u) {
+	let pu = url.parse(u) ;
+	return new URL({
+		url: pu.path || "/",
+		overHttps: pu.protocol === "https:",
+		secureToServer: pu.protocol === "https:",
+		headers: {
+			host: pu.host || module.exports.defaultHost || "default:0"
 		}
 	}, module.exports.defaultHost) ;
 }
@@ -358,5 +370,6 @@ function createURL(opts) {
 module.exports = {
 	URL,
 	createURL,
+	createURLFromString,
 	defaultHost: "default:0"
 } ;

@@ -1780,6 +1780,10 @@ module.exports = {
 				"createURL": opts=>{
 					urlObject.defaultHost = config.defaultHost ;
 					urlObject.createURL(opts) ;
+				},
+				"createURLFromString": url=>{
+					urlObject.defaultHost = config.defaultHost ;
+					urlObject.createURLFromString(url) ;
 				}
 				
 			} ;
@@ -2034,6 +2038,10 @@ module.exports = {
 				"createURL": opts=>{
 					urlObject.defaultHost = config.defaultHost ;
 					urlObject.createURL(opts) ;
+				},
+				"createURLFromString": url=>{
+					urlObject.defaultHost = config.defaultHost ;
+					urlObject.createURLFromString(url) ;
 				}
 				
 			} ;

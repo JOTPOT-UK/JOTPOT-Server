@@ -88,6 +88,40 @@
 		]
 	},
 	{
+		"title": "server.createURL(opts)",
+		"id":"server-createURL",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "26A",
+		"extra": "",
+		"desc": "Creates a URL object with the given options and returns it.",
+		"args": [
+			"opts.host &lt;String&gt; The host of the URL.",
+			"opts.https &lt;Boolean&gt; Whether or not the URL sould be HTTPS.",
+			"opts.path &lt;String&gt; Path of the URL to create the object around."
+		]
+	},
+	{
+		"title": "server.createURLFromString(url)",
+		"id":"server-createURLFromString",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "26A",
+		"extra": "",
+		"desc": "Creates a URL as a parsed version of the URL given.",
+		"args": [
+			"url &lt;String&gt; URL to create the object on."
+		]
+	},
+	{
 		"title": "server.getData(request)",
 		"id":"server-getData",
 		"support": [
@@ -124,14 +158,14 @@
 		"title": "server.getMimeType(filename)",
 		"id":"server-getMimeType",
 		"support": [
-			true,
+			false,
 			true,
 			false,
-			false
+			true
 		],
 		"added": "Pre 25A",
 		"extra": "",
-		"desc": "\tReturns the mime type of the filename passed.\n",
+		"desc": "Returns the mime type of the filename passed.",
 		"args": [
 			"filename &lt;String&gt; The filename to get the mime type of."
 		]
@@ -219,6 +253,23 @@
 		"extra": "",
 		"desc": "\ttrue if the extension is limited, false if not.\n",
 		"args": []
+	},
+	{
+		"title": "server.isLearned(url, checkLevel)",
+		"id":"server-isLearned",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "26A",
+		"extra": "",
+		"desc": "Checks if the server has learned behavior for the given URL (in the form host/path), returns a boolean with the result. If check level is 0, the learned value must be the exact URL. Otherwise, it will return true if any search values of the URL or the URL itself is learned.",
+		"args": [
+			"url &lt;String&gt; The URL to see if it is learned.",
+			"checkLevel &lt;Number&gt; If not 0, all searches will be checked."
+		]
 	},
 	{
 		"title": "server.loadExt(path[, lock])",
@@ -422,6 +473,23 @@
 		"args": [
 			"variableName &lt;String&gt; Name of the variable to retrieve.",
 			"value Value to set the variable to."
+		]
+	},
+	{
+		"title": "server.unlearn(url, level)",
+		"id":"server-unlearn",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "26A",
+		"extra": "",
+		"desc": "If level is 0, removes the learning links for the exact URL, otherwise it removes all learing links for that page and all it's searches.",
+		"args": [
+			"url &lt;String&gt; The URL to see if it is learned.",
+			"checkLevel &lt;Number&gt; If not 0, all searches will be removed also."
 		]
 	},
 	{

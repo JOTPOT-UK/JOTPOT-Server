@@ -169,7 +169,7 @@ let learning = new Object() ;
 function isLearned(url, checkLevel=0) {
 	if (checkLevel === 0) {
 		return Boolean(learning[url]) ;
-	} 
+	}
 	let isLearned = false ;
 	for (let doing in learning) {
 		if (doing.indexOf(url + (checkLevel===1)?"?":"") === 0) {
