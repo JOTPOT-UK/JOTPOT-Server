@@ -98,11 +98,12 @@
 		],
 		"added": "26A",
 		"extra": "",
-		"desc": "Creates a URL object with the given options and returns it.",
+		"desc": "Creates a <a href=\"#url-object\">URL object</a> with the given options and returns it.",
 		"args": [
 			"opts.host &lt;String&gt; The host of the URL.",
 			"opts.https &lt;Boolean&gt; Whether or not the URL sould be HTTPS.",
-			"opts.path &lt;String&gt; Path of the URL to create the object around."
+			"opts.path &lt;String&gt; Path of the URL to create the object around.",
+			"opts.slashes &lt;Boolean&gt; Whether or not the URL contains slashes after the protocol."
 		]
 	},
 	{
@@ -116,7 +117,7 @@
 		],
 		"added": "26A",
 		"extra": "",
-		"desc": "Creates a URL as a parsed version of the URL given.",
+		"desc": "Creates a <a href=\"#url-object\">URL object</a> as a parsed version of the URL given.",
 		"args": [
 			"url &lt;String&gt; URL to create the object on."
 		]

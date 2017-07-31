@@ -319,6 +319,21 @@ ${formatObject("./req-docs.json")}
 <div class="indent">
 ${formatObject("./resp-docs.json")}
 </div>
+<br><br>
+<span ID="url-object">
+	<h2>
+		The 'url' object.
+	</h2>
+	<div class="indent">
+		The 'url' object is an object that is used to describe a URL. By default, request.url is a url object representing the request URL.
+		<br>You can also create your own url object using <a href="#server-createURL">server.createURL</a> and <a href="#server-createURLFromString">server.createURLFromString</a>.
+		<br>An url has a value that is a string, which is the same as the value property, and thus url == url.value however url !== url.value.
+		<br>Most of it's properties are setters and getters and thus when one property is changed, the others echo the change. So changing the port proprty will also change the host property, the origin property and etc.
+	</div>
+	<div class="indent">
+		${formatObject("./url-docs.json")}
+	</div>
+</span>
 </div>
 </div>
 <jp-data-title>JOTPOT Server Docs</jp-data-title>

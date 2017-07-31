@@ -19,7 +19,7 @@ function formatObject(file) {
 			argsList += `<li>${t.args[doing]}</li>` ;
 			
 		}
-		out += `<div ID="${t.id}"><h3 class="func-h3">${t.title}</h3><div class="details">${t.support?`Availability:<ul>${supportList}</ul>`:''}Added: ${t.added}${t.extra?`<br>${t.extra}`:""}</div><ul class="args-list">${argsList}</ul><div class="desc">${t.desc}</div></div>` ;
+		out += `<div ID="${t.id}"><h3 class="func-h3">${t.title}</h3><div class="details">${t.support?`Availability:<ul>${supportList}</ul>`:''}${t.added?`Added: ${t.added}`:""}${t.extra?`<br>${t.extra}`:""}</div><ul class="args-list">${argsList}</ul><div class="desc">${t.desc}</div></div>` ;
 		
 	}
 	return eval(`\`${out}\``) ;

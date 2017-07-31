@@ -43,7 +43,7 @@ function parseHost(host, https) {
 }
 
 class URL {
-	constructor (req, defaultHost) {
+	constructor (req, defaultHost, slashes=true) {
 		
 		let hostLocked = false ;
 		
@@ -52,14 +52,7 @@ class URL {
 		
 		//Add http(s):// properties
 		purl.protocol = `http${req.overHttps?"s":""}:` ;
-		purl.slashes = true ;
-		
-		Object.defineProperty(this, "accualHost", {
-			value: req.headers.host || defaultHost,
-			enumerable: true,
-			writable: false,
-			configurable: false
-		}) ;
+		purl.slashes = slashes ;
 		
 		//Split host into hostname and port
 		//	This isn't the same method as the Node.js url.parse
@@ -67,6 +60,13 @@ class URL {
 		purl.host = parsedHost[0] ;
 		purl.hostname = parsedHost[1] ;
 		purl.port = parsedHost[2] ;
+		
+		Object.defineProperty(this, "accualURL", {
+			configurable: false,
+			enumerable: true,
+			writable: false,
+			value: url.format(purl)
+		}) ;
 		
 		Object.defineProperty(this, "pathname", {get:()=>{
 			return purl.pathname ;
@@ -275,7 +275,7 @@ class URL {
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "origin", {get:()=>{
-			return purl.protocol + purl.slashes?"//":String(purl.host) ;
+			return purl.protocol + (purl.slashes?"//":"") + String(purl.host) ;
 		}, set:val=>{
 			let splitter = ":" ;
 			if (val.indexOf(":") === val.indexOf("://")) {
@@ -337,7 +337,7 @@ class URL {
 		return this.value ;
 	}
 	toJSON() {
-		return this.href ;
+		return this.location ;
 	}
 	static toDir(v) {
 		return v.replace(/:/g,";") ;
@@ -352,7 +352,7 @@ function createURL(opts) {
 		headers: {
 			host: opts.host || module.exports.defaultHost || "default:0"
 		}
-	}, module.exports.defaultHost) ;
+	}, module.exports.defaultHost, opts.slashes || true) ;
 }
 
 function createURLFromString(u) {
@@ -364,7 +364,7 @@ function createURLFromString(u) {
 		headers: {
 			host: pu.host || module.exports.defaultHost || "default:0"
 		}
-	}, module.exports.defaultHost) ;
+	}, module.exports.defaultHost, pu.slashes || false) ;
 }
 
 module.exports = {

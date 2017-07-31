@@ -67,7 +67,7 @@
 		"id":"request-url",
 		"added": "Pre 25A",
 		"extra": "Notes:<br>Before 1.2.0, request.url was all lower case.<br>Before 26A, request.url was the same as the current request.url.fullvalue. So was a string, rather than an object.",
-		"desc": "This is a JOTPOT Server URL object that represents the URL that was requested by the client.<br>Limited extensions may not change the host of the request.url object. Between the request event and the fullrequest event, the pathname property has all occurences of '..', double slashes and any trailing slashes removed.",
+		"desc": "This is a JOTPOT Server <a href=\"#url-object\">URL object</a> that represents the URL that was requested by the client.<br>Limited extensions may not change the host of the request.url object. Between the request event and the fullrequest event, the pathname property has all occurences of '..', double slashes and any trailing slashes removed.",
 		"args": []
 	},
 	{

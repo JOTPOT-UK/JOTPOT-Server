@@ -1,0 +1,186 @@
+[
+	{
+		"title": "url.accualHost",
+		"id":"url-accualHost",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>//Change the URL in any way<br>url.accualURL === 'https://www.example.com:443/hello/world.html?test=hello#abc'</span><br>This is the origional value of url.href, it is read only so cannot be changed, so for request.url, you can use this to determine what the request was origionaly for.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.auth",
+		"id":"url-auth",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://user:pass@www.example.com:443/hello/world.html?test=hello#abc'<br>url.auth === 'user:pass'</span><br>The authentification section of the URL, see <a href=\"#url-username\">url.username</a> and <a href=\"#url-password\">url.password</a>.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.fullvalue",
+		"id":"url-fullvalue",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.fullvalue === 'www.example.com:443/hello/world.html?test=hello#abc'</span><br>Equivilent of url.host + url.path.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.fullvaluenoport",
+		"id":"url-fullvaluenoport",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.fullvaluenoport === 'www.example.com:443/hello/world.html?test=hello#abc'</span><br>Equivilent of url.hostname + url.path.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.hash",
+		"id":"url-hash",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.hash === '#abc'</span><br>The hash of the URL.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.host",
+		"id":"url-host",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.host === 'www.example.com:443'</span><br>The host of the URL, includes the port.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.hostname",
+		"id":"url-hostname",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.hostname === 'www.example.com'</span><br>The hostname of the URL, do doesn't include the port.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.href",
+		"id":"url-href",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'</span><br>The full URL, with all the properties.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.hrefnoport",
+		"id":"url-hrefnoport",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.hrefnoport === 'https://www.example.com/hello/world.html?test=hello#abc'</span><br>Same as <a href=\"#url-href\">url.href</a>, except without the port.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.location",
+		"id":"url-location",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.location === 'https://www.example.com/hello/world.html?test=hello#abc'<br>url.href === 'http://www.example.com:80/hello/world.html?test=hello#abc'<br>url.location === 'http://www.example.com/hello/world.html?test=hello#abc'<br>url.href === 'http://www.example.com:8080/hello/world.html?test=hello#abc'<br>url.location === 'http://www.example.com:8080/hello/world.html?test=hello#abc'</span><br>Same as <a href=\"#url-href\">url.href</a>, except it doesn't include the port if it is the default port for the protocol, this can be used for redirects, when you want to send the user to a location, but obviously, you don't want the port in their URL bar.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.lockHost()",
+		"id":"url-lockHost",
+		"extra": "",
+		"desc": "Calling this function locks the host, so it cannot be changed. It returns a function that when called unlocks the host. If the host is locked, calling the function has ne effect and the returned function also has no effect.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.origin",
+		"id":"url-origin",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.origin === 'https://www.example.com:443'</span><br>The origin of the URL.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.password",
+		"id":"url-password",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://user:pass@www.example.com:443/hello/world.html?test=hello#abc'<br>url.password === 'pass'</span><br>The password section of <a href=\"#url-auth\">url.auth</a>.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.path",
+		"id":"url-path",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.path === '/hello/world.html?test=hello'</span><br>The path of the URL.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.pathname",
+		"id":"url-pathname",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.pathname === '/hello/world.html'</span><br>The pathname of the URL.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.port",
+		"id":"url-port",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.port === '443'</span><br>The port from the host of the URL.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.protocol",
+		"id":"url-protocol",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.protocol === 'https:'</span><br>The protocol of the URL.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.query",
+		"id":"url-query",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.query === 'test=hello'</span><br>The search query of the URL.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.search",
+		"id":"url-search",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.search === '?test=hello'</span><br>The search query of the URL, with the ?.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.slashes",
+		"id":"url-slashes",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.slashes === true</span><br>Whether or not the URL contains slashes after to protocol.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.username",
+		"id":"url-username",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://user:pass@www.example.com:443/hello/world.html?test=hello#abc'<br>url.username === 'user'</span><br>The username section of <a href=\"#url-auth\">url.auth</a>.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.value",
+		"id":"url-value",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.value === 'www.example.com:443/hello/world.html'</span><br>Equivilent of url.host + url.pathname.",
+		"added": "",
+		"args": []
+	},
+	{
+		"title": "url.valuenoport",
+		"id":"url-valuenoport",
+		"extra": "",
+		"desc": "<span class=\"urlcode\">url.href === 'https://www.example.com:443/hello/world.html?test=hello#abc'<br>url.valuenoport === 'www.example.com/hello/world.html'</span><br>Equivilent of url.hostname + url.pathname.",
+		"added": "",
+		"args": []
+	}
+]

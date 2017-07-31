@@ -1,10 +1,26 @@
 [
 	{
+		"title": "response.forceDownload",
+		"id":"response-forceDownload",
+		"added": "26A",
+		"extra": "",
+		"desc": "Boolean, if true, the mime type application/octet-stream will be sent, to force the client to download the resource. Defaults to false.",
+		"args": []
+	},
+	{
 		"title": "response.pipeThrough",
 		"id":"response-pipeThrough",
 		"added": "Pre 25A",
 		"extra": "",
 		"desc": "This is an array that by default is empty. When the response is sent, it will be piped through all the pipes in this array before been piped to the client, meaning that you can add compression transform pipes, some templating solutions or more to this array and your response will be sent through them.",
+		"args": []
+	},
+	{
+		"title": "response.sendBody",
+		"id":"response-sendBody",
+		"added": "26A",
+		"extra": "",
+		"desc": "Boolean, if false, the response will not contain a body. Used internaly for the default implementation of the head method. However it can be set by extensions.",
 		"args": []
 	},
 	{
