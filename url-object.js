@@ -292,6 +292,9 @@ class URL {
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "username", {get:()=>{
+			if (!purl.auth) {
+				return null ;
+			}
 			return purl.auth.split(":")[0] ;
 		}, set:val=>{
 			if (val.indexOf(":") !== -1) {
@@ -301,6 +304,9 @@ class URL {
 		}, enumerable:true, configurable:false}) ;
 		
 		Object.defineProperty(this, "password", {get:()=>{
+			if (!purl.auth) {
+				return null ;
+			}
 			return purl.auth.split(":")[1] ;
 		}, set:val=>{
 			if (val.indexOf(":") !== -1) {

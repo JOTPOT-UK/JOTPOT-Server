@@ -92,6 +92,11 @@
 <a href="/server" style="float: right;" ID="the_link">JOTPOT Server Main Page</a>
 <div class="indent">
 <i>Please note that this page is still a work in progress, and is no where near complete. It may not look the best yet but the content should be good :)</i>
+<h2>Quick Links</h2>
+<a href="#server-object">'server' object reference</a>
+<a href="#request-object">'request' object reference</a>
+<a href="#response-object">'response' object reference</a>
+<a href="#url-object">'url' object reference</a>
 <h2>Getting started</h2>
 <div class="indent">
 	Welcome the the documentation for JOTPOT Server, this first section is a guide on getting started with JOTPOT Server.
@@ -231,11 +236,13 @@ Properties:
 	The most key consent of extensions is server.handle, and for developing simple applications, it can be all that is needed.
 </div>
 <br><br>
-<h2>'server' object</h2>
-<div class="indent">
-	<span>The server object is an object available is master and worker extensions, however with differences in each.</span>
-	${formatObject("./server-docs.json")}
-</div>
+<span ID="server-object">
+	<h2>'server' object</h2>
+	<div class="indent">
+		<span>The server object is an object available is master and worker extensions, however with differences in each.</span>
+		${formatObject("./server-docs.json")}
+	</div>
+</span>
 <br><br>
 <h2>
 	Server Events
@@ -300,25 +307,29 @@ Properties:
 	</pre>
 </div>
 <br>
-<h2>
-	The 'request' ('IncomingMessage') object.
-</h2>
-<div class="indent">
-	The 'request' object is passed as the first argument to any hander function handling a request - with the second argument always been the response object. It is the <a href="https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_class_http_incomingmessage">Node.js IncomingMessage object</a> however has some modified properties and some added properties to make working with it easier. All of these changed/additional properties are listed below.
-</div>
-<div class="indent">
-${formatObject("./req-docs.json")}
-</div>
+<span ID="request-object">
+	<h2>
+		The 'request' ('IncomingMessage') object.
+	</h2>
+	<div class="indent">
+		The 'request' object is passed as the first argument to any hander function handling a request - with the second argument always been the response object. It is the <a href="https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_class_http_incomingmessage">Node.js IncomingMessage object</a> however has some modified properties and some added properties to make working with it easier. All of these changed/additional properties are listed below.
+	</div>
+	<div class="indent">
+	${formatObject("./req-docs.json")}
+	</div>
+</span>
 <br><br>
-<h2>
-	The 'response' ('ServerResponse') object.
-</h2>
-<div class="indent">
-	The 'response' object is always passed to the request hander as the second argument, and similar to the 'request' object is the <a href="https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_class_http_serverresponse">Node.js ServerResponse object</a> however with a couple of added properties for ease of use. These added properties are documented below.
-</div>
-<div class="indent">
-${formatObject("./resp-docs.json")}
-</div>
+<span ID="response-object">
+	<h2>
+		The 'response' ('ServerResponse') object.
+	</h2>
+	<div class="indent">
+		The 'response' object is always passed to the request hander as the second argument, and similar to the 'request' object is the <a href="https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_class_http_serverresponse">Node.js ServerResponse object</a> however with a couple of added properties for ease of use. These added properties are documented below.
+	</div>
+	<div class="indent">
+	${formatObject("./resp-docs.json")}
+	</div>
+</span>
 <br><br>
 <span ID="url-object">
 	<h2>

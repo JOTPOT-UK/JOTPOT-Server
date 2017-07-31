@@ -29,6 +29,7 @@ package jps
 
 import (
 	"fmt"
+	"io"
 	"jpsutil"
 	"net"
 	"os"
@@ -37,6 +38,21 @@ import (
 	"path/filepath"
 	"strconv"
 )
+
+func generateServiceFile(dir string) string {
+	return `[Unit]
+Description=JOTPOT Server Daemon
+Wants=network-online.target
+After=network.target network-online.target
+ConditionPathExists=` + dir + `
+
+[Service]
+ExecStart=` + filepath.Join(dir, "jps") + ` start-daemon
+
+[Install]
+WantedBy=multi-user.target
+Alias=jpsd.service`
+}
 
 //Commands determine commands that the user can use
 var Commands = map[string]func(){
@@ -78,7 +94,41 @@ var Commands = map[string]func(){
 		con.Close()
 	},
 	"stop": func() {
-		fmt.Println("Stopping")
+		if len(os.Args) < 3 {
+			fmt.Println("Second argument must be an int")
+			os.Exit(1)
+			return
+		}
+		toGet, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Println("Second argument must be an int")
+			os.Exit(1)
+			return
+		}
+		fmt.Println("Stopping server...")
+		con, err := net.Dial("tcp", ":50551")
+		if err != nil {
+			panic(err)
+		}
+		buff := []byte{11, byte(toGet)}
+		_, err = con.Write(buff)
+		if err != nil {
+			panic(err)
+		}
+		buff = []byte{0}
+		n := 0
+		for n < 1 {
+			n, err = con.Read(buff)
+			if err != nil {
+				panic(err)
+			}
+		}
+		if buff[0] != 123 {
+			fmt.Println("Somehing went wrong while stopping the server.")
+		} else {
+			fmt.Println("Server stopped.")
+		}
+		con.Close()
 	},
 	"node": func() {
 		fmt.Println("nodee stuff")
@@ -105,7 +155,7 @@ var Commands = map[string]func(){
 				fmt.Print(string(buff[0]+48) + ": ")
 				if buff[1] > 1 {
 					fmt.Print("running")
-				} else if buff[1] == 1 {
+				} else if buff[1] == 0 {
 					fmt.Print("stopped")
 				} else {
 					fmt.Print("errored")
@@ -193,7 +243,6 @@ var Commands = map[string]func(){
 			os.Exit(1)
 			return
 		}
-		fmt.Print("Sending read request...")
 		con, err := net.Dial("tcp", ":50551")
 		if err != nil {
 			panic(err)
@@ -214,13 +263,18 @@ var Commands = map[string]func(){
 			panic("123 not returned by read request")
 		}
 		buff = make([]byte, 1024)
+		fmt.Print("\n")
 		for {
 			n, err = con.Read(buff)
-			if err != nil {
+			if err != nil && err != io.EOF {
 				panic(err)
 			}
 			fmt.Print(string(buff[:n]))
+			if err == io.EOF {
+				break
+			}
 		}
+		fmt.Print("\n\n")
 	},
 	"setup": func() {
 		fmt.Println("Setting this directory up as a simple server...")
@@ -243,6 +297,13 @@ var Commands = map[string]func(){
 			panic(err)
 		}
 		fmt.Println("Successfully set up :)")
+	},
+	"make-unit-file": func() {
+		binDir, err := filepath.Abs(path.Dir(os.Args[0]))
+		if err != nil {
+			panic(err)
+		}
+		fmt.Print(generateServiceFile(binDir))
 	},
 }
 

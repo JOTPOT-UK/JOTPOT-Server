@@ -43,6 +43,13 @@ let fs = require("fs") ;
 const path = require("path") ;
 let cluster = require("cluster") ;
 
+//Check sites directory exists
+if (!fs.existsSync("sites") || !fs.statSync("sites").isDirectory()) {
+	console.info("'sites' directory must exist!") ;
+	console.warn("'sites' directory must exist!") ;
+	process.exit(1) ;
+}
+
 //JPS Modules
 let externals = requireJPS("externals") ;
 let parseFlags = requireJPS("flag-parser") ;
@@ -154,15 +161,7 @@ if (flags["-data"]) {
 		console.warn("Only 1 data server listener can be specified.") ;
 		throw new Error("Only 1 data server listener can be specified.") ;
 	}
-	let port = parseInt(flags["-data"][0], 10) ;
-	if (isNaN(port)) {
-		config.dataPort = flags["-data"][0] ;
-		if (process.platform === "win32") {
-			config.dataPort = path.join("\\\\?\\pipe", config.dataPort) ;
-		}
-	} else {
-		config.dataPort = port ;
-	}
+	config.dataPort = flags["-data"][0] ;
 }
 config.dataPort = [config.dataPort] ;
 if (typeof config.dataPort[0] === "string") {
@@ -611,6 +610,7 @@ if (cluster.isMaster) {
 				if (d === "getlogs") {
 					
 					s.write(logs.join("\n")) ;
+					s.end() ;
 					
 				}
 				else if (d === "reload") {

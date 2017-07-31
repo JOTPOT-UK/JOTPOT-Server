@@ -10,6 +10,7 @@
 		"flag-parser.js",
 		"multipart-form-data-parser.js",
 		"url-object.js",
+		"jps-util.js",
 		"config.json",
 		"mimes.json",
 		"errorTemp.jpt"

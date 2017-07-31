@@ -37,6 +37,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"syscall"
 )
 
 type procReader struct {
@@ -61,15 +62,25 @@ type proc struct {
 	stdout      *procReader
 	stderr      *procReader
 	index       int
-	running     byte
 	controlAddr string
+	state       byte
+}
+
+func (p *proc) wait() {
+	err := p.p.Wait()
+	fmt.Println(p.p.ProcessState.Success(), err == nil)
+	if p.p.ProcessState.Success() && err == nil {
+		p.state = 0
+	} else {
+		p.state = 1
+	}
 }
 
 var procs []*proc
 
 func newProc(wd string) bool {
 	for _, p := range procs {
-		if p.sDir == wd && p.running == 2 {
+		if p.sDir == wd && p.state == 2 {
 			return false
 		}
 	}
@@ -100,16 +111,17 @@ func newProc(wd string) bool {
 	c.Stdout = stdout
 	c.Stderr = stderr
 	c.Dir = wd
-	tp := proc{wd, c, stdout, stderr, len(procs), 2, sock}
+	tp := proc{wd, c, stdout, stderr, len(procs), sock, 2}
 	procs = append(procs, &tp)
 	c.Start()
+	go tp.wait()
 	return true
 }
 
 func listProcs(_ net.Conn) ([]byte, bool) {
 	out := []byte{9, byte(len(procs))}
 	for _, p := range procs {
-		out = append(out, byte(p.index), p.running, byte(len(p.sDir)))
+		out = append(out, byte(p.index), p.state, byte(len(p.sDir)))
 		out = append(out, []byte(p.sDir)...)
 	}
 	return out, true
@@ -149,6 +161,27 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 		}
 		return []byte{124}, true
 	},
+	11: func(con net.Conn) ([]byte, bool) {
+		buff := make([]byte, 1)
+		var n int
+		var err error
+		for n < 1 {
+			n, err = con.Read(buff)
+			if err != nil {
+				panic(err)
+			}
+		}
+		tp := procs[int(buff[0])]
+		err = tp.p.Process.Signal(syscall.SIGKILL)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return []byte{124}, true
+		}
+		for tp.state == 2 {
+		}
+		tp.state = 0
+		return []byte{123}, true
+	},
 	21: func(_ net.Conn) ([]byte, bool) {
 		return []byte{123}, true
 	},
@@ -156,14 +189,12 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 		buff := make([]byte, 1)
 		var n int
 		var err error
-		println("Starting read...")
 		for n < 1 {
 			n, err = con.Read(buff)
 			if err != nil {
 				panic(err)
 			}
 		}
-		println("Done read...")
 		var scon net.Conn
 		if runtime.GOOS == "windows" {
 			scon, err = net.Dial("tcp", procs[int(buff[0])].controlAddr)
@@ -173,7 +204,6 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 		if err != nil {
 			panic(err)
 		}
-		println("123, as easy as ABC...")
 		con.Write([]byte{123})
 		scon.Write([]byte("getlogs"))
 		_, err = io.Copy(con, scon)

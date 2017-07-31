@@ -2,6 +2,8 @@ Client->Server
 	9: List servers -> 9
 	10: Start server
 		[length] wd...
+	11: Stop server -> 123
+		[id]
 	21: Check -> 123
 	22: Get logs -> 123 data... [end]
 		[id]
