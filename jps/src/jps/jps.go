@@ -56,8 +56,9 @@ Alias=jpsd.service`
 
 //Commands determine commands that the user can use
 var Commands = map[string]func(){
-	"startsync": func() {
-		c := exec.Command(jpsutil.GetNodePath(), filepath.Join(path.Dir(os.Args[0]), "jps-main", "run"))
+	"run": func() {
+		//                                                       Module path........................................... , User args...........................
+		c := exec.Command(jpsutil.GetNodePath(), append([]string{filepath.Join(path.Dir(os.Args[0]), "jps-main", "run")}, jpsutil.Args(os.Args[2:]).ToServer()...)...)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
@@ -79,11 +80,7 @@ var Commands = map[string]func(){
 		//Create buffer to send
 		//                           10, Length of wd.,  [wd..........], How many args.......
 		buff := append(append([]byte{10, byte(len(wd))}, []byte(wd)...), byte(len(os.Args)-2))
-		for i, arg := range os.Args {
-			//Dont send the first 2 args
-			if i < 2 {
-				continue
-			}
+		for _, arg := range os.Args[2:] {
 			//                         Length of arg.., this arg......
 			buff = append(append(buff, byte(len(arg))), []byte(arg)...)
 		}

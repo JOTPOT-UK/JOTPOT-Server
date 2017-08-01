@@ -80,40 +80,9 @@ func (p *proc) wait(keepalive bool, toCall func()) {
 	}
 }
 
-func search(slice []string, want string) int {
-	for i, val := range slice {
-		if val == want {
-			return i
-		}
-	}
-	return -1
-}
-
-var daemonOnlyArgs = []string{"-autoreload", "-stayalive", "-keepalive"}
-
-type cArgs []string
-
-func (args cArgs) toServer() (out cArgs) {
-	for _, arg := range args {
-		if search(daemonOnlyArgs, arg) == -1 {
-			out = append(out, arg)
-		}
-	}
-	return
-}
-
-func (args cArgs) has(arg string) bool {
-	for _, ta := range args {
-		if ta == arg {
-			return true
-		}
-	}
-	return false
-}
-
 var procs []*proc
 
-func newProc(wd string, args cArgs, startNewGo bool) bool {
+func newProc(wd string, args jpsutil.Args, startNewGo bool) bool {
 	for _, p := range procs {
 		if p.sDir == wd && p.state == 2 {
 			return false
@@ -143,7 +112,7 @@ func newProc(wd string, args cArgs, startNewGo bool) bool {
 	stdout := &procReader{""}
 	stderr := &procReader{""}
 	//                          Module path...................................................., Data port.... , User args.........
-	callArgs := append([]string{filepath.Join(awd, filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock}, args.toServer()...)
+	callArgs := append([]string{filepath.Join(awd, filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock}, args.ToServer()...)
 	c := exec.Command(jpsutil.GetNodePath(), callArgs...)
 	c.Stdout = stdout
 	c.Stderr = stderr
@@ -152,11 +121,11 @@ func newProc(wd string, args cArgs, startNewGo bool) bool {
 	procs = append(procs, &tp)
 	c.Start()
 	if startNewGo {
-		go tp.wait(args.has("-autoreload") || args.has("-stayalive") || args.has("-keepalive"), func() {
+		go tp.wait(args.Has("-autoreload") || args.Has("-stayalive") || args.Has("-keepalive"), func() {
 			newProc(wd, args, false)
 		})
 	} else {
-		tp.wait(args.has("-autoreload") || args.has("-stayalive") || args.has("-keepalive"), func() {
+		tp.wait(args.Has("-autoreload") || args.Has("-stayalive") || args.Has("-keepalive"), func() {
 			newProc(wd, args, false)
 		})
 	}
@@ -203,7 +172,7 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 		}
 		jpsutil.GetBytePre(con, &n, &err, &buff)
 		amountOfArgs := int(buff[0])
-		var args cArgs
+		var args jpsutil.Args
 		var usableNum1 int
 		var usableNum2 int
 		var usableBuff []byte

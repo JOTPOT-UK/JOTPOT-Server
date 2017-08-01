@@ -204,3 +204,43 @@ func CopyFile(p1, p2 string) error {
 	}
 	return nil
 }
+
+//Search searches the give slice for the string and returns the index, or -1 if it isn't found
+func Search(slice []string, want string) int {
+	for i, val := range slice {
+		if val == want {
+			return i
+		}
+	}
+	return -1
+}
+
+//DaemonOnlyArgs are the arguments that if handles by the daemon should not be passed on to the server
+var DaemonOnlyArgs = []string{"-autoreload", "-stayalive", "-keepalive"}
+
+//Args type is a represntation of the server arguments
+type Args []string
+
+//ToServer returns the args that should be passed on to the server
+func (args Args) ToServer() (out Args) {
+	var isToServer bool
+	for _, arg := range args {
+		if arg[0] == 45 {
+			isToServer = Search(DaemonOnlyArgs, arg) == -1
+		}
+		if isToServer {
+			out = append(out, arg)
+		}
+	}
+	return
+}
+
+//Has returns a boolean representing of the given argument is given
+func (args Args) Has(arg string) bool {
+	for _, ta := range args {
+		if ta == arg {
+			return true
+		}
+	}
+	return false
+}
