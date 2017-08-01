@@ -68,7 +68,6 @@ type proc struct {
 
 func (p *proc) wait() {
 	err := p.p.Wait()
-	fmt.Println(p.p.ProcessState.Success(), err == nil)
 	if p.p.ProcessState.Success() && err == nil {
 		p.state = 0
 	} else {
@@ -107,7 +106,7 @@ func newProc(wd string) bool {
 	}
 	stdout := &procReader{""}
 	stderr := &procReader{""}
-	c := exec.Command(jpsutil.GetNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps", "run"), "-data", sock)
+	c := exec.Command(jpsutil.GetNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock)
 	c.Stdout = stdout
 	c.Stderr = stderr
 	c.Dir = wd

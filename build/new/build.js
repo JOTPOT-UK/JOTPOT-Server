@@ -38,6 +38,7 @@ if (flags["-in"] && typeof flags["-in"][0] !== "string") {
 	throw new Error("-in option must be a string") ;
 }
 const src = (flags["-in"] || [process.cwd()])[0] ;
+const goPath = (flags["-go"] || ["go"])[0] ;
 
 const fs = require("fs") ;
 const path = require("path") ;
@@ -72,22 +73,23 @@ function copy(p1, p2) {
 	fs.writeFileSync(p2, fs.readFileSync(p1)) ;
 }
 
-createDir(out, "jps") ;
+createDir(out, "jps-main") ;
 
 for (let copyer of config["jps-files"]) {
-	copy(path.join(src, copyer), path.join(out, "jps", copyer)) ;
+	copy(path.join(src, copyer), path.join(out, "jps-main", copyer)) ;
 }
-copy(path.join(src, "config.json"), path.join(out, "jps", "defaultConfig.json")) ;
-copy(path.join(src, "errorTemp.jpt"), path.join(out, "jps", "defaultErrorTemp.jpt")) ;
-copy(path.join(src, "sites", "default", "index.html"), path.join(out, "jps", "defaultIndex.html")) ;
+copy(path.join(src, "config.json"), path.join(out, "jps-main", "defaultConfig.json")) ;
+copy(path.join(src, "errorTemp.jpt"), path.join(out, "jps-main", "defaultErrorTemp.jpt")) ;
+copy(path.join(src, "sites", "default", "index.html"), path.join(out, "jps-main", "defaultIndex.html")) ;
 
+const isWindows = (process.env.GOOS || process.platform).replace("win32", "windows") === "windows" ;
 const cp = require("child_process") ;
 
-cp.execSync(`go build -o ${path.join(out, "jps" + (process.platform==="win32"?".exe":""))} ${path.join(src, "jps", "jps-main.go")}`, {
+cp.execSync(`${goPath} build -o ${path.join(out, "jps" + (isWindows?".exe":""))} ${path.join(src, "jps", "jps-main.go")}`, {
 	env: {
 		"GOPATH": path.join(src, "jps")
 	}
 }) ;
 
 process.chdir(out) ;
-fs.linkSync("./jps" + (process.platform==="win32"?".exe":""), "jpsd" + (process.platform==="win32"?".exe":"")) ;
+fs.linkSync("./jps" + (isWindows?".exe":""), "jpsd" + (isWindows?".exe":"")) ;

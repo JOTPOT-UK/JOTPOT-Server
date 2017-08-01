@@ -57,7 +57,7 @@ Alias=jpsd.service`
 //Commands determine commands that the user can use
 var Commands = map[string]func(){
 	"startsync": func() {
-		c := exec.Command(jpsutil.GetNodePath(), filepath.Join(path.Dir(os.Args[0]), "jps", "run"))
+		c := exec.Command(jpsutil.GetNodePath(), filepath.Join(path.Dir(os.Args[0]), "jps-main", "run"))
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
@@ -129,9 +129,6 @@ var Commands = map[string]func(){
 			fmt.Println("Server stopped.")
 		}
 		con.Close()
-	},
-	"node": func() {
-		fmt.Println("nodee stuff")
 	},
 	"list": func() {
 		fmt.Print("Loading list...")
@@ -284,15 +281,15 @@ var Commands = map[string]func(){
 			panic(err)
 		}
 		os.MkdirAll(filepath.Join(dstDir, "sites", "default"), 0664)
-		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps", "defaultConfig.json"), filepath.Join(dstDir, "config.json"))
+		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps-main", "defaultConfig.json"), filepath.Join(dstDir, "config.json"))
 		if err != nil {
 			panic(err)
 		}
-		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps", "defaultErrorTemp.jpt"), filepath.Join(dstDir, "errorTemp.jpt"))
+		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps-main", "defaultErrorTemp.jpt"), filepath.Join(dstDir, "errorTemp.jpt"))
 		if err != nil {
 			panic(err)
 		}
-		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps", "defaultIndex.html"), filepath.Join(dstDir, "sites", "default", "index.html"))
+		err = jpsutil.CopyFile(filepath.Join(srcDir, "jps-main", "defaultIndex.html"), filepath.Join(dstDir, "sites", "default", "index.html"))
 		if err != nil {
 			panic(err)
 		}
