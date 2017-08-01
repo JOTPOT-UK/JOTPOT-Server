@@ -100,6 +100,58 @@ func GetData(con net.Conn, toGet int) (out []byte) {
 	return
 }
 
+//GetDataPre is the same as GetData but uses predeclared variables
+func GetDataPre(con net.Conn, toGet int, got, n *int, err *error, buff, out *[]byte) {
+	*got = 0
+	*out = []byte{}
+	if toGet < 1024 {
+		*buff = make([]byte, toGet)
+	} else {
+		*buff = make([]byte, 1024)
+	}
+	*n = 0
+	for *got < toGet {
+		if toGet-*got < len(*buff) {
+			*buff = (*buff)[:toGet-*got]
+		}
+		*n, *err = con.Read(*buff)
+		if *err != nil && *err != io.EOF {
+			panic(*err)
+		} else if *n == 0 && *err == io.EOF {
+			panic(err)
+		}
+		*got += *n
+		*out = append(*out, (*buff)[:*n]...)
+	}
+}
+
+//GetByte reads 1 byte from the con
+func GetByte(con net.Conn) (out byte) {
+	var n int
+	var err error
+	buff := []byte{0}
+	for n < 1 {
+		n, err = con.Read(buff)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return buff[0]
+}
+
+//GetBytePre reads 1 byte from the con
+//but uses already declared variables
+func GetBytePre(con net.Conn, n *int, err *error, buff *[]byte) {
+	*n = 0
+	*buff = []byte{0}
+	for *n < 1 {
+		*n, *err = con.Read(*buff)
+		if *err != nil {
+			panic(*err)
+		}
+	}
+}
+
 //CheckAddr checks if an address exists, if so, it returns true. If not, false.
 func CheckAddr(addr string) bool {
 	con, err := net.Dial("tcp", addr)

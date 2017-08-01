@@ -11,11 +11,19 @@ fi
 
 in=$1
 out=$2
+wd=$(pwd)
 
 function build {
+	echo "Building for $1 on $2..."
 	export GOOS="$1"
 	export GOARCH="$2"
 	node build -in "$in" -out "$out/$1-$2" -go "/usr/local/go/bin/go"
+	echo "Packaging..."
+	cd "$out/$1-$2"
+	tar -cf "$out/$1-$2.tar" *
+	tar -czf "$out/$1-$2.tar.gz" *
+	zip -q "$out/$1-$2.zip" *
+	cd "$wd"
 }
 
 build "windows" "amd64"
@@ -46,3 +54,5 @@ build "openbsd" "arm"
 build "plan9" "386"
 build "plan9" "amd64"
 build "solaris" "amd64"
+
+echo "Done!"

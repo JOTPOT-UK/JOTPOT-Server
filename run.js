@@ -613,9 +613,9 @@ if (cluster.isMaster) {
 					s.end() ;
 					
 				}
-				else if (d === "reload") {
+				else if (d === "reload" || d === "stop") {
 					
-					process.exit() ;
+					process.exit(0) ;
 					
 				}
 				

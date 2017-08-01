@@ -65,19 +65,36 @@ var Commands = map[string]func(){
 	},
 	"start": func() {
 		fmt.Println("Starting")
+		//Dial daemon
 		con, err := net.Dial("tcp", ":50551")
 		if err != nil {
 			panic(err)
 		}
+
 		wd, err := os.Getwd()
 		if err != nil {
 			panic(err)
 		}
-		buff := append([]byte{10, byte(len(wd))}, []byte(wd)...)
+
+		//Create buffer to send
+		//                           10, Length of wd.,  [wd..........], How many args.......
+		buff := append(append([]byte{10, byte(len(wd))}, []byte(wd)...), byte(len(os.Args)-2))
+		for i, arg := range os.Args {
+			//Dont send the first 2 args
+			if i < 2 {
+				continue
+			}
+			//                         Length of arg.., this arg......
+			buff = append(append(buff, byte(len(arg))), []byte(arg)...)
+		}
+
+		//Write it
 		_, err = con.Write(buff)
 		if err != nil {
 			panic(err)
 		}
+
+		//Read return
 		buff = make([]byte, 1)
 		var n int
 		for n < 1 {
@@ -123,10 +140,51 @@ var Commands = map[string]func(){
 				panic(err)
 			}
 		}
-		if buff[0] != 123 {
+		if buff[0] == 126 {
+			fmt.Println("Process", toGet, "doesn't exist!")
+		} else if buff[0] != 123 {
 			fmt.Println("Somehing went wrong while stopping the server.")
 		} else {
 			fmt.Println("Server stopped.")
+		}
+		con.Close()
+	},
+	"restart": func() {
+		if len(os.Args) < 3 {
+			fmt.Println("Second argument must be an int")
+			os.Exit(1)
+			return
+		}
+		toGet, err := strconv.Atoi(os.Args[2])
+		if err != nil {
+			fmt.Println("Second argument must be an int")
+			os.Exit(1)
+			return
+		}
+		fmt.Println("Restarting server...")
+		con, err := net.Dial("tcp", ":50551")
+		if err != nil {
+			panic(err)
+		}
+		buff := []byte{12, byte(toGet)}
+		_, err = con.Write(buff)
+		if err != nil {
+			panic(err)
+		}
+		buff = []byte{0}
+		n := 0
+		for n < 1 {
+			n, err = con.Read(buff)
+			if err != nil {
+				panic(err)
+			}
+		}
+		if buff[0] == 126 {
+			fmt.Println("Process", toGet, "doesn't exist!")
+		} else if buff[0] != 123 {
+			fmt.Println("Somehing went wrong while stopping the server.")
+		} else {
+			fmt.Println("Server restarted.")
 		}
 		con.Close()
 	},
@@ -187,7 +245,9 @@ var Commands = map[string]func(){
 			panic(err)
 		}
 		buff = jpsutil.GetData(con, 5)
-		if buff[0] != 20 {
+		if buff[0] == 126 {
+			fmt.Println("Process", toGet, "doesn't exist!")
+		} else if buff[0] != 20 {
 			fmt.Println("\rSomehing went wrong while getting the logs.")
 		} else {
 			buff = jpsutil.GetData(con, int(jpsutil.Uint32FromBytes(buff[1:])))
@@ -219,7 +279,9 @@ var Commands = map[string]func(){
 			panic(err)
 		}
 		buff = jpsutil.GetData(con, 5)
-		if buff[0] != 20 {
+		if buff[0] == 126 {
+			fmt.Println("Process", toGet, "doesn't exist!")
+		} else if buff[0] != 20 {
 			fmt.Println("\rSomehing went wrong while getting the logs.")
 		} else {
 			buff = jpsutil.GetData(con, int(jpsutil.Uint32FromBytes(buff[1:])))
@@ -228,7 +290,7 @@ var Commands = map[string]func(){
 		}
 		con.Close()
 	},
-	"read": func() {
+	"logs": func() {
 		if len(os.Args) < 3 {
 			fmt.Println("Second argument must be an int")
 			os.Exit(1)
@@ -256,7 +318,11 @@ var Commands = map[string]func(){
 				panic(err)
 			}
 		}
-		if buff[0] != 123 {
+		if buff[0] == 126 {
+			fmt.Println("Process", toGet, "doesn't exist!")
+			con.Close()
+			return
+		} else if buff[0] != 123 {
 			panic("123 not returned by read request")
 		}
 		buff = make([]byte, 1024)

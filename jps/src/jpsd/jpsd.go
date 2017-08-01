@@ -37,7 +37,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"syscall"
+	"runtime/debug"
 )
 
 type procReader struct {
@@ -64,20 +64,56 @@ type proc struct {
 	index       int
 	controlAddr string
 	state       byte
+	wasStopped  bool
+	doRestart   bool
 }
 
-func (p *proc) wait() {
+func (p *proc) wait(keepalive bool, toCall func()) {
 	err := p.p.Wait()
 	if p.p.ProcessState.Success() && err == nil {
 		p.state = 0
 	} else {
 		p.state = 1
 	}
+	if !p.wasStopped || p.doRestart {
+		toCall()
+	}
+}
+
+func search(slice []string, want string) int {
+	for i, val := range slice {
+		if val == want {
+			return i
+		}
+	}
+	return -1
+}
+
+var daemonOnlyArgs = []string{"-autoreload", "-stayalive", "-keepalive"}
+
+type cArgs []string
+
+func (args cArgs) toServer() (out cArgs) {
+	for _, arg := range args {
+		if search(daemonOnlyArgs, arg) == -1 {
+			out = append(out, arg)
+		}
+	}
+	return
+}
+
+func (args cArgs) has(arg string) bool {
+	for _, ta := range args {
+		if ta == arg {
+			return true
+		}
+	}
+	return false
 }
 
 var procs []*proc
 
-func newProc(wd string) bool {
+func newProc(wd string, args cArgs, startNewGo bool) bool {
 	for _, p := range procs {
 		if p.sDir == wd && p.state == 2 {
 			return false
@@ -106,14 +142,24 @@ func newProc(wd string) bool {
 	}
 	stdout := &procReader{""}
 	stderr := &procReader{""}
-	c := exec.Command(jpsutil.GetNodePath(), filepath.Join(awd, filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock)
+	//                          Module path...................................................., Data port.... , User args.........
+	callArgs := append([]string{filepath.Join(awd, filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock}, args.toServer()...)
+	c := exec.Command(jpsutil.GetNodePath(), callArgs...)
 	c.Stdout = stdout
 	c.Stderr = stderr
 	c.Dir = wd
-	tp := proc{wd, c, stdout, stderr, len(procs), sock, 2}
+	tp := proc{wd, c, stdout, stderr, len(procs), sock, 2, false, false}
 	procs = append(procs, &tp)
 	c.Start()
-	go tp.wait()
+	if startNewGo {
+		go tp.wait(args.has("-autoreload") || args.has("-stayalive") || args.has("-keepalive"), func() {
+			newProc(wd, args, false)
+		})
+	} else {
+		tp.wait(args.has("-autoreload") || args.has("-stayalive") || args.has("-keepalive"), func() {
+			newProc(wd, args, false)
+		})
+	}
 	return true
 }
 
@@ -155,7 +201,18 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 			wd = append(wd, buff[:n]...)
 			got += uint8(n)
 		}
-		if newProc(string(wd)) {
+		jpsutil.GetBytePre(con, &n, &err, &buff)
+		amountOfArgs := int(buff[0])
+		var args cArgs
+		var usableNum1 int
+		var usableNum2 int
+		var usableBuff []byte
+		for n = 0; n < amountOfArgs; n++ {
+			jpsutil.GetBytePre(con, &usableNum1, &err, &buff)
+			jpsutil.GetDataPre(con, int(buff[0]), &usableNum1, &usableNum2, &err, &usableBuff, &buff)
+			args = append(args, string(buff))
+		}
+		if newProc(string(wd), args, true) {
 			return []byte{123}, true
 		}
 		return []byte{124}, true
@@ -170,16 +227,54 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 				panic(err)
 			}
 		}
+		if int(buff[0]) >= len(procs) {
+			return []byte{126}, true
+		}
 		tp := procs[int(buff[0])]
-		err = tp.p.Process.Signal(syscall.SIGKILL)
+		tp.wasStopped = true
+		var scon net.Conn
+		if runtime.GOOS == "windows" {
+			scon, err = net.Dial("tcp", procs[int(buff[0])].controlAddr)
+		} else {
+			scon, err = net.Dial("unix", procs[int(buff[0])].controlAddr)
+		}
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return []byte{124}, true
+			panic(err)
 		}
-		for tp.state == 2 {
+		con.Write([]byte{123})
+		scon.Write([]byte("stop"))
+		scon.Close()
+		return []byte{}, false
+	},
+	12: func(con net.Conn) ([]byte, bool) {
+		buff := make([]byte, 1)
+		var n int
+		var err error
+		for n < 1 {
+			n, err = con.Read(buff)
+			if err != nil {
+				panic(err)
+			}
 		}
-		tp.state = 0
-		return []byte{123}, true
+		if int(buff[0]) >= len(procs) {
+			return []byte{126}, true
+		}
+		tp := procs[int(buff[0])]
+		tp.wasStopped = true
+		tp.doRestart = true
+		var scon net.Conn
+		if runtime.GOOS == "windows" {
+			scon, err = net.Dial("tcp", procs[int(buff[0])].controlAddr)
+		} else {
+			scon, err = net.Dial("unix", procs[int(buff[0])].controlAddr)
+		}
+		if err != nil {
+			panic(err)
+		}
+		con.Write([]byte{123})
+		scon.Write([]byte("stop"))
+		scon.Close()
+		return []byte{}, false
 	},
 	21: func(_ net.Conn) ([]byte, bool) {
 		return []byte{123}, true
@@ -193,6 +288,9 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 			if err != nil {
 				panic(err)
 			}
+		}
+		if int(buff[0]) >= len(procs) {
+			return []byte{126}, true
 		}
 		var scon net.Conn
 		if runtime.GOOS == "windows" {
@@ -222,6 +320,9 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 				panic(err)
 			}
 		}
+		if int(buff[0]) >= len(procs) {
+			return []byte{126}, true
+		}
 		getting := buff[0]
 		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stdout.value)))...)
 		buff = append(buff, []byte(procs[getting].stdout.value)...)
@@ -237,6 +338,9 @@ var GotMessage = map[byte]func(net.Conn) ([]byte, bool){
 				panic(err)
 			}
 		}
+		if int(buff[0]) >= len(procs) {
+			return []byte{126}, true
+		}
 		getting := buff[0]
 		buff = append([]byte{20}, jpsutil.Uint32ToBytes(uint32(len(procs[getting].stderr.value)))...)
 		buff = append(buff, []byte(procs[getting].stderr.value)...)
@@ -250,6 +354,7 @@ func handler(conn net.Conn) {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "\nHandler panicing!")
 			fmt.Fprintln(os.Stderr, err)
+			debug.PrintStack()
 			conn.Close()
 		}
 	}()
