@@ -89,10 +89,6 @@ func newProc(wd string, args jpsutil.Args, startNewGo bool) bool {
 			return false
 		}
 	}
-	awd, err := os.Getwd()
-	if err != nil {
-		panic(err)
-	}
 	var sock string
 	if runtime.GOOS == "windows" {
 		socks := [5]string{"127.5.5.5:5", "127.55.55.55:55", "127.7.7.7:7", "127.77.77.77:77", "127.3.5.7:9"}
@@ -113,7 +109,7 @@ func newProc(wd string, args jpsutil.Args, startNewGo bool) bool {
 	stdout := &procReader{""}
 	stderr := &procReader{""}
 	//                          Module path...................................................., Data port.... , User args.........
-	callArgs := append([]string{filepath.Join(awd, filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock}, args.ToServer()...)
+	callArgs := append([]string{filepath.Join(filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock}, args.ToServer()...)
 	c := exec.Command(jpsutil.GetNodePath(), callArgs...)
 	c.Stdout = stdout
 	c.Stderr = stderr
@@ -372,6 +368,9 @@ func Start() {
 		serverList := strings.Split(string(servers), "\n")
 		for _, server := range serverList {
 			args := strings.Split(server, " ")
+			if len(args) < 1 {
+				continue
+			}
 			newProc(args[0], args[1:], true)
 		}
 	}

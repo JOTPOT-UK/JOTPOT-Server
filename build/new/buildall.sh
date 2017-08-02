@@ -72,19 +72,31 @@ function build {
 	export GOOS="$1"
 	export GOARCH="$2"
 	arch="$2"
+	archlabel="$arch"
 	if [ "$2" == "arm" ]
 	then
-		arch="ARMv$3"
+		arch="armv$3"
+		archlabel="ARMv$3"
 		export GOARM="$3"
 	elif [ "$2" == "arm64" ]
 	then
-		arch="ARMv8"
+		arch="armv8"
+		archlabel="ARMv8"
 	elif [ "$2" == "386" ]
 	then
-		arch="386-$3"
+		arch="x86-$3"
 		export GO386="$3"
+		if [ "$3" == "387" ]
+		then
+			archlabel="x86-x87"
+		else
+			archlabel="x86-SSE2"
+		fi
+	elif [ "$2" == "amd64" ]
+	then
+		arch="x86-64"
+		archlabel="x86-64"
 	fi
-	archlabel="$arch"
 	echo "Building for $1 on $arch..."
 	if node build -in "$in" -out "$out/jps-$1-$arch" -go "/usr/local/go/bin/go" --hide-errors
 	then

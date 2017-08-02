@@ -359,11 +359,7 @@ var Commands = map[string]func(){
 		fmt.Println("Successfully set up :)")
 	},
 	"make-unit-file": func() {
-		binDir, err := filepath.Abs(path.Dir(os.Args[0]))
-		if err != nil {
-			panic(err)
-		}
-		fmt.Print(generateServiceFile(binDir))
+		fmt.Print(generateServiceFile(path.Dir(os.Args[0])))
 	},
 }
 

@@ -46,13 +46,11 @@ func endHandler() {
 
 func main() {
 	defer endHandler()
-	stats, err := os.Stat(filepath.Join(filepath.Dir(os.Args[0]), "jps-main"))
-	if err != nil || !stats.IsDir() {
-		exec, err := os.Executable()
-		if err == nil {
-			os.Args[0] = exec
-		}
+	exec, err := os.Executable()
+	if err != nil {
+		panic(err)
 	}
+	os.Args[0] = exec
 	if strings.Index(filepath.Base(os.Args[0]), "jpsd") == 0 {
 		jpsd.Start()
 	} else if len(os.Args) < 2 {
