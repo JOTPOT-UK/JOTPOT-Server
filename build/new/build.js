@@ -93,20 +93,43 @@ copy(path.join(src, "sites", "default", "index.html"), path.join(out, "jps-main"
 const isWindows = (process.env.GOOS || process.platform).replace("win32", "windows") === "windows" ;
 const cp = require("child_process") ;
 
-cp.execSync(`${goPath} build -o ${path.join(out, "jps" + (isWindows?".exe":""))} ${path.join(src, "jps", "jps-main.go")}`, {
-	env: {
-		"GOPATH": path.join(src, "jps"),
-		"GOOS": process.env.GOOS||"",
-		"GOARCH": process.env.GOARCH||""
-	}
-}) ;
-cp.execSync(`${goPath} build -o ${path.join(out, "jpslb" + (isWindows?".exe":""))} ${path.join(src, "lb.go")}`, {
-	env: {
-		"GOPATH": path.join(src, "jps"),
-		"GOOS": process.env.GOOS||"",
-		"GOARCH": process.env.GOARCH||""
-	}
-}) ;
-
-process.chdir(out) ;
-fs.linkSync("./jps" + (isWindows?".exe":""), "jpsd" + (isWindows?".exe":"")) ;
+let built = true ;
+try {
+	cp.execSync(`${goPath} build -o ${path.join(out, "jps" + (isWindows?".exe":""))} ${path.join(src, "jps", "jps-main.go")}`, {
+		env: {
+			"GOPATH": path.join(src, "jps"),
+			"GOOS": process.env.GOOS||"",
+			"GOARCH": process.env.GOARCH||"",
+			"GOARM": process.env.GOARM||"",
+			"GO386": process.env.GO386||""
+		},
+		stdio: flags["--hide-errors"]?"ignore":"inherit"
+	}) ;
+} catch (err) {
+	built = false ;
+	console.warn("!!! Failed to build main executable!") ;
+}
+if (built) {
+	let origDir = process.cwd() ;
+	process.chdir(out) ;
+	fs.linkSync("./jps" + (isWindows?".exe":""), "jpsd" + (isWindows?".exe":"")) ;
+	process.chdir(origDir) ;
+}
+try {
+	cp.execSync(`${goPath} build -o ${path.join(out, "jpslb" + (isWindows?".exe":""))} ${path.join(src, "lb.go")}`, {
+		env: {
+			"GOPATH": path.join(src, "jps"),
+			"GOOS": process.env.GOOS||"",
+			"GOARCH": process.env.GOARCH||"",
+			"GOARM": process.env.GOARM||"",
+			"GO386": process.env.GO386||""
+		},
+		stdio: flags["--hide-errors"]?"ignore":"inherit"
+	}) ;
+} catch (err) {
+	console.warn("!!! Failed to build load balencer executable!") ;
+	built = false ;
+}
+if (!built) {
+	process.exit(1) ;
+}

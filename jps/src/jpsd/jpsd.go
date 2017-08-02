@@ -38,6 +38,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strings"
 )
 
 type procReader struct {
@@ -75,7 +76,7 @@ func (p *proc) wait(keepalive bool, toCall func()) {
 	} else {
 		p.state = 1
 	}
-	if !p.wasStopped || p.doRestart {
+	if (keepalive && !p.wasStopped) || p.doRestart {
 		toCall()
 	}
 }
@@ -365,6 +366,14 @@ func Start() {
 	dir, err = ioutil.TempDir("", "jps-")
 	if err != nil {
 		panic(err)
+	}
+	servers, err := ioutil.ReadFile("/etc/jps-servers")
+	if err == nil {
+		serverList := strings.Split(string(servers), "\n")
+		for _, server := range serverList {
+			args := strings.Split(server, " ")
+			newProc(args[0], args[1:], true)
+		}
 	}
 	server, err := net.Listen("tcp", ":50551")
 	if err != nil {
