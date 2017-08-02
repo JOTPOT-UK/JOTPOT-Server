@@ -401,19 +401,30 @@ function getMimeType(file) {
 function wrapURL(req, secure) {
 	const defaultProtocols = ["http:", "https:"] ;
 	const secureProtocols = ["https:", "sftp:"] ;
+	
+	req.overHttps = secure ;
+	let url = new URL(req, config.defaultHost || config.defaultDomain) ;
+	Object.defineProperty(req, "url", {
+		enumerable: true,
+		configurable: false,
+		get: ()=>url,
+		set: v=>{url.value=v;}
+	}) ;
+	delete url.overHttps ;
+	
 	const setSecure = val => {
 		if (defaultProtocols.indexOf(req.url.protocol) !== -1) {
 			req.url.protocol = val?"https:":"http:" ;
 		}
 	} ;
-	const getSecure = () => secureProtocols.indexOf(req.url.protocol) !== -1 ;
-	Object.defineProperty(req, "secure", {
+	const getSecure = () => (secureProtocols.indexOf(req.url.protocol) !== -1) ;
+	Object.defineProperty(req, "overHttps", {
 		get: getSecure,
 		set: setSecure,
 		enumerable: true,
 		configurable: false
 	}) ;
-	Object.defineProperty(req, "overHttps", {
+	Object.defineProperty(req, "secure", {
 		get: getSecure,
 		set: setSecure,
 		enumerable: true,
@@ -424,14 +435,6 @@ function wrapURL(req, secure) {
 		writable: false,
 		enumerable: true,
 		configurable: false
-	}) ;
-	
-	let url = new URL(req, config.defaultHost || config.defaultDomain) ;
-	Object.defineProperty(req, "url", {
-		enumerable: true,
-		configurable: false,
-		get: ()=>url,
-		set: v=>{url.value=v;}
 	}) ;
 	
 	Object.defineProperty(req, "uri", {
@@ -1164,18 +1167,18 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 	}
 	
 	//Should we redirect to https.
-	
-	if (req.overHttps === false && config.dontRedirect.indexOf(req.url.value) === -1) {
+	if (!req.overHttps && config.dontRedirect.indexOf(req.url.value) === -1) {
 		
 		if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
 			
 			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-			console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because this page MUST be HTTPS.`) ;
 			
 			req.url.protocol = "https:" ;
 			if (req.url.port === 80) {
 				req.url.port = 443 ;
 			}
+			
+			console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because this page MUST be HTTPS.`) ;
 			
 			resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
 			resp.write("Redirecting you to our secure site...") ;
@@ -1189,12 +1192,13 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
 			
 			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-			console.log(`${req.jpid}\t307 Moved Temporarily.   Redirecting to ${req.url.location} because the user requested an upgrade.`) ;
 			
 			req.url.protocol = "https:" ;
 			if (req.url.port === 80) {
 				req.url.port = 443 ;
 			}
+			
+			console.log(`${req.jpid}\t307 Moved Temporarily.   Redirecting to ${req.url.location} because the user requested an upgrade.`) ;
 			
 			resp.writeHead(307,{"Content-Type": "text/plain", "location": req.url.location, "Status": 307, "Vary": "Upgrade-Insecure-Requests"}) ;
 			resp.write("Redirecting you to our secure site...") ;

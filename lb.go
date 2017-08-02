@@ -283,7 +283,7 @@ func getConfig() (map[string]interface{}, error) {
 
 func main() {
 
-	fmt.Println("lb.go is now loading...")
+	fmt.Println("JOTPTO Server Load Balencer is now loading...")
 
 	//Get config file
 	conf, err := getConfig()

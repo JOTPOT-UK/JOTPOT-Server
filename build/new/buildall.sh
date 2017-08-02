@@ -23,18 +23,50 @@
 #	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #	SOFTWARE.
 
-if [ "$1" == "" ]
+#Set to yes to delete directorys
+deletedirs=false
+
+if [ "$1" == "" ] || [ "$2" == "" ] || [ "$3" == "" ]
 then
-	echo "Source dir required."
-fi
-if [ "$2" == "" ]
-then
-	echo "Dest dir required."
+	echo "Usage: [commandname] source dest version"
+	exit 1
 fi
 
 in=$1
-out=$2
+out=$2/$3
+version=$3
+htmlfile="$out/downloads.html"
 wd=$(pwd)
+
+if [ -e "$out" ]
+then
+	echo "$out already exists."
+	exit 1
+fi
+
+echo "Creating js source package..."
+node build -in "$in" -out "$out/js-source" -jsonly
+echo "Packaging..."
+cd "$out/js-source"
+tar -cf "$out/js-source.tar" *
+tar -czf "$out/js-source.tar.gz" *
+zip -q "$out/js-source.zip" *
+cd "$wd"
+if [ $deletedirs == true ]
+then
+	rm -r "$out/js-source"
+fi
+
+echo "Packaging source..."
+cd "$in"
+tar -cf "$out/source.tar" *
+tar -czf "$out/source.tar.gz" *
+zip -q "$out/source.zip" *
+cd "$wd"
+
+echo "<html><head><title>JOTPOT Server downloads for version $3</title></head><body><!--Auto generated, do not edit.--><h1>JOTPOT Server downloads for version $3</h1><ul>">"$htmlfile"
+echo "$html<li><a href=\"source.tar\">source.tar</a></li><li><a href=\"source.tar.gz\">source.tar.gz</a></li><li><a href=\"source.zip\">source.zip</a></li>">>"$htmlfile"
+echo "$html<li><a href=\"js-source.tar\">js-source.tar</a></li><li><a href=\"js-source.tar.gz\">js-source.tar.gz</a></li><li><a href=\"js-source.zip\">js-source.zip</a></li>">>"$htmlfile"
 
 function build {
 	echo "Building for $1 on $2..."
@@ -47,12 +79,20 @@ function build {
 	tar -czf "$out/$1-$2.tar.gz" *
 	zip -q "$out/$1-$2.zip" *
 	cd "$wd"
+	if [ $deletedirs == true ]
+	then
+		rm -r "$out/$1-$2"
+	fi
+	echo "$html<li><a href=\"$1-$2.tar\">$1-$2.tar</a></li><li><a href=\"$1-$2.tar.gz\">$1-$2.tar.gz</a></li><li><a href=\"$1-$2.zip\">$1-$2.zip</a></li>">>"$htmlfile"
 }
 
+build "linux" "arm"
+exit
 build "windows" "amd64"
 build "windows" "386"
 build "linux" "amd64"
 build "linux" "386"
+build "linux" "arm"
 build "linux" "ppc64"
 build "linux" "ppc64le"
 build "linux" "mips"
@@ -77,5 +117,7 @@ build "openbsd" "arm"
 build "plan9" "386"
 build "plan9" "amd64"
 build "solaris" "amd64"
+
+echo "$html</ul>Website: <a href=\"https://www.jotpot.co.uk/server\">jotpot.uk/server</a><br>GitHub: <a href=\"https://github.com/jotpot-uk/jotpot-server\">github.com/jotpot-uk/jotpot-server</a></body></html>">>"$htmlfile"
 
 echo "Done!"

@@ -73,6 +73,14 @@ function copy(p1, p2) {
 	fs.writeFileSync(p2, fs.readFileSync(p1)) ;
 }
 
+if (flags["-jsonly"]) {
+	createDir(out) ;
+	for (let copyer of config["jps-files"]) {
+		copy(path.join(src, copyer), path.join(out, copyer)) ;
+	}
+	process.exit(0) ;
+}
+
 createDir(out, "jps-main") ;
 
 for (let copyer of config["jps-files"]) {
@@ -87,7 +95,16 @@ const cp = require("child_process") ;
 
 cp.execSync(`${goPath} build -o ${path.join(out, "jps" + (isWindows?".exe":""))} ${path.join(src, "jps", "jps-main.go")}`, {
 	env: {
-		"GOPATH": path.join(src, "jps")
+		"GOPATH": path.join(src, "jps"),
+		"GOOS": process.env.GOOS||"",
+		"GOARCH": process.env.GOARCH||""
+	}
+}) ;
+cp.execSync(`${goPath} build -o ${path.join(out, "jpslb" + (isWindows?".exe":""))} ${path.join(src, "lb.go")}`, {
+	env: {
+		"GOPATH": path.join(src, "jps"),
+		"GOOS": process.env.GOOS||"",
+		"GOARCH": process.env.GOARCH||""
 	}
 }) ;
 

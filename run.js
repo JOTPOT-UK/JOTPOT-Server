@@ -45,8 +45,8 @@ let cluster = require("cluster") ;
 
 //Check sites directory exists
 if (!fs.existsSync("sites") || !fs.statSync("sites").isDirectory()) {
-	console.info("'sites' directory must exist!") ;
 	console.warn("'sites' directory must exist!") ;
+	console.info("'sites' directory must exist!") ;
 	process.exit(1) ;
 }
 

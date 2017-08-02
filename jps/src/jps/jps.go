@@ -58,7 +58,7 @@ Alias=jpsd.service`
 var Commands = map[string]func(){
 	"run": func() {
 		//                                                       Module path........................................... , User args...........................
-		c := exec.Command(jpsutil.GetNodePath(), append([]string{filepath.Join(path.Dir(os.Args[0]), "jps-main", "run")}, jpsutil.Args(os.Args[2:]).ToServer()...)...)
+		c := exec.Command(jpsutil.GetNodePath(), append([]string{filepath.Join(filepath.Dir(os.Args[0]), "jps-main", "run")}, jpsutil.Args(os.Args[2:]).ToServer()...)...)
 		c.Stdin = os.Stdin
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
@@ -369,13 +369,13 @@ var Commands = map[string]func(){
 
 //StartSync runs the startsync command
 func StartSync() {
-	Commands["startsync"]()
+	Commands["run"]()
 }
 
 //Go runs the utility
 func Go() {
 	if len(os.Args) < 2 {
-		Commands["startsync"]()
+		Commands["run"]()
 	} else {
 		toCall, ok := Commands[os.Args[1]]
 		if ok {

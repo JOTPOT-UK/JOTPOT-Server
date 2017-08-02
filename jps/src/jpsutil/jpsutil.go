@@ -40,27 +40,30 @@ import (
 func GetNodePath() string {
 	var thisPath string
 	var err error
-	command := "node"
-	if runtime.GOOS == "windows" {
-		command = "node.exe"
-	}
-	for _, p := range filepath.SplitList(os.Getenv("PATH")) {
-		thisPath = filepath.Join(p, command)
+	commands := []string{"nodejs", "node"}
+	for _, command := range commands {
+		if runtime.GOOS == "windows" {
+			command += ".exe"
+		}
+		for _, p := range filepath.SplitList(os.Getenv("PATH")) {
+			thisPath = filepath.Join(p, command)
+			_, err = os.Stat(thisPath)
+			if err != nil {
+				continue
+			}
+			return thisPath
+		}
+		thisPath, err = os.Getwd()
+		thisPath = filepath.Join(thisPath, "node", command)
 		_, err = os.Stat(thisPath)
 		if err != nil {
 			continue
 		}
 		return thisPath
 	}
-	thisPath, err = os.Getwd()
-	thisPath = filepath.Join(thisPath, "node", command)
-	_, err = os.Stat(thisPath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "No Node.js binary")
-		os.Exit(1)
-		panic("No Node.js binary")
-	}
-	return thisPath
+	fmt.Fprintln(os.Stderr, "No Node.js binary")
+	os.Exit(1)
+	panic("No Node.js binary")
 }
 
 //Uint32ToBytes creates a slice of 4 bytes as a representation of a uint32

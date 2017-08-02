@@ -46,10 +46,18 @@ func endHandler() {
 
 func main() {
 	defer endHandler()
+	stats, err := os.Stat(filepath.Join(filepath.Dir(os.Args[0]), "jps-main"))
+	if err != nil || !stats.IsDir() {
+		exec, err := os.Executable()
+		if err == nil {
+			os.Args[0] = exec
+		}
+	}
 	if strings.Index(filepath.Base(os.Args[0]), "jpsd") == 0 {
 		jpsd.Start()
 	} else if len(os.Args) < 2 {
-		jps.StartSync()
+		os.Args = append(os.Args, "run")
+		jps.Go()
 	} else {
 		if os.Args[1] == "start-daemon" {
 			jpsd.Start()
