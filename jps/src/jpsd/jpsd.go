@@ -363,12 +363,18 @@ func Start() {
 	if err != nil {
 		panic(err)
 	}
-	servers, err := ioutil.ReadFile("/etc/jps-servers")
+	var serversPath string
+	if runtime.GOOS == "windows" {
+		serversPath = os.Getenv("PROGRAMDATA") + "\\JOTPOT\\jps-servers"
+	} else {
+		serversPath = "/etc/jps-servers"
+	}
+	servers, err := ioutil.ReadFile(serversPath)
 	if err == nil {
 		serverList := strings.Split(string(servers), "\n")
 		for _, server := range serverList {
 			args := strings.Split(server, " ")
-			if len(args) < 1 {
+			if args[0] == "" {
 				continue
 			}
 			newProc(args[0], args[1:], true)
