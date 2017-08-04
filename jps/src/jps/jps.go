@@ -67,7 +67,7 @@ var Commands = map[string]func(){
 	"start": func() {
 		fmt.Println("Starting")
 		//Dial daemon
-		con, err := net.Dial("tcp", ":50551")
+		con, err := net.Dial("tcp", "127.5.5.5:50551")
 		if err != nil {
 			panic(err)
 		}
@@ -120,7 +120,7 @@ var Commands = map[string]func(){
 			return
 		}
 		fmt.Println("Stopping server...")
-		con, err := net.Dial("tcp", ":50551")
+		con, err := net.Dial("tcp", "127.5.5.5:50551")
 		if err != nil {
 			panic(err)
 		}
@@ -159,7 +159,7 @@ var Commands = map[string]func(){
 			return
 		}
 		fmt.Println("Restarting server...")
-		con, err := net.Dial("tcp", ":50551")
+		con, err := net.Dial("tcp", "127.5.5.5:50551")
 		if err != nil {
 			panic(err)
 		}
@@ -187,7 +187,7 @@ var Commands = map[string]func(){
 	},
 	"list": func() {
 		fmt.Print("Loading list...")
-		con, err := net.Dial("tcp", ":50551")
+		con, err := net.Dial("tcp", "127.5.5.5:50551")
 		if err != nil {
 			panic(err)
 		}
@@ -204,7 +204,7 @@ var Commands = map[string]func(){
 			fmt.Println("\rServers under this daemon:")
 			for got > 0 {
 				buff = jpsutil.GetData(con, 3)
-				fmt.Print(string(buff[0]+48) + ": ")
+				fmt.Print(strconv.Itoa(int(buff[0])) + ": ")
 				if buff[1] > 1 {
 					fmt.Print("running")
 				} else if buff[1] == 0 {
@@ -232,7 +232,7 @@ var Commands = map[string]func(){
 			return
 		}
 		fmt.Print("Getting logs...")
-		con, err := net.Dial("tcp", ":50551")
+		con, err := net.Dial("tcp", "127.5.5.5:50551")
 		if err != nil {
 			panic(err)
 		}
@@ -266,7 +266,7 @@ var Commands = map[string]func(){
 			return
 		}
 		fmt.Print("Getting logs...")
-		con, err := net.Dial("tcp", ":50551")
+		con, err := net.Dial("tcp", "127.5.5.5:50551")
 		if err != nil {
 			panic(err)
 		}
@@ -299,7 +299,7 @@ var Commands = map[string]func(){
 			os.Exit(1)
 			return
 		}
-		con, err := net.Dial("tcp", ":50551")
+		con, err := net.Dial("tcp", "127.5.5.5:50551")
 		if err != nil {
 			panic(err)
 		}

@@ -101,7 +101,9 @@ try {
 			"GOOS": process.env.GOOS||"",
 			"GOARCH": process.env.GOARCH||"",
 			"GOARM": process.env.GOARM||"",
-			"GO386": process.env.GO386||""
+			"GO386": process.env.GO386||"",
+			"PATH": process.env.PATH,
+			"CC": process.env.GOARCH.indexOf("arm")===0?"arm-linux-gnueabi-gcc":""
 		},
 		stdio: flags["--hide-errors"]?"ignore":"inherit"
 	}) ;
@@ -122,7 +124,9 @@ try {
 			"GOOS": process.env.GOOS||"",
 			"GOARCH": process.env.GOARCH||"",
 			"GOARM": process.env.GOARM||"",
-			"GO386": process.env.GO386||""
+			"GO386": process.env.GO386||"",
+			"PATH":process.env.PATH,
+			"CC": process.env.GOARCH.indexOf("arm")===0?"arm-linux-gnueabi-gcc":""
 		},
 		stdio: flags["--hide-errors"]?"ignore":"inherit"
 	}) ;

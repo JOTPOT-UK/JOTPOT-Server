@@ -38,6 +38,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 )
 
@@ -104,7 +105,7 @@ func newProc(wd string, args jpsutil.Args, startNewGo bool) bool {
 			panic("No available addresses for data server")
 		}
 	} else {
-		sock = filepath.Join(dir, "data"+string(len(procs)+48)+".sock")
+		sock = filepath.Join(dir, "data"+strconv.Itoa(len(procs))+".sock")
 	}
 	stdout := &procReader{""}
 	stderr := &procReader{""}
@@ -380,7 +381,7 @@ func Start() {
 			newProc(args[0], args[1:], true)
 		}
 	}
-	server, err := net.Listen("tcp", ":50551")
+	server, err := net.Listen("tcp", "127.5.5.5:50551")
 	if err != nil {
 		panic(err)
 	}

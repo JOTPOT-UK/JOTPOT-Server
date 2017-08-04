@@ -61,9 +61,9 @@ function getLink(from, incSearch=false) {
 }
 function removeLink(from, incSearch=false) {
 	if (incSearch) {
-		delete linksWS[from] ;
+		linksWS[from] = undefined ;
 	} else {
-		delete links[from] ;
+		links[from] = undefined ;
 	}
 }
 
@@ -119,9 +119,9 @@ function getCache(url, incSearch=false) {
 }
 function removeCache(url, incSearch=false) {
 	if (incSearch) {
-		delete pagesWS[url] ;
+		pagesWS[url] = undefined ;
 	} else {
-		delete pages[url] ;
+		pages[url] = undefined ;
 	}
 }
 
@@ -153,9 +153,9 @@ function handle(page, args, incSearch=false) {
 }
 function removePageHandler(page, incSearch=false) {
 	if (incSearch) {
-		delete funcsWS[page] ;
+		funcsWS[page] = undefined ;
 	} else {
-		delete funcs[page] ;
+		funcs[page] = undefined ;
 	}
 }
 
@@ -172,9 +172,11 @@ function isLearned(url, checkLevel=0) {
 	}
 	let isLearned = false ;
 	for (let doing in learning) {
-		if (doing.indexOf(url + (checkLevel===1)?"?":"") === 0) {
-			isLearned = true ;
-			break ;
+		if (doing) {
+			if (doing.indexOf(url + (checkLevel===1)?"?":"") === 0) {
+				isLearned = true ;
+				break ;
+			}
 		}
 	}
 	return isLearned ;
@@ -188,11 +190,13 @@ function isLearned(url, checkLevel=0) {
 //		2: Any subpath with an search
 function unlearn(url, level=0) {
 	if (level === 0) {
-		delete learning[url] ;
+		learning[url] = undefined ;
 	} else {
 		for (let doing in learning) {
-			if (doing.indexOf(url + (level===1)?"?":"") === 0) {
-				delete learning[doing] ;
+			if (doing) {
+				if (doing.indexOf(url + (level===1)?"?":"") === 0) {
+					learning[doing] = undefined ;
+				}
 			}
 		}
 	}
@@ -242,7 +246,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1]) {
 			if (learning[req.url.fullvalue][0] === 0) {
 				//Unlearn this if it is now invalid
 				if (!pagesWS[learning[req.url.fullvalue][2]]) {
-					delete learning[req.url.fullvalue] ;
+					learning[req.url.fullvalue] = undefined ;
 					return createResponse(req, resp) ;
 				}
 				module.exports.sendCache(learning[req.url.fullvalue][1], pagesWS[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
@@ -250,7 +254,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1]) {
 			} else if (learning[req.url.fullvalue][0] === 1) {
 				//Unlearn this if it is now invalid
 				if (!pages[learning[req.url.fullvalue][2]]) {
-					delete learning[req.url.fullvalue] ;
+					learning[req.url.fullvalue] = undefined ;
 					return createResponse(req, resp) ;
 				}
 				module.exports.sendCache(learning[req.url.fullvalue][1], pages[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
@@ -259,7 +263,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1]) {
 				return module.exports.sendFile(learning[req.url.fullvalue][1], resp, resp.vars, req).then(done=>{
 					//Unlearn this if it is now invalid
 					if (!done[0]) {
-						delete learning[req.url.fullvalue] ;
+						learning[req.url.fullvalue] = undefined ;
 						return createResponse(req, resp) ;
 					} 
 					resolve([200, true]) ;
@@ -270,7 +274,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1]) {
 				resolve([404, true]) ;
 			} else {
 				//Try again if this isn't valid
-				delete learning[req.url.fullvalue] ;
+				learning[req.url.fullvalue] = undefined ;
 				return createResponse(req, resp) ;
 			}
 		}

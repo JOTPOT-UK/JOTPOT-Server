@@ -4,28 +4,27 @@
 	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
 	
 	"httpServers": [
-		
 		{
-			
 			"port": 8080,
-			"host": "127.0.0.1"
-			
+			"host": "0.0.0.0"
 		}
-		
 	],
 	"httpsServers": [],
 	
 	"redirectToHttps": [],
-	"canBeHttp": [],
+	"mustRedirectToHttps": [],
+	"dontRedirect": [],
 	
 	"hostRedirects":{},
+	"hostnameRedirects":{},
 	"hostAlias":{},
+	"hostnameAlias":{},
 	"pageAlias":{},
 	
 	"addVarsByDefault": false,
 	"doVarsForIfNotByDefault": ["default/index.html"],
 	
-	"cache": ["default/test2.txt"],
+	"cache": [],
 	
 	"errorTemplate": "errorTemp.jpt",
 	
@@ -35,10 +34,10 @@
 	"behindLoadBalencer": false,
 	"fallbackToNoPort": true,
 	
+	"defaultHeaders": {},
+	
 	"CORS": [],
 	
-	"enableLearning": true,
-	"learnIdealTimeout": 120000,
-	"learnHardTimeout": 180000
+	"enableLearning": true
 	
 }

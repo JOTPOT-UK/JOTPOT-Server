@@ -66,6 +66,7 @@ let config ;
 const defaultConfig = {
 	
 	"dataPort": 500,
+	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
 	
 	"httpServers": [
 		{
@@ -81,6 +82,7 @@ const defaultConfig = {
 	"hostRedirects":{},
 	"hostnameRedirects":{},
 	"hostAlias":{},
+	"hostnameAlias":{},
 	"pageAlias":{},
 	
 	"addVarsByDefault": false,
@@ -410,7 +412,6 @@ function wrapURL(req, secure) {
 		get: ()=>url,
 		set: v=>{url.value=v;}
 	}) ;
-	delete url.overHttps ;
 	
 	const setSecure = val => {
 		if (defaultProtocols.indexOf(req.url.protocol) !== -1) {
@@ -1213,11 +1214,13 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 		
 	}
 	
-	//Is the host an alias
+	//Is the host an alias?
 	while (typeof config.hostAlias[req.url.host] !== "undefined") {
-		
 		req.url.host = config.hostAlias[req.url.host] ;
-		
+	}
+	//Is the hostname an alias?
+	while (typeof config.hostnameAlias[req.url.hostname] !== "undefined") {
+		req.url.hostname = config.hostnameAlias[req.url.hostname] ;
 	}
 	
 	//If we might need to fallback and the host doesn't exist
@@ -1238,17 +1241,14 @@ function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_re
 			
 		}
 		
-	}
-	
-	//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
-	else if (config.useDefaultHostIfHostDoesNotExist) {
-		
+	} else if (config.useDefaultHostIfHostDoesNotExist) {
+		//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
 		if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-			
 			req.url.host = config.defaultHost || "default:0" ;
-			
+			if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+				req.usePortInDirectory = false ;
+			}
 		}
-		
 	}
 	
 	//Should we redirect to another host.

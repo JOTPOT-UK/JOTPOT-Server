@@ -44,6 +44,8 @@ If config.fallbackToNoPort:
 Else if cofig.useDefaultHostIfHostDoesNotExist:
 	If sites/req.url.hostname;req.url.port doesn't exist:
 		req.url.host = config.defaultHost
+		If sites/req.url.host doesn't exist:
+			req.usePortInDirectory = false
 
 //Host redirects
 If req.url.host is in config.hostRedirects and req.url.value is not in config.dontRedirect:

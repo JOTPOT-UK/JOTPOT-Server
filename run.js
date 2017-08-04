@@ -47,7 +47,7 @@ let cluster = require("cluster") ;
 if (!fs.existsSync("sites") || !fs.statSync("sites").isDirectory()) {
 	console.warn("'sites' directory must exist!") ;
 	console.info("'sites' directory must exist!") ;
-	process.exit(1) ;
+	throw new Error("'sites' directory must exist!") ;
 }
 
 //JPS Modules
@@ -60,25 +60,22 @@ let config ;
 //Default configuration
 const defaultConfig = {
 	
-	"otherProcesses": [],
-	
 	"dataPort": 500,
+	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
 	
 	"httpServers": [
-		
 		{
-			
 			"port": 80
-			
 		}
-		
 	],
 	"httpsServers": [],
 	
 	"redirectToHttps": [],
-	"canBeHttp": [],
+	"mustRedirectToHttps": [],
+	"dontRedirect": [],
 	
 	"hostRedirects":{},
+	"hostnameRedirects":{},
 	"hostAlias":{},
 	"pageAlias":{},
 	
@@ -95,7 +92,11 @@ const defaultConfig = {
 	"behindLoadBalencer": false,
 	"fallbackToNoPort": true,
 	
-	"defaultHeaders": {}
+	"defaultHeaders": {},
+	
+	"CORS":[],
+	
+	"enableLearning": true
 	
 } ;
 
@@ -596,10 +597,14 @@ if (cluster.isMaster) {
 			
 			if (typeof config.controlers === "object") {
 				
-				if (config.controlers.indexOf(s.remoteAddress) === -1) {
+				if (config.controlers.length > 0) {
 					
-					s.write("No perms") ;
-					return ;
+					if (config.controlers.indexOf(s.remoteAddress) === -1) {
+						
+						s.write("No perms") ;
+						return ;
+						
+					}
 					
 				}
 				
