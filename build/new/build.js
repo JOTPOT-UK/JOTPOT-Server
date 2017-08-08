@@ -102,6 +102,7 @@ try {
 			"GOARCH": process.env.GOARCH||"",
 			"GOARM": process.env.GOARM||"",
 			"GO386": process.env.GO386||"",
+			"GOROOT": process.env.GOROOT||"",
 			"PATH": process.env.PATH,
 			"CC": process.env.GOARCH.indexOf("arm")===0?"arm-linux-gnueabi-gcc":""
 		},
@@ -125,6 +126,7 @@ try {
 			"GOARCH": process.env.GOARCH||"",
 			"GOARM": process.env.GOARM||"",
 			"GO386": process.env.GO386||"",
+			"GOROOT": process.env.GOROOT||"",
 			"PATH":process.env.PATH,
 			"CC": process.env.GOARCH.indexOf("arm")===0?"arm-linux-gnueabi-gcc":""
 		},
