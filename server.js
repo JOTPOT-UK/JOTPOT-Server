@@ -102,7 +102,9 @@ const defaultConfig = {
 	
 	"CORS":[],
 	
-	"enableLearning": true
+	"enableLearning": true,
+	
+	"threads": 0
 	
 } ;
 

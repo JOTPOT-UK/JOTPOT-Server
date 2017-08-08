@@ -298,7 +298,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1]) {
 				origValue = req.url.href ;
 				//Return if we have handled it
 				const rv = funcsWS[val](req, resp) ;
-				if (!rv || !rv[0]) {
+				if (!(rv || rv[0])) {
 					//So, we haven't handled it hey...
 					if (req.url.href !== origValue) {
 						//Start again...
@@ -308,7 +308,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1]) {
 				} else if (typeof rv.then === "function") {
 					//Ah, we have a promise, so lets return one!
 					return rv.then(rv=>{
-						if (!rv || !rv[0]) {
+						if (!(rv || rv[0])) {
 							//Not handled, so start again
 							return handleeThing() ;
 						}
@@ -334,14 +334,14 @@ function createResponse(req, resp, timeRecieved=[-1,-1]) {
 				canLearn = false ;
 				//Return if we have handled it
 				const rv = funcs[val](req, resp) ;
-				if (!rv || !rv[0]) {
+				if (!(rv || rv[0])) {
 					//So, we haven't handled it hey...
 					//We are going to start again incase it has changed metadata and thus a previous handler may need it
 					return handleeThing() ;
 				} else if (typeof rv.then === "function") {
 					//Ah, we have a promise, so lets return one!
 					return rv.then(rv=>{
-						if (!rv || !rv[0]) {
+						if (!(rv || rv[0])) {
 							//Not handled, so start again
 							return handleeThing() ;
 						}

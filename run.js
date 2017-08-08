@@ -96,7 +96,9 @@ const defaultConfig = {
 	
 	"CORS":[],
 	
-	"enableLearning": true
+	"enableLearning": true,
+	
+	"threads": 0
 	
 } ;
 
@@ -583,7 +585,7 @@ if (cluster.isMaster) {
 	let net = require("net") ;
 	
 	//Create a worker for every core that is not being used by the master or another child process.
-	for (let doing = 0 ; doing < Math.max(os.cpus().length, 1) ; doing++) {
+	for (let doing = 0 ; doing < Math.max(config.threads || os.cpus().length, 1) ; doing++) {
 		
 		newFork() ;
 		
