@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 26A-0
+	Version 26B-0
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -27,142 +27,33 @@
 
 //Console is now YAY!!!
 console.log = console.warn = (...args) => {
-	
 	process.send(["log",args.join(" ")]) ;
-	
 } ;
 
 global.requireJPS = mod => require(path.join(__dirname, mod)) ;
-const loadAJSONFile = p => {
-	if (fs.existsSync(p)) {
-		return fs.readFileSync(p).toString() ;
-	}
-	return fs.readFileSync(path.join(__dirname, p)).toString() ;
-} ;
-const doesAJSONFileExist = p => (fs.existsSync(p) || fs.existsSync(path.join(__dirname, p))) ;
 
 //Node Modules
-let http = require("http") ;
-let https = require("https") ;
-let fs = require("fs") ;
-let path = require("path") ;
-let {Transform} = require("stream") ;
+const http = require("http") ;
+const https = require("https") ;
+const fs = require("fs") ;
+const path = require("path") ;
+const {Transform} = require("stream") ;
 let cluster ;
 
 //JPS Modules
-let proc = requireJPS("accounts") ;
-let externals = requireJPS("externals") ;
-let CORS = requireJPS("cors") ;
-let responseMaker = requireJPS("do-response") ;
-let parseFlags = requireJPS("flag-parser") ;
-let jpsUtil = requireJPS("jps-util") ;
-let urlObject = requireJPS("url-object") ;
-let {URL} = urlObject ;
+const proc = requireJPS("accounts") ;
+const externals = requireJPS("externals") ;
+const CORS = requireJPS("cors") ;
+const responseMaker = requireJPS("do-response") ;
+const parseFlags = requireJPS("flag-parser") ;
+const jpsUtil = requireJPS("jps-util") ;
+const urlObject = requireJPS("url-object") ;
+const websockets = requireJPS("websockets") ;
+const {loadConfig, loadConfigFile, doesConfigFileExist} = requireJPS("config-loader") ;
+const {URL} = urlObject ;
 
 //Load the config
-let config ;
-
-//Default configuration
-const defaultConfig = {
-	
-	"dataPort": 500,
-	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
-	
-	"httpServers": [
-		{
-			"port": 80
-		}
-	],
-	"httpsServers": [],
-	
-	"redirectToHttps": [],
-	"mustRedirectToHttps": [],
-	"dontRedirect": [],
-	
-	"hostRedirects":{},
-	"hostnameRedirects":{},
-	"hostAlias":{},
-	"hostnameAlias":{},
-	"pageAlias":{},
-	
-	"addVarsByDefault": false,
-	"doVarsForIfNotByDefault": [],
-	
-	"cache": [],
-	
-	"errorTemplate": "errorTemp.jpt",
-	
-	"defaultHost": "default:0",
-	"useDefaultHostIfHostDoesNotExist": true,
-	
-	"behindLoadBalencer": false,
-	"fallbackToNoPort": true,
-	
-	"defaultHeaders": {},
-	
-	"CORS":[],
-	
-	"enableLearning": true,
-	
-	"threads": 0
-	
-} ;
-
-//Load the comfig and fill in any blanks. If it doesn't exist, set the config to the default config.
-function loadConfig() {
-	
-	//If it exists, load it, parse it and fill in any blanks or throw if the types aren't correct
-	if (doesAJSONFileExist("config.json")) {
-		
-		config = loadAJSONFile("config.json") ;
-		
-		try {
-			
-			config = JSON.parse(config) ;
-			
-		}
-		
-		catch(err) {
-			
-			console.warn("Error parsing config.json!") ;
-			console.info("Error parsing config.json!") ;
-			console.warn(err) ;
-			console.info(err) ;
-			console.warn("Exiting") ;
-			console.info("Exiting") ;
-			process.exit(1) ;
-			
-		}
-		
-		for (let doing in defaultConfig) {
-			
-			if (typeof config[doing] === "undefined") {
-				
-				config[doing] = defaultConfig[doing] ;
-				
-			}
-			
-			else if (typeof config[doing] !== typeof defaultConfig[doing]) {
-				
-				throw new Error(`The ${doing} property in config.json must be of type ${typeof defaultConfig[doing]}.`) ;
-				
-			}
-			
-		}
-		
-	}
-
-	else {
-		
-		console.warn("Config file does not exist, using default config.") ;
-		config = new Object() ;
-		Object.assign(config, defaultConfig) ;
-		
-		
-	}
-	
-}
-loadConfig() ;
+let config = loadConfig() ;
 
 let flags = parseFlags() ;
 if (flags["-http-port"]) {
@@ -187,9 +78,7 @@ if (flags["-port"]) {
 
 let availHosts = [] ;
 if (config.useDefaultHostIfHostDoesNotExist || config.fallbackToNoPort) {
-	
 	availHosts = fs.readdirSync("./sites") ;
-	
 }
 
 //Vars to add to files
@@ -202,12 +91,9 @@ let allAccountSystems = new Array() ;
 //Vars config
 let doVarsFor = ["error_page"].concat(config.doVarsForIfNotByDefault) ;
 for (let doing in doVarsFor) {
-	
 	doVarsFor[doing] = path.normalize(doVarsFor[doing]) ;
 	doVarsFor[doing] = path.join(process.cwd(),"sites",doVarsFor[doing]) ;
-	
 }
-//let dontDoVarsFor = [] ;
 
 //Currently imprelemted methods
 const defaultMethods = ["GET", "POST", "HEAD", "OPTIONS"] ;
@@ -222,8 +108,7 @@ let endOfVar = Buffer.from("::$") ;
 
 //Error file
 let errorFile ;
-if (!doesAJSONFileExist(config.errorTemplate)) {
-	
+if (!doesConfigFileExist(config.errorTemplate)) {
 	console.warn("Error template file does not exist, using the default.") ;
 	errorFile = `<html>
 <head>
@@ -244,13 +129,8 @@ Error $:::error_code:::$ - $:::error_type:::$
 	<hr>
 </body>
 </html>` ;
-	
-}
-
-else {
-	
-	errorFile = loadAJSONFile(config.errorTemplate) ;
-	
+} else {
+	errorFile = loadConfigFile(config.errorTemplate) ;
 }
 
 let errorCodes = new Object() ;
@@ -357,119 +237,44 @@ class addVars extends Transform {
 	
 }
 
-if (!doesAJSONFileExist("mimes.json")) {
-	throw new Error("mimes.json file not found in CWD in " + __dirname) ;
+if (!doesConfigFileExist("mimes.json")) {
+	throw new Error("mimes.json file not found!") ;
 }
 
 //Sorting out mime types.
-let mimes = JSON.parse(loadAJSONFile("mimes.json")) ;
+let mimes = JSON.parse(loadConfigFile("mimes.json")) ;
 function getMimeType(file) {
-	
 	try {
-		
 		let ext = path.extname(file) ;
-		
 		//Give type HTML if there is no extention.
 		if (ext === "") {
-			
 			return "text/html" ;
-			
 		}
-		
 		ext = ext.substring(1,ext.length) ;
-		
 		if (typeof mimes[ext] !== "undefined") {
-			
 			return mimes[ext] ;
-			
 		}
-		
-		
-			
 		return "text/plain" ;
-			
-		
-		
-	}
-	
-	catch(err) {
-		
+	} catch (err) {
 		console.warn(err) ;
 		return "text/plain" ;
-		
 	}
-	
-}
-
-//Add the URL property to a request object. Make it so that if it is set, it sets the value instead.
-function wrapURL(req, secure) {
-	const defaultProtocols = ["http:", "https:"] ;
-	const secureProtocols = ["https:", "sftp:"] ;
-	
-	req.overHttps = secure ;
-	let url = new URL(req, config.defaultHost || config.defaultDomain) ;
-	Object.defineProperty(req, "url", {
-		enumerable: true,
-		configurable: false,
-		get: ()=>url,
-		set: v=>{url.value=v;}
-	}) ;
-	
-	const setSecure = val => {
-		if (defaultProtocols.indexOf(req.url.protocol) !== -1) {
-			req.url.protocol = val?"https:":"http:" ;
-		}
-	} ;
-	const getSecure = () => (secureProtocols.indexOf(req.url.protocol) !== -1) ;
-	Object.defineProperty(req, "overHttps", {
-		get: getSecure,
-		set: setSecure,
-		enumerable: true,
-		configurable: false
-	}) ;
-	Object.defineProperty(req, "secure", {
-		get: getSecure,
-		set: setSecure,
-		enumerable: true,
-		configurable: false
-	}) ;
-	Object.defineProperty(req, "secureToServer", {
-		value: secure,
-		writable: false,
-		enumerable: true,
-		configurable: false
-	}) ;
-	
-	Object.defineProperty(req, "uri", {
-		get: ()=>req.url.path,
-		set: val=>req.url.path=val,
-		enumerable: true,
-		configurable: false
-	}) ;
 }
 
 //Pipes the file through the transform pipe into the main pipe.
 //Calls the callback with the first argument as a boolean - true if succeded, false if not.
 function getFile(file,callWithStats,pipeTo,callback,range=null) {
-	
 	fs.stat(file,(err,stats) => {
-		
 		if (err) {
-			
 			callback(false,err) ;
 			return ;
-			
 		}
-		
 		if (stats.isFile()) {
-			
 			if (callWithStats(stats)) {
-				
 				let opts = {
 					flags: "r",
 					autoClose: true
 				} ;
-				
 				if (range !== null) {
 					if (isNaN(range[1])) {
 						range[1] = stats.size - 1 ;
@@ -480,39 +285,28 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 						range[1] = stats.size - 1 ;
 					}
 				}
-				
 				//Pipe file to the pipe.
 				fs.createReadStream(file, opts).pipe(pipeTo) ;
-				
 				callback(true, null) ;
 				return ;
-				
 			}
-			
 			callback(false, "CBR") ;
 			return ;
-			
 		}
 		callback(false,"DIR") ;
-		
 	}) ;
-	
 }
 
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
 function sendFile(file,resp,customVars,req) {
-	
 	try {
-		
 		//Look in the sites dir.
 		let start = path.join(process.cwd(), "sites") ;
 		file = path.join(start,URL.toDir(file)) ;
 		
 		//If we aren't in the sites dir, then throw.
 		if (file.indexOf(start) !== 0) {
-			
 			throw new Error("Server has left the serving directory!") ;
-			
 		}
 		
 		//Make a pipe to send it to.
@@ -524,28 +318,20 @@ function sendFile(file,resp,customVars,req) {
 		
 		//Only bother with the pipes if we are accualy sending the body
 		if (resp.sendBody) {
-			
 			//If we need to add vars.
 			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
-				
 				//Vars go first.
 				mainPipe = new addVars(file,customVars) ;
-				
 				//Add the resp.pipeThrough
 				while (doingTransform > -1) {
-					
 					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
 					doingTransform-- ;
-					
 				}
 				
 				//Then to the client.
 				mainPipe.pipe(resp) ;
-				
-			}
-			
-			//No vars, but still pipe.
-			else if (doingTransform > -1) {
+			} else if (doingTransform > -1) {
+				//No vars, but still pipe.
 				
 				//Start at last thing
 				mainPipe = resp.pipeThrough[doingTransform] ;
@@ -553,33 +339,21 @@ function sendFile(file,resp,customVars,req) {
 				
 				//Now do the rest
 				while (doingTransform > -1) {
-					
 					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
 					doingTransform-- ;
-					
 				}
 				
 				//And guess what... The client!
 				mainPipe.pipe(resp) ;
-				
-			}
-			
-			else {
-				
+			} else {
 				//No pipes at all, so only to client.
 				mainPipe = resp ;
-				
 				//We can now get the length from the stats
 				lengthknown = true ;
-				
 			}
 			
-		}
-		
-		else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
-			
+		} else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
 			lengthknown = true ;
-			
 		}
 		
 		if (lengthknown && typeof req.headers.range === "string") {
@@ -727,9 +501,7 @@ function sendFile(file,resp,customVars,req) {
 		}
 		
 		return new Promise(resolve => {
-				
 			getFile(file,stats => {
-				
 				const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
 				if (status === 206) {
@@ -739,62 +511,34 @@ function sendFile(file,resp,customVars,req) {
 					resp.setHeader("Content-Length", stats.size) ;
 				}
 				resp.writeHead(status,{
-					
 					"Content-Type": mime,
 					"Accept-Ranges": lengthknown?"bytes":"none",
-					
-					//Added because google does it :)
 					"Status": status
-					
 				}) ;
-				
 				if (!resp.sendBody) {
-					
 					resp.end() ;
 					return false ;
-					
 				}
-				
 				return true ;
-				
 			},mainPipe,(done,err) => {
-				
 				//If we judt didn't need to send the body, then there isn't an error
 				if (!resp.sendBody && !done && err === "CBR") {
-					
 					resolve([true,null]) ;
-					
-				}
-				
-				else {
-					
+				} else {
 					resolve([done,err]) ;
-					
 				}
-				
 			}, ranges);
-			
 		}) ;
-		
-	}
-	
-	catch(err) {
-		
-		//coughtError(err,resp,rID) ;
+	} catch (err) {
 		//Return an instantly rejecting promise
 		return new Promise((resolve, reject) => reject(err)) ;
-		
 	}
-	
 }
 
 function sendCache(file,cache,resp,customVars,req,status=200) {
-	
 	try {
-		
 		//Look in the sites dir.
 		file = path.join(process.cwd(),"sites",file) ;
-		
 		
 		//Make a pipe to send it to.
 		let mainPipe ;
@@ -805,28 +549,21 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 		
 		//Only bother with the pipes if we accualy have to send the requests
 		if (resp.sendBody) {
-			
 			//If we need to add vars.
 			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
-				
 				//Vars go first.
 				mainPipe = new addVars(file,customVars) ;
 				
 				//Add the resp.pipeThrough
 				while (doingTransform > -1) {
-					
 					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
 					doingTransform-- ;
-					
 				}
 				
 				//Then to the client.
 				mainPipe.pipe(resp) ;
-				
-			}
-			
-			//No vars, but still pipe.
-			else if (doingTransform > -1) {
+			} else if (doingTransform > -1) {
+				// No vars, but still pipe.
 				
 				//Start at last thing
 				mainPipe = resp.pipeThrough[doingTransform] ;
@@ -834,28 +571,18 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 				
 				//Now do the rest
 				while (doingTransform > -1) {
-					
 					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
 					doingTransform-- ;
-					
 				}
 				
 				//And guess what... The client!
 				mainPipe.pipe(resp) ;
-				
-			}
-			
-			else {
-				
+			} else {
 				//No pipes at all, so only to client.
 				lengthknown = true ;
 				mainPipe = resp ;
-				
 			}
-			
-		}
-		
-		else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
+		} else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
 			lengthknown = true ;
 			mainPipe = resp ;
 		} else {
@@ -984,7 +711,15 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 		
 		//Get the mime type.
 		const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
-		console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
+		if (status > 299 && status < 400) {
+			let redirectingTo = resp.getHeader("Location") || '' ;
+			if (!redirectingTo) {
+				console.warn("!!! 3xx response sent without Location header !!! <----- You have a BIG problem!") ;
+			}
+			console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   Redirecting to ${redirectingTo}.`) ;
+		} else {
+			console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
+		}
 		
 		if (status === 206) {
 			resp.setHeader("Content-Range", `bytes ${ranges[0]}-${Math.min(ranges[1],cache.length-1)}/${cache.length}`) ;
@@ -993,15 +728,10 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 			resp.setHeader("Content-Length", cache.length) ;
 		}
 		resp.writeHead(status,{
-			
 			"Content-Type": mime,
 			"Accept-Ranges": lengthknown?"bytes":"none",
-			
-			//Added because google does it :)
 			"Status": status
-			
 		}) ;
-		
 		//Write the cached data (if we need to) & end.
 		if (resp.sendBody) {
 			if (ranges === null) {
@@ -1011,25 +741,16 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 			}
 		}
 		mainPipe.end() ;
-		
-	}
-	
-	catch(err) {
-		
+	} catch (err) {
 		coughtError(err,resp) ;
-		
 	}
-	
 }
 
 function sendError(code,message,resp,rID="") {
-	
 	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},{jpid:rID,headers:{}},code) ;
-	
 }
 
 function coughtError(err,resp,rID="") {
-	
 	let isUnknown = false ;
 	console.warn("---------------") ;
 	if (err && err.stack) {
@@ -1044,7 +765,6 @@ function coughtError(err,resp,rID="") {
 	}
 	console.warn("---------------") ;
 	sendError(500,`A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't trust you."}.`,resp,rID) ;
-	
 }
 
 function make6d(str, pad="0") {
@@ -1054,11 +774,111 @@ function make6d(str, pad="0") {
 	return str ;
 }
 
+function doEvent(event, host, callback, ...eventArgs) {
+	let cont = true ;
+	let gotOtherPromise = false ;
+	externals.doEvt(event, ...eventArgs).then(d=>{
+		if (d) {
+			cont = false ;
+		}
+		if (gotOtherPromise && cont) {
+			callback() ;
+			return ;
+		}
+		gotOtherPromise = true ;
+	}) ;
+	externals.doEvt(`${host}/${event}`, ...eventArgs).then(d=>{
+		if (d) {
+			cont = false ;
+		}
+		if (gotOtherPromise && cont) {
+			callback() ;
+			return ;
+		}
+		gotOtherPromise = true ;
+	}) ;
+}
+
+//Add the URL property to a request object. Make it so that if it is set, it sets the value instead.
+function wrapURL(req, secure, defaultHost) {
+	const defaultProtocols = ["http:", "https:"] ;
+	const secureProtocols = ["https:", "sftp:"] ;
+	
+	req.overHttps = secure ;
+	let url = new URL(req, defaultHost) ;
+	Object.defineProperty(req, "url", {
+		enumerable: true,
+		configurable: false,
+		get: ()=>url,
+		set: v=>{url.value=v;}
+	}) ;
+	
+	const setSecure = val => {
+		if (defaultProtocols.indexOf(req.url.protocol) !== -1) {
+			req.url.protocol = val?"https:":"http:" ;
+		}
+	} ;
+	const getSecure = () => (secureProtocols.indexOf(req.url.protocol) !== -1) ;
+	Object.defineProperty(req, "overHttps", {
+		get: getSecure,
+		set: setSecure,
+		enumerable: true,
+		configurable: false
+	}) ;
+	Object.defineProperty(req, "secure", {
+		get: getSecure,
+		set: setSecure,
+		enumerable: true,
+		configurable: false
+	}) ;
+	Object.defineProperty(req, "secureToServer", {
+		value: secure,
+		writable: false,
+		enumerable: true,
+		configurable: false
+	}) ;
+	
+	Object.defineProperty(req, "uri", {
+		get: ()=>req.url.path,
+		set: val=>req.url.path=val,
+		enumerable: true,
+		configurable: false
+	}) ;
+}
+
+//Adds main properties to the request object. Used in HTTP and WebSockets requests.
+function addReqProps(req, secure) {
+	let user_ip, user_ip_remote ;
+	if (config.behindLoadBalancer) {
+		user_ip = (req.headers["x-forwarded-for"] || req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+		user_ip_remote = (req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+		secure = req.headers["jp-source-secure"] === "https" ;
+	} else {
+		user_ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+		user_ip_remote = (req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+	}
+	
+	//Add stuff to the req object
+	req.ip = user_ip ;
+	req.remoteAddress = user_ip_remote ;
+	req.usePortInDirectory = true ;
+	//Create URL object and secure, and overHttps and secureToServer
+	wrapURL(req, secure, config.defaultHost || config.defaultDomain) ;
+	//orig_url object
+	let orig_url = new Object() ;
+	Object.assign(orig_url, req.url) ;
+	Object.defineProperty(req, "orig_url", {
+		enumerable: true,
+		configurable: false,
+		writable: false,
+		value: orig_url
+	}) ;
+	return [user_ip, user_ip_remote, secure] ;
+}
+
 //Function to handle http requests.
 function handleRequest(req,resp,secure) {
-	
 	try {
-		
 		//Get time stuff.
 		let timeRecieved = process.hrtime() ;
 		let requestTime = new Date() ;
@@ -1066,36 +886,10 @@ function handleRequest(req,resp,secure) {
 		//Set server header
 		resp.setHeader("Server","JOTPOT Server") ;
 		
-		//Get IP, follow jp-source headers if we are behind a load balancer
-		let user_ip, user_ip_remote ;
-		if (config.behindLoadBalancer) {
-			
-			user_ip = (req.headers["x-forwarded-for"] || req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-			user_ip_remote = (req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-			secure = req.headers["jp-source-secure"] === "https" ;
-			
-		} else {
-			
-			user_ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-			user_ip_remote = (req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-			
-		}
-		
-		//Add stuff to the req object
-		req.ip = user_ip ;
-		req.remoteAddress = user_ip_remote ;
-		req.usePortInDirectory = true ;
-		//Create URL object and secure, and overHttps and secureToServer
-		wrapURL(req, secure) ;
-		//orig_url object
-		let orig_url = new Object() ;
-		Object.assign(orig_url, req.url) ;
-		Object.defineProperty(req, "orig_url", {
-			enumerable: true,
-			configurable: false,
-			writable: false,
-			value: orig_url
-		}) ;
+		let rrv = addReqProps(req, secure, config) ;
+		let user_ip = rrv[0] ;
+		let user_ip_remote = rrv[1] ;
+		secure = rrv[2] ;
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"time":requestTime.getTime().toString(),"href":req.url.href,"method":req.method} ;
@@ -1108,433 +902,261 @@ function handleRequest(req,resp,secure) {
 			resp.setHeader(doing, config.defaultHeaders[doing]) ;
 		}
 		
-		//Do request handle.
-		let cont = true ;
-		let gotOtherPromise = false ;
-		externals.doEvt("request",req,resp).then(d=>{
+		//Request event
+		doEvent("request", req.url.host, ()=>{
+			linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) ;
 			
-			if (d) {
-				
-				cont = false ;
-				
-			}
+			//Add ID
+			let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
+			Object.defineProperty(req, "jpid", {
+				configurable: false,
+				enumerable: false,
+				value: rID,
+				writable: false
+			}) ;
 			
-			if (gotOtherPromise && cont) {
-				
-				handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
-				
-			}
+			//Log
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
 			
-			gotOtherPromise = true ;
+			//CORS stuff
+			CORS.setHeaders(req, resp) ;
 			
-		}) ;
+			doEvent("fullrequest", req.url.host, ()=>
+				checkAuth(req, resp, timeRecieved, ()=>
+					doEvent("allowedrequest", req.url.host, ()=>{
+						allowedRequest(req, resp, timeRecieved, false) ;
+						//Use responseMaker to generate the response, see do-response.js
+						responseMaker.createResponse(req, resp, timeRecieved).then(hmmm=>{
+							//Log if it was leared from
+							if (hmmm[0]) {
+								console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
+							} else {
+								console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
+							}
+							//Log times
+							let timeTaken = process.hrtime(timeRecieved) ;
+							console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+						}) ;
+					}, req, resp)), req, resp) ;
+		}, req, resp) ;
 		
-		externals.doEvt(`${req.url.host}/request`,req,resp).then(d=>{
-			
-			if (d) {
-				
-				cont = false ;
-				
-			}
-			
-			if (gotOtherPromise && cont) {
-				
-				handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
-				
-			}
-			
-			gotOtherPromise = true ;
-			
-		}) ;
-		
-	}
-	
-	catch(err) {
-		
+	} catch (err) {
 		coughtError(err,resp) ;
 		console.log("Error trace: Error handling incoming data.") ;
-		
 	}
-	
 }
 
-function handleRequestPart2(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) {
-	
-	//Secure URL. Remove '..' to prevent it from going to a parent directory.
-	//And replace // with /, along with removing any trailing /
-	do {
-		req.url.pathname = req.url.pathname.replace(/\.\./g, "").replace(/\/\//g, "/") ;
-	} while (req.url.pathname.indexOf("//") !== -1) ;
-	while (req.url.pathname.length > 1 && req.url.pathname.indexOf("/") === req.url.pathname.length - 1) {
-		req.url.pathname = req.url.pathname.substring(0, req.url.pathname.length - 1) ;
-	}
-	
-	//Should we redirect to https.
-	if (!req.overHttps && config.dontRedirect.indexOf(req.url.value) === -1) {
+function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
+	try {
+		//Secure URL. Remove '..' to prevent it from going to a parent directory.
+		//And replace // with /, along with removing any trailing /
+		do {
+			req.url.pathname = req.url.pathname.replace(/\.\./g, "").replace(/\/\//g, "/") ;
+		} while (req.url.pathname.indexOf("//") !== -1) ;
+		while (req.url.pathname.length > 1 && req.url.pathname.indexOf("/") === req.url.pathname.length - 1) {
+			req.url.pathname = req.url.pathname.substring(0, req.url.pathname.length - 1) ;
+		}
 		
-		if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
+		//Should we redirect to https.
+		if (!req.overHttps && config.dontRedirect.indexOf(req.url.value) === -1) {
+			if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
+				console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+				
+				//Change URL to make it HTTPS
+				req.url.protocol = "https:" ;
+				if (req.url.port === 80) {
+					req.url.port = 443 ;
+				}
+				
+				//Set redirect headers
+				resp.setHeader("Location", req.url.location) ;
+				//And send with correct code (302 if we are HTTP/1.0)
+				let code = 307 ;
+				if (req.httpVersion === "1.0") {
+					code = 302 ;
+				}
+				sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
+				
+				let timeTaken = process.hrtime(timeRecieved) ;
+				console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+				return ;
+			} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
+				console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+				
+				//Change URL to make it HTTPS
+				req.url.protocol = "https:" ;
+				if (req.url.port === 80) {
+					req.url.port = 443 ;
+				}
+				
+				//Set redirect headers and Vary
+				resp.setHeader("Location", req.url.location) ;
+				resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
+				//And send
+				let code = 307 ;
+				if (req.httpVersion === "1.0") {
+					code = 302 ;
+				}
+				sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
+				
+				let timeTaken = process.hrtime(timeRecieved) ;
+				console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+				return ;
+			}
+		}
+		
+		//Is the host an alias?
+		while (typeof config.hostAlias[req.url.host] !== "undefined") {
+			req.url.host = config.hostAlias[req.url.host] ;
+		}
+		//Is the hostname an alias?
+		while (typeof config.hostnameAlias[req.url.hostname] !== "undefined") {
+			req.url.hostname = config.hostnameAlias[req.url.hostname] ;
+		}
+		
+		//If we might need to fallback and the host doesn't exist
+		if (config.fallbackToNoPort && availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+			//But if we ignore the port and it still doesn't, and we should fallback to default, then fallback to default.
+			if (availHosts.indexOf(URL.toDir(req.url.hostname)) === -1 && config.useDefaultHostIfHostDoesNotExist) {
+				req.url.host = config.defaultHost || "default:0" ;
+				if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+					req.usePortInDirectory = false ;
+				}
+			} else {
+				//Otherwise, it does exist so lets not use the port
+				req.usePortInDirectory = false ;
+			}
+		} else if (config.useDefaultHostIfHostDoesNotExist) {
+			//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
+			if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+				req.url.host = config.defaultHost || "default:0" ;
+				if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+					req.usePortInDirectory = false ;
+				}
+			}
+		}
+		
+		//Should we redirect to another host.
+		if (typeof config.hostRedirects[req.url.host] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 			
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+			//Set new host
+			req.url.host = config.hostRedirects[req.url.host] ;
 			
-			req.url.protocol = "https:" ;
-			if (req.url.port === 80) {
+			//Set correct protocol
+			let isRedirectHttps = (req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && config.redirectToHttps.indexOf(req.url.host) !== -1) || config.mustRedirectToHttps.indexOf(req.url.host) !== -1 ;
+			req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
+			if (isRedirectHttps && req.url.port === 80) {
 				req.url.port = 443 ;
 			}
 			
-			console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because this page MUST be HTTPS.`) ;
-			
-			resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
-			resp.write("Redirecting you to our secure site...") ;
-			resp.end() ;
+			//And send response
+			resp.setHeader("Location", req.url.location) ;
+			if (isRedirectHttps && req.headers["upgrade-insecure-requests"]) {
+				resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
+			}
+			let code = 307 ;
+			if (req.httpVersion === "1.0") {
+				code = 302 ;
+			}
+			sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
 			
 			let timeTaken = process.hrtime(timeRecieved) ;
 			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-			
 			return ;
+		}
+		if (typeof config.hostnameRedirects[req.url.hostname] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 			
-		} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
+			//Set new host
+			req.url.hostname = config.hostnameRedirects[req.url.hostname] ;
 			
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-			
-			req.url.protocol = "https:" ;
-			if (req.url.port === 80) {
+			//Set correct protocol
+			let isRedirectHttps = (req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && config.redirectToHttps.indexOf(req.url.host) !== -1) || config.mustRedirectToHttps.indexOf(req.url.host) !== -1 ;
+			req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
+			if (isRedirectHttps && req.url.port === 80) {
 				req.url.port = 443 ;
 			}
 			
-			console.log(`${req.jpid}\t307 Moved Temporarily.   Redirecting to ${req.url.location} because the user requested an upgrade.`) ;
-			
-			resp.writeHead(307,{"Content-Type": "text/plain", "location": req.url.location, "Status": 307, "Vary": "Upgrade-Insecure-Requests"}) ;
-			resp.write("Redirecting you to our secure site...") ;
-			resp.end() ;
+			//And send response
+			resp.setHeader("Location", req.url.location) ;
+			if (isRedirectHttps && req.headers["upgrade-insecure-requests"]) {
+				resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
+			}
+			let code = 307 ;
+			if (req.httpVersion === "1.0") {
+				code = 302 ;
+			}
+			sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
 			
 			let timeTaken = process.hrtime(timeRecieved) ;
 			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-			
 			return ;
-			
 		}
 		
+		responseMaker.doLinks(req) ;
+	} catch (err) {
+		coughtError(err,resp) ;
+		console.log("Error trace: Error handling incoming data.") ;
 	}
-	
-	//Is the host an alias?
-	while (typeof config.hostAlias[req.url.host] !== "undefined") {
-		req.url.host = config.hostAlias[req.url.host] ;
-	}
-	//Is the hostname an alias?
-	while (typeof config.hostnameAlias[req.url.hostname] !== "undefined") {
-		req.url.hostname = config.hostnameAlias[req.url.hostname] ;
-	}
-	
-	//If we might need to fallback and the host doesn't exist
-	if (config.fallbackToNoPort && availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-		
-		//But if we ignore the port and it still doesn't, and we should fallback to default, then fallback to default.
-		if (availHosts.indexOf(URL.toDir(req.url.hostname)) === -1 && config.useDefaultHostIfHostDoesNotExist) {
-			req.url.host = config.defaultHost || "default:0" ;
-			if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-				req.usePortInDirectory = false ;
-			}
-		}
-		
-		//Otherwise, it does exist so lets not use the port
-		else {
-			
-			req.usePortInDirectory = false ;
-			
-		}
-		
-	} else if (config.useDefaultHostIfHostDoesNotExist) {
-		//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
-		if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-			req.url.host = config.defaultHost || "default:0" ;
-			if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-				req.usePortInDirectory = false ;
-			}
-		}
-	}
-	
-	//Should we redirect to another host.
-	if (typeof config.hostRedirects[req.url.host] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
-		
-		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
-		
-		//Set new host
-		req.url.host = config.hostRedirects[req.url.host] ;
-		
-		//Set correct protocol
-		let isRedirectHttps = req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && (config.redirectToHttps.indexOf(req.url.host) !== -1 || config.mustRedirectToHttps.indexOf(req.url.host) !== -1) ;
-		req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
-		if ((isRedirectHttps||req.secure) && req.url.port === 80) {
-			req.url.port = 443 ;
-		}
-		
-		//And send response
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because of a host redirect.`) ;
-		resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
-		resp.write("Redirecting you to " + req.url.location + "...") ;
-		resp.end() ;
-		
-		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-		
-		return ;
-		
-	}
-	
-	if (typeof config.hostnameRedirects[req.url.hostname] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
-		
-		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
-		
-		//Set new host
-		req.url.hostname = config.hostnameRedirects[req.url.hostname] ;
-		
-		//Set correct protocol
-		let isRedirectHttps = req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && (config.redirectToHttps.indexOf(req.url.host) !== -1 || config.mustRedirectToHttps.indexOf(req.url.host) !== -1) ;
-		req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
-		if ((isRedirectHttps||req.secure) && req.url.port === 80) {
-			req.url.port = 443 ;
-		}
-		
-		//And send response
-		console.log(`${req.jpid}\t302 Found.   Redirecting to ${req.url.location} because of a hostname redirect.`) ;
-		resp.writeHead(302, {"Content-Type": "text/plain", "location": req.url.location, "Status": 302}) ;
-		resp.write("Redirecting you to " + req.url.location + "...") ;
-		resp.end() ;
-		
-		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-		
-		return ;
-		
-	}
-	
-	responseMaker.doLinks(req) ;
-	
-	{
-		let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
-		Object.defineProperty(req, "jpid", {
-			configurable: false,
-			enumerable: false,
-			value: rID,
-			writable: false
-		}) ;
-	}
-	
-	console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-	
-	CORS.setHeaders(req, resp) ;
-	
-	
-	//Handle for full request.
-	
-	let cont = true ;
-	let gotOtherPromise = false ;
-	externals.doEvt("fullrequest",req,resp).then(d=>{
-		
-		if (d) {
-			
-			cont = false ;
-			
-		}
-		
-		if (gotOtherPromise && cont) {
-			
-			handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
-			
-		}
-		
-		gotOtherPromise = true ;
-		
-	}) ;
-	
-	externals.doEvt(`${req.url.host}/fullrequest`,req,resp).then(d=>{
-		
-		if (d) {
-			
-			cont = false ;
-			
-		}
-		
-		if (gotOtherPromise && cont) {
-			
-			handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) ;
-			
-		}
-		
-		gotOtherPromise = true ;
-		
-	}) ;
-	
 }
 
-function handleRequestPart3(req,resp,timeRecieved,requestTime,user_ip,user_ip_remote) {
-	
+function checkAuth(req, resp, timeRecieved, callback) {
 	//If there are no account systems, then dont bother checking if the user has permission.
 	if (allAccountSystems.length === 0) {
-		
-		let cont = true ;
-		let gotOtherPromise = false ;
-		externals.doEvt("allowedrequest",req,resp).then(d=>{
-			
-			if (d) {
-				
-				cont = false ;
-				
-			}
-			
-			if (gotOtherPromise && cont) {
-				
-				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
-				
-			}
-			
-			gotOtherPromise = true ;
-			
-		}) ;
-		
-		externals.doEvt(`${req.url.host}/allowedrequest`,req,resp).then(d=>{
-			
-			if (d) {
-				
-				cont = false ;
-				
-			}
-			
-			if (gotOtherPromise && cont) {
-				
-				allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
-				
-			}
-			
-			gotOtherPromise = true ;
-			
-		}) ;
-		
+		callback() ;
 		return ;
-		
 	}
-	
 	
 	//Check the user is allowed to load the page.
 	let checkingSystem = 0 ;
 	
 	//Function to load next check.
 	let nextCheck = () =>{
-		
 		//Ask account system what to do.
 		allAccountSystems[checkingSystem].doAnything(req,resp).then(returned=>{
-			
 			let canAccess = returned[0] ;
-			
 			//No perms
 			if (canAccess === false) {
-				
 				if (returned[1] === "redirect") {
-					
-					console.log(`\t302 Found.   Redirecting to ${returned[2]} because of account system.`) ;
-					resp.writeHead(302,{"Content-Type":"text/plain",location:returned[2]}) ;
-					resp.write("Redirecting you to the login page.") ;
-					resp.end() ;
-					
+					resp.setHeader("Location", returned[2]) ;
+					let code = 303 ;
+					if (req.httpVersion === "1.0") {
+						code = 302 ;
+					}
+					sendCache("redirect.txt", "Redirecting you to " + returned[2] + "...", resp, {}, req, code) ;
+				} else {
+					sendError(403, "Forbidden", resp, req.jpid) ;
 				}
-				
-				else {
-					
-					console.log(`\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
-					resp.writeHead(401,{"Content-Type":"text/plain"}) ;
-					resp.write("Nope.") ;
-					resp.end() ;
-					
-				}
-				
-			}
-			
-			//Access is OK from this account system.
-			else if (canAccess === true) {
-				
-				//Next system
+			} else if (canAccess === true) {
+				//Access is OK from this account system.
+				//Next system if we have one, or allow it if not.
 				checkingSystem++ ;
 				if (checkingSystem >= allAccountSystems.length) {
-					
 					//The request is allowed...
-					let cont = true ;
-					let gotOtherPromise = false ;
-					externals.doEvt("allowedrequest",req,resp).then(d=>{
-						
-						if (d) {
-							
-							cont = false ;
-							
-						}
-						
-						if (gotOtherPromise && cont) {
-							
-							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
-							
-						}
-						
-						gotOtherPromise = true ;
-						
-					}) ;
-					
-					externals.doEvt(`${req.url.host}/allowedrequest`,req,resp).then(d=>{
-						
-						if (d) {
-							
-							cont = false ;
-							
-						}
-						
-						if (gotOtherPromise && cont) {
-							
-							allowedRequest(req.url.host,req,resp,user_ip,user_ip_remote,timeRecieved,false) ;
-							
-						}
-						
-						gotOtherPromise = true ;
-						
-					}) ;
-					
+					callback() ;
+					return ;
 				}
-				
-				else {
-					
-					//Check the next.
-					nextCheck() ;
-					
-				}
-				
+				//Check the next.
+				nextCheck() ;
+			} else if (canAccess === null) {
+				//Dunnow ;)
+				//Erm, no nothing??? Right???
+			} else {
+				//Somthing has gone wrong, so play it safe & send a 403.
+				sendError(403, "Forbidden", resp, req.jpid) ;
 			}
-			
-			//Dunnow ;)
-			else if (canAccess === null) {
-				
-				//nothing
-				
-			}
-			
-			//Somthing has gone wrong, so play it safe & send a 401.
-			else {
-				
-				console.log(`${req.jpid}\t401 Unauthorized.   Account system ${checkingSystem} denide access.`) ;
-				resp.writeHead(401,{"Content-Type":"text/plain"}) ;
-				resp.write("Nope.") ;
-				resp.end() ;
-				
-			}
-			
-		}).catch(err=>{coughtError(err,resp,req.jpid);console.log("Error trace: Error recieving account data.");}) ;
-		
+		}).catch(err=>{
+			coughtError(err, resp, req.jpid) ;
+			console.log("Error trace: Error recieving account data.") ;
+		}) ;
 	} ;
 	//Check
 	nextCheck() ;
-	
-	
-	
 }
 
 //Should be called when a request is allowed.
-function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDone) {
+function allowedRequest(req, resp, timeRecieved, postDone) {
 	try {
 		//Determine how to handle the method
 		if (typeof implementedMethods[req.method] !== "undefined") {
@@ -1547,7 +1169,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 						if (typeof rv.then === "function") {
 							rv.then(handled=>{
 								if (!handled) {
-									allowedRequest(host, req, resp, user_ip, user_ip_remote, timeRecieved, true) ;
+									allowedRequest(req, resp, timeRecieved, true) ;
 								}
 							}) ;
 							return ;
@@ -1591,7 +1213,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 					req.on("end", ()=>{
 						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
-						allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
+						allowedRequest(req, resp, timeRecieved, true) ;
 					}) ;
 					return ;
 				} 
@@ -1602,7 +1224,7 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 				req.on("end", ()=>{
 					//Encode data in base64 and add it to resp.vars
 					resp.vars.body = data.toString("base64") ;
-					allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,true) ;
+					allowedRequest(req, resp, timeRecieved, true) ;
 				}) ;
 				return ;
 			}
@@ -1641,19 +1263,6 @@ function allowedRequest(host,req,resp,user_ip,user_ip_remote,timeRecieved,postDo
 			sendError(405, "That method is not supported for this URL. Sorry :(") ;
 			return ;
 		}
-		
-		//Use responseMaker to generate the response, see do-response.js
-		responseMaker.createResponse(req, resp, timeRecieved).then(hmmm=>{
-			//Log if it was leared from
-			if (hmmm[0]) {
-				console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
-			} else {
-				console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
-			}
-			//Log times
-			let timeTaken = process.hrtime(timeRecieved) ;
-			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-		}) ;
 		return ;
 	} catch (err) {
 		coughtError(err,resp,req.jpid) ;
@@ -1665,6 +1274,8 @@ responseMaker.sendCache = sendCache ;
 responseMaker.sendFile = sendFile ;
 responseMaker.sendError = sendError ;
 responseMaker.enableLearning = config.enableLearning ;
+websockets.serverCalls.addReqProps = addReqProps ;
+websockets.serverCalls.doEvent = doEvent ;
 
 for (let doing in config.cache) {
 	try {
@@ -2059,10 +1670,10 @@ module.exports = {
 		for (let doing in currentDir) {
 			//If it is an extention, load it.
 			if (currentDir[doing].substr(currentDir[doing].length - 7,7) === ".jpe.js") {
-				let currentLoad = externals.loadExt(currentDir[doing]) ;
-				if (currentLoad.loaded) {
+				/*let currentLoad = */externals.loadExt(currentDir[doing]) ;
+				/*if (currentLoad.loaded) {
 					vars = currentLoad.serverObj.vars ;
-				}
+				}*/
 			}
 		}
 		for (let doing in config.CORS) {
@@ -2081,22 +1692,43 @@ module.exports = {
 		}
 		//Set up the HTTP servers
 		for (const doing in config.httpServers) {
-			let options = new Array() ;
-			options[0] = config.httpServers[doing].port ;
-			if (typeof config.httpServers[doing].host !== "undefined") {
-				options[1] = config.httpServers[doing].host ;
+			if (typeof config.httpServers[doing].port !== "number" || isNaN(config.httpServers[doing].port)) {
+				config.httpServers[doing].port = 0 ;
 			}
-			http.createServer((req,resp) => {
-				req.port = options[0] ;
-				handleRequest(req,resp,false) ;
-			}).listen(...options) ;
+			if (typeof config.httpServers[doing].hostname !== "string") {
+				config.httpServers[doing].hostname = undefined ;
+			}
+			if (typeof config.httpServers[doing].backlog !== "number") {
+				config.httpServers[doing].backlog = undefined ;
+			}
+			let server = http.createServer((req,resp) => {
+				req.port = config.httpServers[doing].port ;
+				handleRequest(req, resp, false) ;
+			}) ;
+			server.listen(config.httpServers[doing].port, config.httpServers[doing].hostname, config.httpServers[doing].backlog) ;
+			if (config.httpServers[doing].websocket || config.httpServers[doing].websockets) {
+				server.on("upgrade", (req, s)=>websockets.handleUpgrade(req, s, false)) ;
+			}
 		}
 		//Set up the HTTPS servers
 		for (const doing in config.httpsServers) {
-			https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")}, (req,resp) => {
+			if (typeof config.httpsServers[doing].port !== "number" || isNaN(config.httpsServers[doing].port)) {
+				config.httpsServers[doing].port = 0 ;
+			}
+			if (typeof config.httpsServers[doing].hostname !== "string") {
+				config.httpsServers[doing].hostname = undefined ;
+			}
+			if (typeof config.httpsServers[doing].backlog !== "number") {
+				config.httpsServers[doing].backlog = undefined ;
+			}
+			let server = https.createServer({key:fs.readFileSync("privkey.pem"),ca:fs.readFileSync("fullchain.pem"),cert:fs.readFileSync("cert.pem")}, (req,resp) => {
 				req.port = config.httpsServers[doing].port ;
-				handleRequest(req,resp,true) ;
-			}).listen(config.httpsServers[doing].port) ;
+				handleRequest(req, resp, true) ;
+			}) ;
+			server.listen(config.httpsServers[doing].port, config.httpsServers[doing].hostname, config.httpsServers[doing].backlog) ;
+			if (config.httpsServers[doing].websocket || config.httpsServers[doing].websockets) {
+				server.on("upgrade", (req, s)=>websockets.handleUpgrade(req, s, true)) ;
+			}
 		}
 		//Get the cluster module of parent.
 		cluster = clusterGiven ;

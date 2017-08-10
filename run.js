@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 26A-0
+	Version 26B-0
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -39,9 +39,9 @@ console.log = console.warn = (...args) => {
 global.requireJPS = mod => require(path.join(__dirname, mod)) ;
 
 //Node Modules
-let fs = require("fs") ;
+const fs = require("fs") ;
 const path = require("path") ;
-let cluster = require("cluster") ;
+const cluster = require("cluster") ;
 
 //Check sites directory exists
 if (!fs.existsSync("sites") || !fs.statSync("sites").isDirectory()) {
@@ -51,112 +51,12 @@ if (!fs.existsSync("sites") || !fs.statSync("sites").isDirectory()) {
 }
 
 //JPS Modules
-let externals = requireJPS("externals") ;
-let parseFlags = requireJPS("flag-parser") ;
+const externals = requireJPS("externals") ;
+const parseFlags = requireJPS("flag-parser") ;
+const {loadConfig} = requireJPS("config-loader") ;
 
 //Load the config
-let config ;
-
-//Default configuration
-const defaultConfig = {
-	
-	"dataPort": 500,
-	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
-	
-	"httpServers": [
-		{
-			"port": 80
-		}
-	],
-	"httpsServers": [],
-	
-	"redirectToHttps": [],
-	"mustRedirectToHttps": [],
-	"dontRedirect": [],
-	
-	"hostRedirects":{},
-	"hostnameRedirects":{},
-	"hostAlias":{},
-	"pageAlias":{},
-	
-	"addVarsByDefault": false,
-	"doVarsForIfNotByDefault": [],
-	
-	"cache": [],
-	
-	"errorTemplate": "errorTemp.jpt",
-	
-	"defaultHost": "default:0",
-	"useDefaultHostIfHostDoesNotExist": true,
-	
-	"behindLoadBalencer": false,
-	"fallbackToNoPort": true,
-	
-	"defaultHeaders": {},
-	
-	"CORS":[],
-	
-	"enableLearning": true,
-	
-	"threads": 0
-	
-} ;
-
-//Load the comfig and fill in any blanks. If it doesn't exist, set the config to the default config.
-function loadConfig() {
-	
-	//If it exists, load it, parse it and fill in any blanks or throw if the types aren't correct
-	if (fs.existsSync("config.json")) {
-		
-		config = fs.readFileSync("config.json").toString() ;
-		
-		try {
-			
-			config = JSON.parse(config) ;
-			
-		}
-		
-		catch(err) {
-			
-			console.warn("Error parsing config.json!") ;
-			console.info("Error parsing config.json!") ;
-			console.warn(err) ;
-			console.info(err) ;
-			console.warn("Exiting") ;
-			console.info("Exiting") ;
-			process.exit() ;
-			
-		}
-		
-		for (let doing in defaultConfig) {
-			
-			if (typeof config[doing] === "undefined") {
-				
-				config[doing] = defaultConfig[doing] ;
-				
-			}
-			
-			else if (typeof config[doing] !== typeof defaultConfig[doing]) {
-				
-				throw new Error(`The ${doing} property in config.json must be of type ${typeof defaultConfig[doing]}.`) ;
-				
-			}
-			
-		}
-		
-	}
-
-	else {
-		
-		console.warn("Config file does not exist, using default config.") ;
-		config = new Object() ;
-		Object.assign(config, defaultConfig) ;
-		
-		
-	}
-	
-}
-loadConfig() ;
+let config = loadConfig() ;
 
 let flags = parseFlags() ;
 if (flags["-data"]) {
