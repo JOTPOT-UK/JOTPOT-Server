@@ -26,214 +26,235 @@
 */
 
 const {createHash} = require("crypto") ;
-const {Readable} = require("stream") ;
+const emmiter = require("events") ;
 
-function handleUpgrade(req, s, secure) {
-	//Close if we are not upgrading to web sockets
-	if (req.headers.upgrade && req.headers["sec-websocket-key"] && req.headers.upgrade === "websocket") {
-		let aReq = {
-			text: new Readable(),
-			data: new Readable(),
-			
-			socket: s,
-			headers: req.headers,
-			httpVersion: req.httpVersion,
-			method: req.method,
-			rawHeaders: req.rawHeaders,
-			rawTrailers: req.rawTrailers,
-			destroy: req.destroy,
-			url: req.url
-		} ;
-		module.exports.serverCalls.addReqProps(req, secure) ;
-		aReq.accept = cb => {
-			const hash = createHash("sha1") ;
-			hash.on("readable", ()=>{
-				const data = hash.read() ;
-				if (data) {
-					s.write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + data.toString("base64") + "\r\n\r\n") ;
-					aReq.url.protocol = "ws:" ;
-					cb() ;
-					return ;
-				}
-				s.end() ;
-			}) ;
-			hash.write(req.headers["sec-websocket-key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11") ;
-			hash.end() ;
-		} ;
-		let currentOpCode = 0 ;
-		let currentDataFrame = Buffer.alloc(0) ;
-		let dataToPush = Buffer.alloc(0) ;
-		let pushOpCode = 0 ;
-		let mask = Buffer.alloc(4) ;
-		let currentDataPosition = 0 ;
-		let isThisTheEnd = false ;
-		let dataLeft = 0 ;
-		let finalDataLeft = 0 ;
-		let parseStage = 0 ;
-		function gotData(d, i) {
-			if (i >= d.length) {
+const jpsUtil = requireJPS("jps-util") ;
+
+function newParser(req, resp) {
+	let currentOpCode = 0 ;
+	let currentDataFrame = Buffer.alloc(0) ;
+	let dataToPush = Buffer.alloc(0) ;
+	let pushOpCode = 0 ;
+	let mask = Buffer.alloc(4) ;
+	let currentDataPosition = 0 ;
+	let isThisTheEnd = false ;
+	let dataLeft = 0 ;
+	let finalDataLeft = 0 ;
+	let parseStage = 0 ;
+	function gotData(d, i) {
+		if (i >= d.length) {
+			return ;
+		}
+		if (parseStage === 0) {
+			if (d[i]&128) {
+				isThisTheEnd = true ;
+			} else {
+				isThisTheEnd = false ;
+			}
+			currentOpCode = d[i]&15 ;
+			parseStage = 1 ;
+			gotData(d, i+1) ;
+		} else if (parseStage === 1) {
+			//Spec says we must be masked
+			if (!(d[i]&1)) {
+				req.socket.end() ;
 				return ;
 			}
-			if (parseStage === 0) {
-				if (d[i]&128) {
-					isThisTheEnd = true ;
+			finalDataLeft = d[i] ;
+			if (finalDataLeft < 126) {
+				parseStage = 4 ;
+				dataLeft = 4 ;
+				mask = Buffer.alloc(4) ;
+			} else {
+				parseStage = dataLeft - 124 ;
+				dataLeft = parseStage===2?2:8 ;
+				currentDataFrame = Buffer.alloc(dataLeft) ;
+			}
+			currentDataPosition = 0 ;
+			gotData(d, i+1) ;
+		} else if (parseStage < 4) {
+			if (d.length - i > dataLeft) {
+				let readTo = i + dataLeft ;
+				d.copy(currentDataFrame, currentDataPosition, i, readTo) ;
+				if (parseStage === 2) {
+					finalDataLeft = currentDataFrame.readUInt16BE(0) ;
 				} else {
-					isThisTheEnd = false ;
-				}
-				currentOpCode = d[i]&15 ;
-				parseStage = 1 ;
-				gotData(d, i+1) ;
-			} else if (parseStage === 1) {
-				//Spec says we must be masked
-				if (!(d[i]&1)) {
-					s.end() ;
-					return ;
-				}
-				finalDataLeft = d[i] ;
-				if (finalDataLeft < 126) {
-					parseStage = 4 ;
-					dataLeft = 4 ;
-					mask = Buffer.alloc(4) ;
-				} else {
-					parseStage = dataLeft - 124 ;
-					dataLeft = parseStage===2?2:8 ;
-					currentDataFrame = Buffer.alloc(dataLeft) ;
+					finalDataLeft = currentDataFrame.readUInt32BE(0)<<32 ;
+					finalDataLeft += currentDataFrame.readUInt32BE(4) ;
 				}
 				currentDataPosition = 0 ;
-				gotData(d, i+1) ;
-			} else if (parseStage < 4) {
-				if (d.length - i > dataLeft) {
-					let readTo = i + dataLeft ;
-					d.copy(currentDataFrame, currentDataPosition, i, readTo) ;
-					if (parseStage === 2) {
-						finalDataLeft = currentDataFrame.readUInt16BE(0) ;
-					} else {
-						finalDataLeft = currentDataFrame.readUInt32BE(0)<<32 ;
-						finalDataLeft += currentDataFrame.readUInt32BE(4) ;
-					}
-					currentDataPosition = 0 ;
-					parseStage = 4 ;
-					dataLeft = 4 ;
-					mask = Buffer.alloc(4) ;
-					gotData(d, readTo) ;
-				} else {
-					d.copy(currentDataFrame, currentDataPosition, i, d.length) ;
+				parseStage = 4 ;
+				dataLeft = 4 ;
+				mask = Buffer.alloc(4) ;
+				gotData(d, readTo) ;
+			} else {
+				d.copy(currentDataFrame, currentDataPosition, i, d.length) ;
+			}
+		} else if (parseStage === 4) {
+			if (d.length - i > dataLeft) {
+				let readTo = i + dataLeft ;
+				d.copy(mask, currentDataPosition, i, readTo) ;
+				currentDataPosition = 0 ;
+				dataLeft = finalDataLeft ;
+				parseStage = 5 ;
+				gotData(d, readTo) ;
+			} else {
+				d.copy(mask, currentDataPosition, i, d.length) ;
+			}
+		} else if (parseStage === 5) {
+			if (d.length - i > dataLeft) {
+				let readTo = i + dataLeft ;
+				d.copy(currentDataFrame, currentDataPosition, i, readTo) ;
+				for (let doing = 0; doing < currentDataFrame.length; doing++) {
+					currentDataFrame[doing] = currentDataFrame[doing] ^ mask[doing%4] ;
 				}
-			} else if (parseStage === 4) {
-				if (d.length - i > dataLeft) {
-					let readTo = i + dataLeft ;
-					d.copy(mask, currentDataPosition, i, readTo) ;
-					currentDataPosition = 0 ;
-					dataLeft = finalDataLeft ;
-					parseStage = 5 ;
-					gotData(d, readTo) ;
-				} else {
-					d.copy(mask, currentDataPosition, i, d.length) ;
-				}
-			} else if (parseStage === 5) {
-				if (d.length - i > dataLeft) {
-					let readTo = i + dataLeft ;
-					d.copy(currentDataFrame, currentDataPosition, i, readTo) ;
-					for (let doing = 0; doing < currentDataFrame.length; doing++) {
-						currentDataFrame[doing] = currentDataFrame[doing] ^ mask[doing%4] ;
-					}
-					if (currentOpCode === 0) {
-						dataToPush = Buffer.concat([dataToPush, currentDataFrame], dataToPush.length + currentDataFrame.length) ;
-						if (isThisTheEnd) {
-							if (pushOpCode === 1) {
-								aReq.text.push(dataToPush.toString("utf8")) ;
-							} else if (pushOpCode === 2) {
-								aReq.data.push(dataToPush) ;
-							} else if (pushOpCode === 9) {
-								let pongData = Buffer.allocUnsafe(dataToPush.length) ;
-								dataToPush.copy(pongData) ;
-								resp.que(()=>{
-									resp.end(pongData, 10) ;
-								}) ;
-							}
+				if (currentOpCode === 0) {
+					dataToPush = Buffer.concat([dataToPush, currentDataFrame], dataToPush.length + currentDataFrame.length) ;
+					if (isThisTheEnd) {
+						if (pushOpCode === 1) {
+							req.emmit("text", dataToPush.toString("utf8")) ;
+						} else if (pushOpCode === 2) {
+							req.emmit("binary", dataToPush) ;
+						} else if (pushOpCode === 9) {
+							let pongData = Buffer.allocUnsafe(dataToPush.length) ;
+							dataToPush.copy(pongData) ;
+							resp.que(()=>{
+								resp.end(pongData, 10) ;
+							}) ;
 						}
-					} else if (!isThisTheEnd) {
-						dataToPush = currentDataFrame ;
-						pushOpCode = currentOpCode ;
-					} else if (currentOpCode === 1) {
-						aReq.text.push(currentDataFrame.toString("utf8")) ;
-					} else if (currentOpCode === 2) {
-						aReq.data.push(currentDataFrame) ;
-					} else if (currentOpCode === 9) {
-						let pongData = Buffer.allocUnsafe(currentDataFrame.length) ;
-						currentDataFrame.copy(pongData) ;
-						resp.que(()=>{
-							resp.end(pongData, 10) ;
-						}) ;
 					}
-					currentDataFrame = Buffer.alloc(0) ;
-				} else {
-					d.copy(currentDataFrame, currentDataPosition, i, d.length) ;
+				} else if (!isThisTheEnd) {
+					dataToPush = currentDataFrame ;
+					pushOpCode = currentOpCode ;
+				} else if (currentOpCode === 1) {
+					req.emmit("text", currentDataFrame.toString("utf8")) ;
+				} else if (currentOpCode === 2) {
+					req.emmit("binary", currentDataFrame) ;
+				} else if (currentOpCode === 9) {
+					let pongData = Buffer.allocUnsafe(currentDataFrame.length) ;
+					currentDataFrame.copy(pongData) ;
+					resp.que(()=>{
+						resp.end(pongData, 10) ;
+					}) ;
 				}
+				currentDataFrame = Buffer.alloc(0) ;
+			} else {
+				d.copy(currentDataFrame, currentDataPosition, i, d.length) ;
 			}
 		}
-		req.on("data", d=>{
-			gotData(d, 0) ;
-		}) ;
-		let ended = true ;
-		let que = new Array() ;
-		let resp = {
-			write: (data, opcode=NaN, isEnd=false)=>{
-				let buff ;
-				if (data.length < 126) {
-					buff = Buffer.allocUnsafe(2) ;
-					buff[1] = data.length ;
-				} else if (data.length < (1<<16)-1) {
-					buff = Buffer.allocUnsafe(3) ;
-					buff.writeUInt16BE(data.length, 1) ;
-				} else if (data.length < (1<<63)-1) {
-					buff = Buffer.allocUnsafe(9) ;
-					buff.writeUInt32BE(data.length>>32, 1) ;
-					buff.writeUInt32BE(data.length&((1<<32)-1), 5) ;
-				} else {
-					throw new Error("Too much data to send in a single frame!") ;
-				}
-				if (isEnd) {
-					buff[0] = 1<<7 ;
-				} else {
-					buff[0] = 0 ;
-				}
-				if (!ended) {
-					opcode = 0 ;
-				} else if (isNaN(opcode)) {
-					if (typeof data === "string") {
-						opcode = 1 ;
-					} else {
-						opcode = 2 ;
-					}
-				}
-				buff[0] += opcode ;
-				s.write(buff) ;
-				s.write(data) ;
-				if (isEnd && que.length > 0) {
-					que.shift()() ;
-				}
-			},
-			end: (data, opcode)=>resp.write(data, opcode, true),
-			que: (cb, fasttrack=false)=>{
-				if (typeof cb !== "function") {
-					return resp.que(()=>resp.end(cb)) ;
-				}
-				let len ;
-				if (fasttrack) {
-					len =  que.unshift(cb) ;
-				} else {
-					len = que.push(cb) ;
-				}
-				if (len === 1 && ended) {
-					que.shift()() ;
-				}
-				return len ;
+	}
+	req.on("data", d=>gotData(d, 0)) ;
+	return gotData() ;
+}
+
+function newResponse(req) {
+	let ended = true ;
+	let que = new Array() ;
+	let resp = {
+		write: (data, opcode=NaN, isEnd=false)=>{
+			let buff ;
+			if (data.length < 126) {
+				buff = Buffer.allocUnsafe(2) ;
+				buff[1] = data.length ;
+			} else if (data.length < (1<<16)-1) {
+				buff = Buffer.allocUnsafe(3) ;
+				buff.writeUInt16BE(data.length, 1) ;
+			} else if (data.length < (1<<63)-1) {
+				buff = Buffer.allocUnsafe(9) ;
+				buff.writeUInt32BE(data.length>>32, 1) ;
+				buff.writeUInt32BE(data.length&((1<<32)-1), 5) ;
+			} else {
+				throw new Error("Too much data to send in a single frame!") ;
 			}
-		} ;
-		module.exports.doEvent("websocket", aReq.url.host, ()=>{}, aReq, resp) ;
-	} else {
+			if (isEnd) {
+				buff[0] = 1<<7 ;
+			} else {
+				buff[0] = 0 ;
+			}
+			if (!ended) {
+				opcode = 0 ;
+			} else if (isNaN(opcode)) {
+				if (typeof data === "string") {
+					opcode = 1 ;
+				} else {
+					opcode = 2 ;
+				}
+			}
+			buff[0] += opcode ;
+			req.socket.write(buff) ;
+			req.socket.write(data) ;
+			if (isEnd && que.length > 0) {
+				que.shift()() ;
+			}
+		},
+		end: (data, opcode)=>resp.write(data, opcode, true),
+		isEnded: ()=>ended,
+		que: (cb, fasttrack=false)=>{
+			if (typeof cb !== "function") {
+				return resp.que(()=>resp.end(cb)) ;
+			}
+			let len ;
+			if (fasttrack) {
+				len =  que.unshift(cb) ;
+			} else {
+				len = que.push(cb) ;
+			}
+			if (len === 1 && ended) {
+				que.shift()() ;
+			}
+			return len ;
+		}
+	} ;
+	return resp ;
+}
+
+function handleUpgrade(req, s, secure) {
+	try {
+		//Close if we are not upgrading to web sockets
+		if (req.headers.upgrade && req.headers["sec-websocket-key"] && req.headers.upgrade === "websocket") {
+			let aReq = new emmiter() ;
+			Object.assign(aReq, {
+				//Normal request properties
+				socket: s,
+				headers: req.headers,
+				httpVersion: req.httpVersion,
+				method: req.method,
+				rawHeaders: req.rawHeaders,
+				rawTrailers: req.rawTrailers,
+				destroy: req.destroy,
+				url: req.url,
+				
+				end: s.end
+			}) ;
+			//Add the jps request properties
+			module.exports.serverCalls.addReqProps(req, secure) ;
+			//Function to accept the upgrade (must be called by the extension)
+			aReq.accept = cb => {
+				const hash = createHash("sha1") ;
+				hash.on("readable", ()=>{
+					const data = hash.read() ;
+					if (data) {
+						s.write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + data.toString("base64") + "\r\n\r\n") ;
+						aReq.url.protocol = "ws:" ;
+						cb() ;
+						return ;
+					}
+					s.end() ;
+				}) ;
+				hash.write(req.headers["sec-websocket-key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11") ;
+				hash.end() ;
+			} ;
+			//Create the response object
+			let resp = newResponse(req) ;
+			//Set up the parser
+			newParser(req, resp) ;
+			module.exports.doEvent("websocket", aReq.url.host, ()=>{}, aReq, resp) ;
+		} else {
+			s.end() ;
+		}
+	} catch (err) {
 		s.end() ;
+		jpsUtil.coughtError(err, " in upgrade handler", null, req.jpid||"") ;
 	}
 }
 

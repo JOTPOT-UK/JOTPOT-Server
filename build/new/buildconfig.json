@@ -11,6 +11,7 @@
 		"multipart-form-data-parser.js",
 		"url-object.js",
 		"jps-util.js",
+		"websockets.js",
 		"config.json",
 		"mimes.json",
 		"errorTemp.jpt"

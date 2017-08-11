@@ -43,17 +43,17 @@ const fs = require("fs") ;
 const path = require("path") ;
 const cluster = require("cluster") ;
 
+//JPS Modules
+const externals = requireJPS("externals") ;
+const parseFlags = requireJPS("flag-parser") ;
+const {loadConfig} = requireJPS("jps-util") ;
+
 //Check sites directory exists
 if (!fs.existsSync("sites") || !fs.statSync("sites").isDirectory()) {
 	console.warn("'sites' directory must exist!") ;
 	console.info("'sites' directory must exist!") ;
 	throw new Error("'sites' directory must exist!") ;
 }
-
-//JPS Modules
-const externals = requireJPS("externals") ;
-const parseFlags = requireJPS("flag-parser") ;
-const {loadConfig} = requireJPS("config-loader") ;
 
 //Load the config
 let config = loadConfig() ;
@@ -136,7 +136,7 @@ if (cluster.isMaster) {
 				return {
 					
 					"config": config,
-					"reloadConfig":()=>loadConfig()
+					"reloadConfig":()=>{config=loadConfig();}
 					
 				} ;
 				

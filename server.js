@@ -30,6 +30,7 @@ console.log = console.warn = (...args) => {
 	process.send(["log",args.join(" ")]) ;
 } ;
 
+//Set global requireJPS
 global.requireJPS = mod => require(path.join(__dirname, mod)) ;
 
 //Node Modules
@@ -49,11 +50,10 @@ const parseFlags = requireJPS("flag-parser") ;
 const jpsUtil = requireJPS("jps-util") ;
 const urlObject = requireJPS("url-object") ;
 const websockets = requireJPS("websockets") ;
-const {loadConfig, loadConfigFile, doesConfigFileExist} = requireJPS("config-loader") ;
 const {URL} = urlObject ;
 
 //Load the config
-let config = loadConfig() ;
+let config = jpsUtil.loadConfig() ;
 
 let flags = parseFlags() ;
 if (flags["-http-port"]) {
@@ -108,7 +108,7 @@ let endOfVar = Buffer.from("::$") ;
 
 //Error file
 let errorFile ;
-if (!doesConfigFileExist(config.errorTemplate)) {
+if (!jpsUtil.doesConfigFileExist(config.errorTemplate)) {
 	console.warn("Error template file does not exist, using the default.") ;
 	errorFile = `<html>
 <head>
@@ -130,7 +130,7 @@ Error $:::error_code:::$ - $:::error_type:::$
 </body>
 </html>` ;
 } else {
-	errorFile = loadConfigFile(config.errorTemplate) ;
+	errorFile = jpsUtil.loadConfigFile(config.errorTemplate) ;
 }
 
 let errorCodes = new Object() ;
@@ -228,21 +228,19 @@ class addVars extends Transform {
 		}
 		
 		catch(err) {
-			
-			console.warn("Error in pipe that adds vars") ;
-			
+			jpsUtil.coughtError(err, " in templating pipe.") ;
 		}
 		
 	}
 	
 }
 
-if (!doesConfigFileExist("mimes.json")) {
+if (!jpsUtil.doesConfigFileExist("mimes.json")) {
 	throw new Error("mimes.json file not found!") ;
 }
 
 //Sorting out mime types.
-let mimes = JSON.parse(loadConfigFile("mimes.json")) ;
+let mimes = JSON.parse(jpsUtil.loadConfigFile("mimes.json")) ;
 function getMimeType(file) {
 	try {
 		let ext = path.extname(file) ;
@@ -256,7 +254,7 @@ function getMimeType(file) {
 		}
 		return "text/plain" ;
 	} catch (err) {
-		console.warn(err) ;
+		jpsUtil.coughtError(err, " parsing mime type") ;
 		return "text/plain" ;
 	}
 }
@@ -742,29 +740,12 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 		}
 		mainPipe.end() ;
 	} catch (err) {
-		coughtError(err,resp) ;
+		jpsUtil.coughtError(err, " sending cache", resp, req.jpid) ;
 	}
 }
 
 function sendError(code,message,resp,rID="") {
 	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},{jpid:rID,headers:{}},code) ;
-}
-
-function coughtError(err,resp,rID="") {
-	let isUnknown = false ;
-	console.warn("---------------") ;
-	if (err && err.stack) {
-		console.warn("!!! Error in main request handler:") ;
-		console.warn("\t" + err.stack.replace(/\n/g,"\n\t")) ;
-	} else if (err) {
-		console.warn("!!! Error in main request handler:") ;
-		console.warn("\t" + err.replace(/\n/g,"\n\t")) ;
-	} else {
-		console.warn("!!! Error in main request handler, details unknown. Stack unavailable.") ;
-		isUnknown = true ;
-	}
-	console.warn("---------------") ;
-	sendError(500,`A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't trust you."}.`,resp,rID) ;
 }
 
 function make6d(str, pad="0") {
@@ -876,229 +857,246 @@ function addReqProps(req, secure) {
 	return [user_ip, user_ip_remote, secure] ;
 }
 
+const afterRequestStages = [
+	" adding the request object properties",
+	" adding the response object properties or adding default headers",
+	" processing the request event",
+	" adding links, redirecting and stuff like that",
+	" doing log stuff in the request handler",
+	" adding CORS headers",
+	" processing the fullrequest"
+] ;
+
 //Function to handle http requests.
 function handleRequest(req,resp,secure) {
+	let stage = 0 ;
 	try {
 		//Get time stuff.
 		let timeRecieved = process.hrtime() ;
 		let requestTime = new Date() ;
 		
-		//Set server header
-		resp.setHeader("Server","JOTPOT Server") ;
-		
+		//Request object stuff
 		let rrv = addReqProps(req, secure, config) ;
 		let user_ip = rrv[0] ;
 		let user_ip_remote = rrv[1] ;
 		secure = rrv[2] ;
+		stage++ ;
 		
 		//Add stuff to resp object.
 		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"time":requestTime.getTime().toString(),"href":req.url.href,"method":req.method} ;
 		resp.pipeThrough = new Array() ;
 		resp.forceDownload = false ;
 		resp.sendBody = true ;
-		
+		//Set server header
+		resp.setHeader("Server", "JOTPOT Server") ;
 		//Set default headers
 		for (let doing in config.defaultHeaders) {
 			resp.setHeader(doing, config.defaultHeaders[doing]) ;
 		}
+		stage++ ;
 		
 		//Request event
 		doEvent("request", req.url.host, ()=>{
-			linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) ;
-			
-			//Add ID
-			let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
-			Object.defineProperty(req, "jpid", {
-				configurable: false,
-				enumerable: false,
-				value: rID,
-				writable: false
-			}) ;
-			
-			//Log
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-			
-			//CORS stuff
-			CORS.setHeaders(req, resp) ;
-			
-			doEvent("fullrequest", req.url.host, ()=>
-				checkAuth(req, resp, timeRecieved, ()=>
-					doEvent("allowedrequest", req.url.host, ()=>{
-						allowedRequest(req, resp, timeRecieved, false) ;
-						//Use responseMaker to generate the response, see do-response.js
-						responseMaker.createResponse(req, resp, timeRecieved).then(hmmm=>{
-							//Log if it was leared from
-							if (hmmm[0]) {
-								console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
-							} else {
-								console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
-							}
-							//Log times
-							let timeTaken = process.hrtime(timeRecieved) ;
-							console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-						}) ;
-					}, req, resp)), req, resp) ;
+			try {
+				stage++ ;
+				if (!linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote)) {
+					stage++ ;
+					//Add ID
+					let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
+					Object.defineProperty(req, "jpid", {
+						configurable: false,
+						enumerable: false,
+						value: rID,
+						writable: false
+					}) ;
+					//Log
+					console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+					stage++ ;
+					//CORS stuff
+					CORS.setHeaders(req, resp) ;
+					stage++ ;
+					doEvent("fullrequest", req.url.host, ()=>
+						checkAuth(req, resp, timeRecieved, ()=>
+							doEvent("allowedrequest", req.url.host, ()=>{
+								try {
+									doMethodLogic(req, resp, timeRecieved, false) ;
+									//Use responseMaker to generate the response, see do-response.js
+									responseMaker.createResponse(req, resp, timeRecieved).then(hmmm=>{
+										//Log if it was leared from
+										if (hmmm[0]) {
+											console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
+										} else {
+											console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
+										}
+										//Log times
+										let timeTaken = process.hrtime(timeRecieved) ;
+										console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+									}) ;
+								} catch (e) {/*k*/}
+							}, req, resp)), req, resp) ;
+				}
+			} catch (err) {
+				jpsUtil.coughtError(err, afterRequestStages[stage], resp, req.jpid) ;
+			}
 		}, req, resp) ;
 		
 	} catch (err) {
-		coughtError(err,resp) ;
-		console.log("Error trace: Error handling incoming data.") ;
+		jpsUtil.coughtError(err, afterRequestStages[stage], resp, req.jpid) ;
 	}
 }
 
+//Process URL, make it safe and follow links.
+//Redirect user based on hosts or upgrades.
+//Returns true if redirected, false if not.
 function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
-	try {
-		//Secure URL. Remove '..' to prevent it from going to a parent directory.
-		//And replace // with /, along with removing any trailing /
-		do {
-			req.url.pathname = req.url.pathname.replace(/\.\./g, "").replace(/\/\//g, "/") ;
-		} while (req.url.pathname.indexOf("//") !== -1) ;
-		while (req.url.pathname.length > 1 && req.url.pathname.indexOf("/") === req.url.pathname.length - 1) {
-			req.url.pathname = req.url.pathname.substring(0, req.url.pathname.length - 1) ;
-		}
-		
-		//Should we redirect to https.
-		if (!req.overHttps && config.dontRedirect.indexOf(req.url.value) === -1) {
-			if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
-				console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-				
-				//Change URL to make it HTTPS
-				req.url.protocol = "https:" ;
-				if (req.url.port === 80) {
-					req.url.port = 443 ;
-				}
-				
-				//Set redirect headers
-				resp.setHeader("Location", req.url.location) ;
-				//And send with correct code (302 if we are HTTP/1.0)
-				let code = 307 ;
-				if (req.httpVersion === "1.0") {
-					code = 302 ;
-				}
-				sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
-				
-				let timeTaken = process.hrtime(timeRecieved) ;
-				console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-				return ;
-			} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
-				console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-				
-				//Change URL to make it HTTPS
-				req.url.protocol = "https:" ;
-				if (req.url.port === 80) {
-					req.url.port = 443 ;
-				}
-				
-				//Set redirect headers and Vary
-				resp.setHeader("Location", req.url.location) ;
-				resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
-				//And send
-				let code = 307 ;
-				if (req.httpVersion === "1.0") {
-					code = 302 ;
-				}
-				sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
-				
-				let timeTaken = process.hrtime(timeRecieved) ;
-				console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-				return ;
+	//Secure URL. Remove '..' to prevent it from going to a parent directory.
+	//And replace // with /, along with removing any trailing /
+	do {
+		req.url.pathname = req.url.pathname.replace(/\.\./g, "").replace(/\/\//g, "/") ;
+	} while (req.url.pathname.indexOf("//") !== -1) ;
+	while (req.url.pathname.length > 1 && req.url.pathname.indexOf("/") === req.url.pathname.length - 1) {
+		req.url.pathname = req.url.pathname.substring(0, req.url.pathname.length - 1) ;
+	}
+	
+	//Should we redirect to https.
+	if (!req.overHttps && config.dontRedirect.indexOf(req.url.value) === -1) {
+		if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+			
+			//Change URL to make it HTTPS
+			req.url.protocol = "https:" ;
+			if (req.url.port === 80) {
+				req.url.port = 443 ;
 			}
+			
+			//Set redirect headers
+			resp.setHeader("Location", req.url.location) ;
+			//And send with correct code (302 if we are HTTP/1.0)
+			let code = 307 ;
+			if (req.httpVersion === "1.0") {
+				code = 302 ;
+			}
+			sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
+			
+			let timeTaken = process.hrtime(timeRecieved) ;
+			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+			return true ;
+		} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+			
+			//Change URL to make it HTTPS
+			req.url.protocol = "https:" ;
+			if (req.url.port === 80) {
+				req.url.port = 443 ;
+			}
+			
+			//Set redirect headers and Vary
+			resp.setHeader("Location", req.url.location) ;
+			resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
+			//And send
+			let code = 307 ;
+			if (req.httpVersion === "1.0") {
+				code = 302 ;
+			}
+			sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
+			
+			let timeTaken = process.hrtime(timeRecieved) ;
+			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+			return true ;
 		}
-		
-		//Is the host an alias?
-		while (typeof config.hostAlias[req.url.host] !== "undefined") {
-			req.url.host = config.hostAlias[req.url.host] ;
-		}
-		//Is the hostname an alias?
-		while (typeof config.hostnameAlias[req.url.hostname] !== "undefined") {
-			req.url.hostname = config.hostnameAlias[req.url.hostname] ;
-		}
-		
-		//If we might need to fallback and the host doesn't exist
-		if (config.fallbackToNoPort && availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-			//But if we ignore the port and it still doesn't, and we should fallback to default, then fallback to default.
-			if (availHosts.indexOf(URL.toDir(req.url.hostname)) === -1 && config.useDefaultHostIfHostDoesNotExist) {
-				req.url.host = config.defaultHost || "default:0" ;
-				if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-					req.usePortInDirectory = false ;
-				}
-			} else {
-				//Otherwise, it does exist so lets not use the port
+	}
+	
+	//Is the host an alias?
+	while (typeof config.hostAlias[req.url.host] !== "undefined") {
+		req.url.host = config.hostAlias[req.url.host] ;
+	}
+	//Is the hostname an alias?
+	while (typeof config.hostnameAlias[req.url.hostname] !== "undefined") {
+		req.url.hostname = config.hostnameAlias[req.url.hostname] ;
+	}
+	
+	//If we might need to fallback and the host doesn't exist
+	if (config.fallbackToNoPort && availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+		//But if we ignore the port and it still doesn't, and we should fallback to default, then fallback to default.
+		if (availHosts.indexOf(URL.toDir(req.url.hostname)) === -1 && config.useDefaultHostIfHostDoesNotExist) {
+			req.url.host = config.defaultHost || "default:0" ;
+			if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
 				req.usePortInDirectory = false ;
 			}
-		} else if (config.useDefaultHostIfHostDoesNotExist) {
-			//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
+		} else {
+			//Otherwise, it does exist so lets not use the port
+			req.usePortInDirectory = false ;
+		}
+	} else if (config.useDefaultHostIfHostDoesNotExist) {
+		//If we are set to goto a default host, check if the host doesn't exist, if so, we are now default :)
+		if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
+			req.url.host = config.defaultHost || "default:0" ;
 			if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-				req.url.host = config.defaultHost || "default:0" ;
-				if (availHosts.indexOf(URL.toDir(req.url.host)) === -1) {
-					req.usePortInDirectory = false ;
-				}
+				req.usePortInDirectory = false ;
 			}
 		}
-		
-		//Should we redirect to another host.
-		if (typeof config.hostRedirects[req.url.host] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
-			
-			//Set new host
-			req.url.host = config.hostRedirects[req.url.host] ;
-			
-			//Set correct protocol
-			let isRedirectHttps = (req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && config.redirectToHttps.indexOf(req.url.host) !== -1) || config.mustRedirectToHttps.indexOf(req.url.host) !== -1 ;
-			req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
-			if (isRedirectHttps && req.url.port === 80) {
-				req.url.port = 443 ;
-			}
-			
-			//And send response
-			resp.setHeader("Location", req.url.location) ;
-			if (isRedirectHttps && req.headers["upgrade-insecure-requests"]) {
-				resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
-			}
-			let code = 307 ;
-			if (req.httpVersion === "1.0") {
-				code = 302 ;
-			}
-			sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
-			
-			let timeTaken = process.hrtime(timeRecieved) ;
-			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-			return ;
-		}
-		if (typeof config.hostnameRedirects[req.url.hostname] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
-			
-			//Set new host
-			req.url.hostname = config.hostnameRedirects[req.url.hostname] ;
-			
-			//Set correct protocol
-			let isRedirectHttps = (req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && config.redirectToHttps.indexOf(req.url.host) !== -1) || config.mustRedirectToHttps.indexOf(req.url.host) !== -1 ;
-			req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
-			if (isRedirectHttps && req.url.port === 80) {
-				req.url.port = 443 ;
-			}
-			
-			//And send response
-			resp.setHeader("Location", req.url.location) ;
-			if (isRedirectHttps && req.headers["upgrade-insecure-requests"]) {
-				resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
-			}
-			let code = 307 ;
-			if (req.httpVersion === "1.0") {
-				code = 302 ;
-			}
-			sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
-			
-			let timeTaken = process.hrtime(timeRecieved) ;
-			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-			return ;
-		}
-		
-		responseMaker.doLinks(req) ;
-	} catch (err) {
-		coughtError(err,resp) ;
-		console.log("Error trace: Error handling incoming data.") ;
 	}
+	
+	//Should we redirect to another host.
+	if (typeof config.hostRedirects[req.url.host] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
+		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
+		
+		//Set new host
+		req.url.host = config.hostRedirects[req.url.host] ;
+		
+		//Set correct protocol
+		let isRedirectHttps = (req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && config.redirectToHttps.indexOf(req.url.host) !== -1) || config.mustRedirectToHttps.indexOf(req.url.host) !== -1 ;
+		req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
+		if (isRedirectHttps && req.url.port === 80) {
+			req.url.port = 443 ;
+		}
+		
+		//And send response
+		resp.setHeader("Location", req.url.location) ;
+		if (isRedirectHttps && req.headers["upgrade-insecure-requests"]) {
+			resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
+		}
+		let code = 307 ;
+		if (req.httpVersion === "1.0") {
+			code = 302 ;
+		}
+		sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
+		
+		let timeTaken = process.hrtime(timeRecieved) ;
+		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+		return true ;
+	}
+	if (typeof config.hostnameRedirects[req.url.hostname] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
+		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
+		
+		//Set new host
+		req.url.hostname = config.hostnameRedirects[req.url.hostname] ;
+		
+		//Set correct protocol
+		let isRedirectHttps = (req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1' && config.redirectToHttps.indexOf(req.url.host) !== -1) || config.mustRedirectToHttps.indexOf(req.url.host) !== -1 ;
+		req.url.protocol = (isRedirectHttps||req.secure)?"https:":"http:" ;
+		if (isRedirectHttps && req.url.port === 80) {
+			req.url.port = 443 ;
+		}
+		
+		//And send response
+		resp.setHeader("Location", req.url.location) ;
+		if (isRedirectHttps && req.headers["upgrade-insecure-requests"]) {
+			resp.setHeader("Vary", "Upgrade-Insecure-Requests") ;
+		}
+		let code = 307 ;
+		if (req.httpVersion === "1.0") {
+			code = 302 ;
+		}
+		sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
+		
+		let timeTaken = process.hrtime(timeRecieved) ;
+		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+		return true ;
+	}
+	
+	responseMaker.doLinks(req) ;
+	return false ;
 }
 
 function checkAuth(req, resp, timeRecieved, callback) {
@@ -1147,8 +1145,7 @@ function checkAuth(req, resp, timeRecieved, callback) {
 				sendError(403, "Forbidden", resp, req.jpid) ;
 			}
 		}).catch(err=>{
-			coughtError(err, resp, req.jpid) ;
-			console.log("Error trace: Error recieving account data.") ;
+			jpsUtil.coughtError(err, " checking user authentification", resp, req.jpid) ;
 		}) ;
 	} ;
 	//Check
@@ -1156,7 +1153,7 @@ function checkAuth(req, resp, timeRecieved, callback) {
 }
 
 //Should be called when a request is allowed.
-function allowedRequest(req, resp, timeRecieved, postDone) {
+function doMethodLogic(req, resp, timeRecieved, postDone) {
 	try {
 		//Determine how to handle the method
 		if (typeof implementedMethods[req.method] !== "undefined") {
@@ -1169,7 +1166,7 @@ function allowedRequest(req, resp, timeRecieved, postDone) {
 						if (typeof rv.then === "function") {
 							rv.then(handled=>{
 								if (!handled) {
-									allowedRequest(req, resp, timeRecieved, true) ;
+									doMethodLogic(req, resp, timeRecieved, true) ;
 								}
 							}) ;
 							return ;
@@ -1213,7 +1210,7 @@ function allowedRequest(req, resp, timeRecieved, postDone) {
 					req.on("end", ()=>{
 						//Encode data in base64 and add it to resp.vars
 						resp.vars.body = data.toString("base64") ;
-						allowedRequest(req, resp, timeRecieved, true) ;
+						doMethodLogic(req, resp, timeRecieved, true) ;
 					}) ;
 					return ;
 				} 
@@ -1224,7 +1221,7 @@ function allowedRequest(req, resp, timeRecieved, postDone) {
 				req.on("end", ()=>{
 					//Encode data in base64 and add it to resp.vars
 					resp.vars.body = data.toString("base64") ;
-					allowedRequest(req, resp, timeRecieved, true) ;
+					doMethodLogic(req, resp, timeRecieved, true) ;
 				}) ;
 				return ;
 			}
@@ -1265,7 +1262,7 @@ function allowedRequest(req, resp, timeRecieved, postDone) {
 		}
 		return ;
 	} catch (err) {
-		coughtError(err,resp,req.jpid) ;
+		jpsUtil.coughtError(err, " doing method actions", resp, req.jpid) ;
 		console.log("Error trace: Request allowed, issue processubg headers.") ;
 	}
 }
@@ -1295,7 +1292,7 @@ module.exports = {
 				
 				//Server configuration
 				"config": config,
-				"reloadConfig": ()=>loadConfig(),
+				"reloadConfig": ()=>{config=jpsUtil.loadConfig();},
 				
 				//Recieving requests
 				"getData": req=>jpsUtil.getData(req),
