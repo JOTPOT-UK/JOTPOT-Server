@@ -921,7 +921,7 @@ function handleRequest(req,resp,secure) {
 								try {
 									doMethodLogic(req, resp, timeRecieved, false) ;
 									//Use responseMaker to generate the response, see do-response.js
-									responseMaker.createResponse(req, resp, timeRecieved).then(hmmm=>{
+									responseMaker.createResponse(req, resp, timeRecieved, hmmm=>{
 										//Log if it was leared from
 										if (hmmm[0]) {
 											console.log(`${req.jpid}\tResponse was based on a previous response.`) ;

@@ -162,7 +162,7 @@ function getData(req) {
 	}) ;
 }
 
-function coughtError(err, where="", resp, rID="") {
+function coughtError(err, where="", resp, rID="", userMessage="") {
 	let isUnknown = false ;
 	console.warn("---------------") ;
 	if (err && err.stack) {
@@ -177,8 +177,16 @@ function coughtError(err, where="", resp, rID="") {
 	}
 	console.warn("---------------") ;
 	if (resp) {
-		module.exports.sendError(500,`A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't trust you."}.`,resp,rID) ;
+		if (userMessage) {
+			module.exports.sendError(500, userMessage, resp, rID) ;
+		} else {
+			module.exports.sendError(500, `A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't trust you."}.`, resp, rID) ;
+		}
 	}
+}
+
+function getFilePath(req) {
+	return path.normalize((req.url.usePortInDirectory?req.url.host:req.url.hostname).replace(":", ";") + req.url.pathname) ;
 }
 
 module.exports = {
@@ -187,5 +195,6 @@ module.exports = {
 	loadConfigFile,
 	getData,
 	coughtError,
+	getFilePath,
 	sendError: ()=>{}
 } ;

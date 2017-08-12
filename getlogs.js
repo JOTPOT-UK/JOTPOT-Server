@@ -26,7 +26,7 @@
 */
 
 let net = require("net") ;
-let s = net.connect({host:"localhost",port:500}) ;
+let s = net.connect({host:"127.0.0.1",port:500}) ;
 s.on("data",d=>{
 	
 	console.log(d.toString()) ;

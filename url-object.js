@@ -26,6 +26,7 @@
 */
 
 const url = require("url") ;
+const path = require("path") ;
 
 function parseHost(host, https) {
 	let splithost = host.split(":") ;
@@ -333,6 +334,11 @@ class URL {
 			
 		}, enumerable: false, configurable: false, writable: false}) ;
 		
+		this.valueOf = this.valueOf.bind(this) ;
+		this.toString = this.toString.bind(this) ;
+		this.toJSON = this.toJSON.bind(this) ;
+		this.normalize = this.normalize.bind(this) ;
+		
 		Object.seal(this) ;
 		
 	}
@@ -344,6 +350,14 @@ class URL {
 	}
 	toJSON() {
 		return this.location ;
+	}
+	normalize() {
+		do {
+			this.pathname = this.pathname.replace(/\.\./g, "").replace(/\/\//g, "/") ;
+		} while (this.pathname.indexOf("//") !== -1) ;
+		while (this.pathname.length > 1 && this.pathname.indexOf("/") === this.pathname.length - 1) {
+			this.pathname = this.pathname.substring(0, this.pathname.length - 1) ;
+		}
 	}
 	static toDir(v) {
 		return v.replace(/:/g,";") ;

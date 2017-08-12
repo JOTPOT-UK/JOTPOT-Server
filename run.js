@@ -31,9 +31,7 @@ process.title = "JOTPOT Server" ;
 //Make the logs accually go to the logs.
 let logs = new Array() ;
 console.log = console.warn = (...args) => {
-	
 	logs.push(args.join(" ")) ;
-	
 } ;
 
 global.requireJPS = mod => require(path.join(__dirname, mod)) ;
