@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 26A-0
+	Version 26B-0
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -226,6 +226,13 @@ function doLinks(req) {
 	} while (doTheLoop) ;
 }
 
+//Calls any function handlers.
+//Calls cb with int arg:
+//	0 if there were no handlers
+//	1 if it should carry on
+//	2 if it should carry on but it needs to catch the next function
+//	3 if the handleeThing needs to be called again
+//	4 same as 3 but needs to be in try catch
 function callHandlers(req, resp, val, ws, cb, rp) {
 	let origVal = req.url.fullvalue ;
 	let func ;
@@ -250,7 +257,7 @@ function callHandlers(req, resp, val, ws, cb, rp) {
 	if (!rv) {
 		//1 if we need to start again (URL change), or 0 if we can carry on.
 		if (req.url.fullvalue !== origVal) {
-			cb(2) ; //eslint-disable-line callback-return
+			cb(3) ; //eslint-disable-line callback-return
 		} else {
 			cb(1) ; //eslint-disable-line callback-return
 		}
@@ -261,9 +268,9 @@ function callHandlers(req, resp, val, ws, cb, rp) {
 			if (v) {
 				rp.callback() ;
 			} else if (req.url.fullvalue !== origVal) {
-				cb(2) ; //eslint-disable-line callback-return
+				cb(4) ; //eslint-disable-line callback-return
 			} else {
-				cb(1) ; //eslint-disable-line callback-return
+				cb(2) ; //eslint-disable-line callback-return
 			}
 		}, err=>{
 			jpsUtil.coughtError(err, " in a request handler", resp, req.jpid, "An error occured in a request handler!") ;
@@ -280,83 +287,99 @@ function sendProcessLog(rID, timeRecieved) {
 	}
 }
 
-function sendFileResp(req, resp, file, rp) {
-	sendProcessLog(req.jpid, rp.timeRecieved) ;
-	rp.code = 500 ;
-	//Try sending
-	module.exports.sendFile(file, resp, resp.vars, req).then(done=>{
-		if (done[0]) {
-			if (rp.canLearn) {
-				learning[rp.learnValue] = [2, file] ;
-			}
-			rp.callback(false) ;
-			return ;
-		} else if (done[1] === "DIR") {
-			req.url.pathname = req.url.pathname + "/index.html" ;
-		} else if (done[1].code === "ENOENT") {
-			//Not found, so now 404
-			rp.code = 404 ;
-			req.url.pathname = req.url.pathname + ".page" ;
-		} else if (done[1].code === "EACCES") {
-			//No perms, so now 403
-			rp.code = 403 ;
-			req.url.pathname = req.url.pathname + ".page" ;
-		} else {
-			//NO IDEA!!!
-			req.url.pathname = req.url.pathname + ".page" ;
-		}
-		if (rp.canLearn && learning[req.url.fullvalue]) {
-			learning[rp.learnValue] = learning[req.url.fullvalue] ;
-			createResponse(req, resp, rp.timeRecieved, rp.callback) ;
-			return ;
-		}
-		rp.isFinal = true ;
-		handleeThing(req, resp, rp) ;
-	}) ;
-}
-
-function sendFinalFileResp(req, resp, file, rp) {
-	module.exports.sendFile(file, resp, resp.vars, req).then(done=>{
-		if (done[0]) {
-			if (rp.canLearn) {
-				console.log("Learning") ;
-				learning[rp.learnValue] = [2, file] ;
-			}
-			rp.callback(false) ;
-			return ;
-		} else if (done[1].code === "EACCES") {
-			//Now 403
-			rp.code = 403 ;
-		} else if (done[1].code !== "ENOENT") {
-			//If it does exist or another error has occured, send a 500.
-			rp.code = 500 ;
-		}
-		//Learn that this is a 404 if we can
-		if (rp.code === 404 && rp.canLearn) {
-			learning[rp.learnValue] = [3] ;
-		}
-		//Send the error, fallback to error code 0 if there is no message for the current code.
-		module.exports.sendError(rp.code, errorMessages[rp.code] || errorMessages[0], resp, req.jpid) ;
-		rp.callback(false) ;
-	}) ;
-}
-
-function handleeThing3(req, resp, val, rp) {
-	let file = path.normalize((req.usePortInDirectory?req.url.host:req.url.hostname).replace(/:/g, ";") + req.url.pathname) ;
-	if (pages[val]) {
-		//Learn if we can learn
+function gotSendFileResult(req, resp, file, rp, done) {
+	if (done[0]) {
 		if (rp.canLearn) {
-			learning[rp.learnValue] = [1, file, val] ;
+			learning[rp.learnValue] = [2, file] ;
 		}
-		module.exports.sendCache(file, pages[val], resp, resp.vars, req, 200) ;
-		rp.callback(true) ;
+		rp.callback(false) ;
+		return ;
+	} else if (done[1] === "DIR") {
+		req.url.pathname = req.url.pathname + "/index.html" ;
+		req.url.normalize() ;
+	} else if (done[1].code === "ENOENT") {
+		//Not found, so now 404
+		rp.code = 404 ;
+		req.url.normalize() ;
+		req.url.pathname = req.url.pathname + ".page" ;
+	} else if (done[1].code === "EACCES") {
+		//No perms, so now 403
+		rp.code = 403 ;
+		req.url.normalize() ;
+		req.url.pathname = req.url.pathname + ".page" ;
+	} else {
+		//NO IDEA!!!
+		req.url.normalize() ;
+		req.url.pathname = req.url.pathname + ".page" ;
+	}
+	if (rp.canLearn && learning[req.url.fullvalue]) {
+		learning[rp.learnValue] = learning[req.url.fullvalue] ;
+		createResponse(req, resp, rp.timeRecieved, rp.callback) ;
 		return ;
 	}
-	if (rp.isFinal) {
-		sendFinalFileResp(req, resp, file, rp) ;
-	} else {
-		sendFileResp(req, resp, file, rp) ;
+	rp.isFinal = true ;
+	handleeThing(req, resp, rp) ;
+}
+
+function getFinalSendFileResult(req, resp, file, rp, done) {
+	if (done[0]) {
+		if (rp.canLearn) {
+			learning[rp.learnValue] = [2, file] ;
+		}
+		rp.callback(false) ;
+		return ;
+	} else if (done[1].code === "EACCES") {
+		//Now 403
+		rp.code = 403 ;
+	} else if (done[1].code !== "ENOENT") {
+		//If it does exist or another error has occured, send a 500.
+		rp.code = 500 ;
 	}
+	//Learn that this is a 404 if we can
+	if (rp.code === 404 && rp.canLearn) {
+		learning[rp.learnValue] = [3] ;
+	}
+	//Send the error, fallback to error code 0 if there is no message for the current code.
+	module.exports.sendError(rp.code, errorMessages[rp.code] || errorMessages[0], resp, req.jpid) ;
+	rp.callback(false) ;
+}
+
+class internalResponseProps {
+	constructor(callback, timeRecieved, learnValue, canLearn=true, code=500, isFinal=false) {
+		this.timeRecieved = timeRecieved ;
+		this.learnValue = learnValue ;
+		this.canLearn = canLearn ;
+		this.code = code ;
+		this.callback = callback ;
+		this.isFinal = isFinal ;
+	}
+}
+
+function handleeThing(req, resp, rp) {
+	doLinks(req) ;
+	let val = req.usePortInDirectory?req.url.fullvalue:req.url.fullvaluenoport ;
+	callHandlers(req, resp, val, true, handleLevel=>{
+		if (handleLevel) {
+			rp.canLearn = false ;
+			if (handleLevel === 1) {
+				handleeThing2(req, resp, val, rp) ;
+			} else if (handleLevel === 3) {
+				handleeThing(req, resp, rp) ;
+			} else {
+				try {
+					if (handleLevel === 2) {
+						handleeThing2(req, resp, val, rp) ;
+					} else {
+						handleeThing(req, resp, rp) ;
+					}
+				} catch (err) {
+					jpsUtil.coughtError(err, " creating the response", resp, req.jpid) ;
+				}
+			}
+		} else {
+			handleeThing2(req, resp, val, rp) ;
+		}
+	}, rp) ;
 }
 
 function handleeThing2(req, resp, val, rp) {
@@ -376,8 +399,18 @@ function handleeThing2(req, resp, val, rp) {
 			rp.canLearn = false ;
 			if (handleLevel === 1) {
 				handleeThing3(req, resp, val, rp) ;
-			} else {
+			} else if (handleLevel === 3) {
 				handleeThing(req, resp, rp) ;
+			} else {
+				try {
+					if (handleLevel === 2) {
+						handleeThing3(req, resp, val, rp) ;
+					} else {
+						handleeThing(req, resp, rp) ;
+					}
+				} catch (err) {
+					jpsUtil.coughtError(err, " creating the response", resp, req.jpid) ;
+				}
 			}
 		} else {
 			handleeThing3(req, resp, val, rp) ;
@@ -385,93 +418,88 @@ function handleeThing2(req, resp, val, rp) {
 	}, rp) ;
 }
 
-function handleeThing(req, resp, rp) {
-	doLinks(req) ;
-	let val = req.usePortInDirectory?req.url.fullvalue:req.url.fullvaluenoport ;
-	callHandlers(req, resp, val, true, handleLevel=>{
-		if (handleLevel) {
-			rp.canLearn = false ;
-			if (handleLevel === 1) {
-				handleeThing2(req, resp, val, rp) ;
-			} else {
-				handleeThing(req, resp, rp) ;
-			}
-		} else {
-			handleeThing2(req, resp, val, rp) ;
+function handleeThing3(req, resp, val, rp) {
+	let file = path.normalize((req.usePortInDirectory?req.url.host:req.url.hostname).replace(/:/g, ";") + req.url.pathname) ;
+	if (pages[val]) {
+		//Learn if we can learn
+		if (rp.canLearn) {
+			learning[rp.learnValue] = [1, file, val] ;
 		}
-	}, rp) ;
-}
-
-class internalResponseProps {
-	constructor(callback, timeRecieved, learnValue, canLearn=true, code=200, isFinal=false) {
-		this.timeRecieved = timeRecieved ;
-		this.learnValue = learnValue ;
-		this.canLearn = canLearn ;
-		this.code = code ;
-		this.callback = callback ;
-		this.isFinal = isFinal ;
+		module.exports.sendCache(file, pages[val], resp, resp.vars, req, 200) ;
+		rp.callback(true) ;
+		return ;
+	}
+	if (rp.isFinal) {
+		module.exports.sendFile(file, resp, resp.vars, req).then(done=>getFinalSendFileResult(req, resp, file, rp, done)) ;
+	} else {
+		sendProcessLog(req.jpid, rp.timeRecieved) ;
+		module.exports.sendFile(file, resp, resp.vars, req).then(done=>gotSendFileResult(req, resp, file, rp, done)) ;
 	}
 }
 
 //Function that sends a response for the given request
 function createResponse(req, resp, timeRecieved=[-1,-1], callback) {
-	/* eslint-disable consistent-return */
-	//If we have leared how to handle the request
-	if (module.exports.enableLearning && learning[req.url.fullvalue]) {
-		resp.setHeader("JP-Was-Learned", "1") ;
-		//Learn types are:
-		//                0: Cache with search
-		//                1: Cache without search
-		//                2: File found
-		//                3: 404
-		if (learning[req.url.fullvalue][0] === 0) {
-			//Unlearn this if it is now invalid
-			if (!pagesWS[learning[req.url.fullvalue][2]]) {
-				learning[req.url.fullvalue] = undefined ;
-				createResponse(req, resp, timeRecieved, callback) ;
-				return ;
-			}
-			sendProcessLog(req.jpid, timeRecieved) ;
-			module.exports.sendCache(learning[req.url.fullvalue][1], pagesWS[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
-			callback(true) ; //eslint-disable-line callback-return
-		} else if (learning[req.url.fullvalue][0] === 1) {
-			//Unlearn this if it is now invalid
-			if (!pages[learning[req.url.fullvalue][2]]) {
-				learning[req.url.fullvalue] = undefined ;
-				createResponse(req, resp, timeRecieved, callback) ;
-				return ;
-			}
-			sendProcessLog(req.jpid, timeRecieved) ;
-			module.exports.sendCache(learning[req.url.fullvalue][1], pages[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
-			callback(true) ; //eslint-disable-line callback-return
-		} else if (learning[req.url.fullvalue][0] === 2) {
-			sendProcessLog(req.jpid, timeRecieved) ;
-			module.exports.sendFile(learning[req.url.fullvalue][1], resp, resp.vars, req).then(done=>{
+	try {
+		/* eslint-disable consistent-return */
+		//If we have leared how to handle the request
+		if (module.exports.enableLearning && learning[req.url.fullvalue]) {
+			resp.setHeader("JP-Was-Learned", "1") ;
+			//Learn types are:
+			//                0: Cache with search
+			//                1: Cache without search
+			//                2: File found
+			//                3: 404
+			if (learning[req.url.fullvalue][0] === 0) {
 				//Unlearn this if it is now invalid
-				if (!done[0]) {
+				if (!pagesWS[learning[req.url.fullvalue][2]]) {
 					learning[req.url.fullvalue] = undefined ;
 					createResponse(req, resp, timeRecieved, callback) ;
 					return ;
 				}
-				callback(true) ;
-			}) ;
-		} else if (learning[req.url.fullvalue][0] === 3) {
-			sendProcessLog(req.jpid, timeRecieved, callback) ;
-			module.exports.sendError(404, errorMessages[404] || errorMessages[0], resp, req.jpid) ;
-			callback(true) ; //eslint-disable-line callback-return
-		} else {
-			//Try again if this isn't valid
-			learning[req.url.fullvalue] = undefined ;
-			createResponse(req, resp, timeRecieved, callback) ;
+				sendProcessLog(req.jpid, timeRecieved) ;
+				module.exports.sendCache(learning[req.url.fullvalue][1], pagesWS[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
+				callback(true) ; //eslint-disable-line callback-return
+			} else if (learning[req.url.fullvalue][0] === 1) {
+				//Unlearn this if it is now invalid
+				if (!pages[learning[req.url.fullvalue][2]]) {
+					learning[req.url.fullvalue] = undefined ;
+					createResponse(req, resp, timeRecieved, callback) ;
+					return ;
+				}
+				sendProcessLog(req.jpid, timeRecieved) ;
+				module.exports.sendCache(learning[req.url.fullvalue][1], pages[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
+				callback(true) ; //eslint-disable-line callback-return
+			} else if (learning[req.url.fullvalue][0] === 2) {
+				sendProcessLog(req.jpid, timeRecieved) ;
+				module.exports.sendFile(learning[req.url.fullvalue][1], resp, resp.vars, req).then(done=>{
+					//Unlearn this if it is now invalid
+					if (!done[0]) {
+						learning[req.url.fullvalue] = undefined ;
+						createResponse(req, resp, timeRecieved, callback) ;
+						return ;
+					}
+					callback(true) ;
+				}) ;
+			} else if (learning[req.url.fullvalue][0] === 3) {
+				sendProcessLog(req.jpid, timeRecieved, callback) ;
+				module.exports.sendError(404, errorMessages[404] || errorMessages[0], resp, req.jpid) ;
+				callback(true) ; //eslint-disable-line callback-return
+			} else {
+				//Try again if this isn't valid
+				learning[req.url.fullvalue] = undefined ;
+				createResponse(req, resp, timeRecieved, callback) ;
+			}
+			return ;
 		}
-		return ;
+		
+		resp.setHeader("JP-Was-Learned", "0") ;
+		
+		handleeThing(req, resp, new internalResponseProps(callback, timeRecieved, req.url.fullvalue)) ;
+		
+		/* eslint-enable consistent-return */
+	} catch (err) {
+		jpsUtil.coughtError(err, " creating the response", resp, req.jpid) ;
 	}
-	
-	resp.setHeader("JP-Was-Learned", "0") ;
-	
-	handleeThing(req, resp, new internalResponseProps(callback, timeRecieved, req.url.fullvalue)) ;
-	
-	/* eslint-enable consistent-return */
 }
 
 module.exports = {

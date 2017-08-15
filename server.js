@@ -295,8 +295,97 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 	}) ;
 }
 
+function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err) {
+	if (err) {
+		resolve([false, err]) ;
+		return ;
+	}
+	if (!stats.isFile()) {
+		resolve([false, "DIR"]) ;
+		return ;
+	}
+	let cont = true ;
+	for (let doing in rangesArr) {
+		rangesArr[doing] = rangesArr[doing].split("-") ;
+		if (rangesArr[doing][0] === "") {
+			rangesArr[doing][0] = 0 ;
+		} else {
+			let toStartAt = parseInt(rangesArr[doing][0], 10) ;
+			if (isNaN(toStartAt)) {
+				rangesArr[doing][0] = 0 ;
+			} else {
+				rangesArr[doing][0] = toStartAt ;
+			}
+		}
+		if (rangesArr[doing][1] === "") {
+			rangesArr[doing][1] = stats.size - 1 ;
+		} else {
+			let toEndAt = parseInt(rangesArr[doing][1], 10) ;
+			if (isNaN(toEndAt)) {
+				rangesArr[doing][1] = stats.size - 1 ;
+			} else {
+				rangesArr[doing][1] = toEndAt ;
+			}
+		}
+		if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size - 1) {
+			cont = false ;
+			break ;
+		} else if (rangesArr[doing][0] > rangesArr[doing][1]) {
+			cont = false ;
+			break ;
+		}
+		//▀‗ð►╠Ä#/'╠╩♦♀0╦┐¶ýÄ↔A8─oeÀ╚Ä´Há*
+		//«Þø[§
+	}
+	if (cont) {
+		try {
+			const boundary = config.multipartResponseBoundary || "58dca288fd8c0f00" ;
+			const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
+			const getBoundary = (start, end) => `\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${stats.size}\r\n\r\n` ;
+			let length = 0 ;
+			for (let doing in rangesArr) {
+				length += getBoundary(rangesArr[doing][0], rangesArr[doing][1]).length ;
+				length += rangesArr[doing][1] - rangesArr[doing][0] + 1 ;
+			}
+			length += (`\r\n--${boundary}--\r\n`).length ;
+			resp.writeHead(206, {
+				"Accept-Ranges": "bytes",
+				"Content-Type": `multipart/byteranges; boundary=${boundary}`,
+				"Content-Length": length,
+				"Status": 206
+			}) ;
+			if (!resp.sendBody) {
+				resp.end() ;
+				return ;
+			}
+			let doing = -1 ;
+			const nextWrite = () => {
+				doing++ ;
+				if (doing >= rangesArr.length) {
+					mainPipe.write(`\r\n--${boundary}--\r\n`) ;
+					mainPipe.end() ;
+					return ;
+				}
+				mainPipe.write(getBoundary(rangesArr[doing][0], rangesArr[doing][1])) ;
+				let reader = fs.createReadStream(file, {
+					flags: "r",
+					autoClose: true,
+					start: rangesArr[doing][0],
+					end: rangesArr[doing][1]
+				}) ;
+				reader.on("data", d=>mainPipe.write(d)) ;
+				reader.on("end", nextWrite) ;
+			} ;
+			nextWrite() ;
+			resolve([true, null]) ;
+		} catch (err) {
+			reject(err) ;
+		}
+	}
+}
+
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
-function sendFile(file,resp,customVars,req) {
+function sendFile(file, resp, customVars, req) {
 	try {
 		//Look in the sites dir.
 		let start = path.join(process.cwd(), "sites") ;
@@ -352,6 +441,7 @@ function sendFile(file,resp,customVars,req) {
 			
 		} else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
 			lengthknown = true ;
+			mainPipe = resp ;
 		}
 		
 		if (lengthknown && typeof req.headers.range === "string") {
@@ -360,7 +450,7 @@ function sendFile(file,resp,customVars,req) {
 			//We can only use bytes as a range value
 			if (rangesArr[0] !== "bytes") {
 				sendError(416, `${rangesArr[0]} is not a valid range unit.`, resp, req.jpid) ;
-				return new Promise((_, reject)=>reject()) ;
+				return Promise.reject() ;
 			}
 			
 			//Create array of all the range values
@@ -405,101 +495,13 @@ function sendFile(file,resp,customVars,req) {
 					}
 				}
 			} else if (rangesArr.length > 1) {
-				return new Promise((resolve, reject)=>{
-					fs.stat(file, (err, stats) => {
-						if (err) {
-							resolve(false, err) ;
-							return ;
-						}
-						if (!stats.isFile()) {
-							resolve(false, "DIR") ;
-							return ;
-						}
-						let cont = true ;
-						for (let doing in rangesArr) {
-							rangesArr[doing] = rangesArr[doing].split("-") ;
-							if (rangesArr[doing][0] === "") {
-								rangesArr[doing][0] = 0 ;
-							} else {
-								let toStartAt = parseInt(rangesArr[doing][0], 10) ;
-								if (isNaN(toStartAt)) {
-									rangesArr[doing][0] = 0 ;
-								} else {
-									rangesArr[doing][0] = toStartAt ;
-								}
-							}
-							if (rangesArr[doing][1] === "") {
-								rangesArr[doing][1] = stats.size - 1 ;
-							} else {
-								let toEndAt = parseInt(rangesArr[doing][1], 10) ;
-								if (isNaN(toEndAt)) {
-									rangesArr[doing][1] = stats.size - 1 ;
-								} else {
-									rangesArr[doing][1] = toEndAt ;
-								}
-							}
-							if (rangesArr[doing][0] === 0 && rangesArr[doing][1] === stats.size - 1) {
-								cont = false ;
-								break ;
-							} else if (rangesArr[doing][0] > rangesArr[doing][1]) {
-								cont = false ;
-								break ;
-							}
-							//▀‗ð►╠Ä#/'╠╩♦♀0╦┐¶ýÄ↔A8─oeÀ╚Ä´Há*
-							//«Þø[§
-						}
-						if (cont) {
-							try {
-								const boundary = config.multipartResponseBoundary || "58dca288fd8c0f00" ;
-								const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
-								const getBoundary = (start, end) => `\r\n--${boundary}\r\nContent-Type: ${mime}\r\nContent-Range: bytes ${start}-${end}/${stats.size}\r\n\r\n` ;
-								let length = 0 ;
-								for (let doing in rangesArr) {
-									length += getBoundary(rangesArr[doing][0], rangesArr[doing][1]).length ;
-									length += rangesArr[doing][1] - rangesArr[doing][0] + 1 ;
-								}
-								length += (`\r\n--${boundary}--\r\n`).length ;
-								resp.writeHead(206, {
-									"Accept-Ranges": "bytes",
-									"Content-Type": `multipart/byteranges; boundary=${boundary}`,
-									"Content-Length": length,
-									"Status": 206
-								}) ;
-								if (!resp.sendBody) {
-									resp.end() ;
-									return ;
-								}
-								let doing = -1 ;
-								const nextWrite = () => {
-									doing++ ;
-									if (doing >= rangesArr.length) {
-										resp.write(`\r\n--${boundary}--\r\n`) ;
-										resp.end() ;
-										return ;
-									}
-									resp.write(getBoundary(rangesArr[doing][0], rangesArr[doing][1])) ;
-									let reader = fs.createReadStream(file, {
-										flags: "r",
-										autoClose: true,
-										start: rangesArr[doing][0],
-										end: rangesArr[doing][1]
-									}) ;
-									reader.on("data", d=>resp.write(d)) ;
-									reader.on("end", nextWrite) ;
-								} ;
-								nextWrite() ;
-								resolve([true, null]) ;
-							} catch (err) {
-								reject(err) ;
-							}
-						}
-					}) ;
-				}) ;
+				//Return promise, get stats and pass everything on to the gotRangesStats function.
+				return new Promise((resolve, reject) => fs.stat(file, (err, stats) => gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err))) ;
 			}
 		}
 		
-		return new Promise(resolve => {
-			getFile(file,stats => {
+		return new Promise(resolve =>
+			getFile(file, stats => {
 				const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
 				if (status === 206) {
@@ -518,18 +520,17 @@ function sendFile(file,resp,customVars,req) {
 					return false ;
 				}
 				return true ;
-			},mainPipe,(done,err) => {
+			}, mainPipe, (done, err) => {
 				//If we judt didn't need to send the body, then there isn't an error
 				if (!resp.sendBody && !done && err === "CBR") {
 					resolve([true,null]) ;
 				} else {
 					resolve([done,err]) ;
 				}
-			}, ranges);
-		}) ;
+			}, ranges)) ;
 	} catch (err) {
 		//Return an instantly rejecting promise
-		return new Promise((resolve, reject) => reject(err)) ;
+		return Promise.reject(err) ;
 	}
 }
 
@@ -867,8 +868,53 @@ const afterRequestStages = [
 	" processing the fullrequest"
 ] ;
 
+function handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, stage) {
+	try {
+		stage++ ;
+		if (!linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote)) {
+			stage++ ;
+			//Add ID
+			let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
+			Object.defineProperty(req, "jpid", {
+				configurable: false,
+				enumerable: false,
+				value: rID,
+				writable: false
+			}) ;
+			//Log
+			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
+			stage++ ;
+			//CORS stuff
+			CORS.setHeaders(req, resp) ;
+			stage++ ;
+			doEvent("fullrequest", req.url.host, ()=>
+				checkAuth(req, resp, timeRecieved, ()=>
+					doEvent("allowedrequest", req.url.host, ()=>{
+						doMethodLogic(req, resp, timeRecieved, false) ;
+						//Use responseMaker to generate the response, see do-response.js
+						responseMaker.createResponse(req, resp, timeRecieved, hmmm=>{
+							//Log if it was leared from
+							if (hmmm[0]) {
+								console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
+							} else {
+								console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
+							}
+							//Log times
+							let timeTaken = process.hrtime(timeRecieved) ;
+							console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
+						}) ;
+					},
+					req, resp)
+				),
+			req, resp) ;
+		}
+	} catch (err) {
+		jpsUtil.coughtError(err, afterRequestStages[stage], resp, req.jpid) ;
+	}
+}
+
 //Function to handle http requests.
-function handleRequest(req,resp,secure) {
+function handleRequest(req, resp, secure) {
 	let stage = 0 ;
 	try {
 		//Get time stuff.
@@ -896,49 +942,7 @@ function handleRequest(req,resp,secure) {
 		stage++ ;
 		
 		//Request event
-		doEvent("request", req.url.host, ()=>{
-			try {
-				stage++ ;
-				if (!linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote)) {
-					stage++ ;
-					//Add ID
-					let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
-					Object.defineProperty(req, "jpid", {
-						configurable: false,
-						enumerable: false,
-						value: rID,
-						writable: false
-					}) ;
-					//Log
-					console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-					stage++ ;
-					//CORS stuff
-					CORS.setHeaders(req, resp) ;
-					stage++ ;
-					doEvent("fullrequest", req.url.host, ()=>
-						checkAuth(req, resp, timeRecieved, ()=>
-							doEvent("allowedrequest", req.url.host, ()=>{
-								try {
-									doMethodLogic(req, resp, timeRecieved, false) ;
-									//Use responseMaker to generate the response, see do-response.js
-									responseMaker.createResponse(req, resp, timeRecieved, hmmm=>{
-										//Log if it was leared from
-										if (hmmm[0]) {
-											console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
-										} else {
-											console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
-										}
-										//Log times
-										let timeTaken = process.hrtime(timeRecieved) ;
-										console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
-									}) ;
-								} catch (e) {/*k*/}
-							}, req, resp)), req, resp) ;
-				}
-			} catch (err) {
-				jpsUtil.coughtError(err, afterRequestStages[stage], resp, req.jpid) ;
-			}
-		}, req, resp) ;
+		doEvent("request", req.url.host, ()=>handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, stage), req, resp) ;
 		
 	} catch (err) {
 		jpsUtil.coughtError(err, afterRequestStages[stage], resp, req.jpid) ;
@@ -1110,7 +1114,7 @@ function checkAuth(req, resp, timeRecieved, callback) {
 	let checkingSystem = 0 ;
 	
 	//Function to load next check.
-	let nextCheck = () =>{
+	let nextCheck = () => 
 		//Ask account system what to do.
 		allAccountSystems[checkingSystem].doAnything(req,resp).then(returned=>{
 			let canAccess = returned[0] ;
@@ -1147,7 +1151,6 @@ function checkAuth(req, resp, timeRecieved, callback) {
 		}).catch(err=>{
 			jpsUtil.coughtError(err, " checking user authentification", resp, req.jpid) ;
 		}) ;
-	} ;
 	//Check
 	nextCheck() ;
 }
@@ -1267,9 +1270,9 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 	}
 }
 
-responseMaker.sendCache = sendCache ;
-responseMaker.sendFile = sendFile ;
-responseMaker.sendError = sendError ;
+responseMaker.sendCache = (...args)=>sendCache(...args) ;
+responseMaker.sendFile = (...args)=>sendFile(...args) ;
+responseMaker.sendError = (...args)=>sendError(...args) ;
 responseMaker.enableLearning = config.enableLearning ;
 websockets.serverCalls.addReqProps = addReqProps ;
 websockets.serverCalls.doEvent = doEvent ;

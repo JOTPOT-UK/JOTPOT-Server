@@ -177,10 +177,14 @@ function coughtError(err, where="", resp, rID="", userMessage="") {
 	}
 	console.warn("---------------") ;
 	if (resp) {
-		if (userMessage) {
-			module.exports.sendError(500, userMessage, resp, rID) ;
-		} else {
-			module.exports.sendError(500, `A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't trust you."}.`, resp, rID) ;
+		try {
+			if (userMessage) {
+				module.exports.sendError(500, userMessage, resp, rID) ;
+			} else {
+				module.exports.sendError(500, `A${isUnknown?"n unknown":" known "} error occured.${isUnknown?"":" I just don't want to tell you what went wrong. Nothing personal, honestly! It's not like I don't trust you."}.`, resp, rID) ;
+			}
+		} catch (err) {
+			coughtError(err, " sending error response") ;
 		}
 	}
 }
