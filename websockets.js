@@ -56,11 +56,11 @@ function newParser(req, resp) {
 			gotData(d, i+1) ;
 		} else if (parseStage === 1) {
 			//Spec says we must be masked
-			if (!(d[i]&1)) {
+			if (!(d[i]&128)) {
 				req.socket.end() ;
 				return ;
 			}
-			finalDataLeft = d[i] ;
+			finalDataLeft = d[i] - 128 ;
 			if (finalDataLeft < 126) {
 				parseStage = 4 ;
 				dataLeft = 4 ;
@@ -97,12 +97,13 @@ function newParser(req, resp) {
 				currentDataPosition = 0 ;
 				dataLeft = finalDataLeft ;
 				parseStage = 5 ;
+				currentDataFrame = Buffer.alloc(dataLeft) ;
 				gotData(d, readTo) ;
 			} else {
 				d.copy(mask, currentDataPosition, i, d.length) ;
 			}
 		} else if (parseStage === 5) {
-			if (d.length - i > dataLeft) {
+			if (d.length - i >= dataLeft) {
 				let readTo = i + dataLeft ;
 				d.copy(currentDataFrame, currentDataPosition, i, readTo) ;
 				for (let doing = 0; doing < currentDataFrame.length; doing++) {
@@ -112,9 +113,9 @@ function newParser(req, resp) {
 					dataToPush = Buffer.concat([dataToPush, currentDataFrame], dataToPush.length + currentDataFrame.length) ;
 					if (isThisTheEnd) {
 						if (pushOpCode === 1) {
-							req.emmit("text", dataToPush.toString("utf8")) ;
+							req.emit("text", dataToPush.toString("utf8")) ;
 						} else if (pushOpCode === 2) {
-							req.emmit("binary", dataToPush) ;
+							req.emit("binary", dataToPush) ;
 						} else if (pushOpCode === 9) {
 							let pongData = Buffer.allocUnsafe(dataToPush.length) ;
 							dataToPush.copy(pongData) ;
@@ -127,9 +128,9 @@ function newParser(req, resp) {
 					dataToPush = currentDataFrame ;
 					pushOpCode = currentOpCode ;
 				} else if (currentOpCode === 1) {
-					req.emmit("text", currentDataFrame.toString("utf8")) ;
+					req.emit("text", currentDataFrame.toString("utf8")) ;
 				} else if (currentOpCode === 2) {
-					req.emmit("binary", currentDataFrame) ;
+					req.emit("binary", currentDataFrame) ;
 				} else if (currentOpCode === 9) {
 					let pongData = Buffer.allocUnsafe(currentDataFrame.length) ;
 					currentDataFrame.copy(pongData) ;
@@ -138,13 +139,14 @@ function newParser(req, resp) {
 					}) ;
 				}
 				currentDataFrame = Buffer.alloc(0) ;
+				parseStage = 0 ;
 			} else {
 				d.copy(currentDataFrame, currentDataPosition, i, d.length) ;
+				dataLeft -= d.length - i ;
 			}
 		}
 	}
-	req.on("data", d=>gotData(d, 0)) ;
-	return gotData() ;
+	req.socket.on("data", d=>gotData(d, 0)) ;
 }
 
 function newResponse(req) {
@@ -152,39 +154,45 @@ function newResponse(req) {
 	let que = new Array() ;
 	let resp = {
 		write: (data, opcode=NaN, isEnd=false)=>{
-			let buff ;
-			if (data.length < 126) {
-				buff = Buffer.allocUnsafe(2) ;
-				buff[1] = data.length ;
-			} else if (data.length < (1<<16)-1) {
-				buff = Buffer.allocUnsafe(3) ;
-				buff.writeUInt16BE(data.length, 1) ;
-			} else if (data.length < (1<<63)-1) {
-				buff = Buffer.allocUnsafe(9) ;
-				buff.writeUInt32BE(data.length>>32, 1) ;
-				buff.writeUInt32BE(data.length&((1<<32)-1), 5) ;
-			} else {
-				throw new Error("Too much data to send in a single frame!") ;
-			}
-			if (isEnd) {
-				buff[0] = 1<<7 ;
-			} else {
-				buff[0] = 0 ;
-			}
-			if (!ended) {
-				opcode = 0 ;
-			} else if (isNaN(opcode)) {
-				if (typeof data === "string") {
-					opcode = 1 ;
+			try {
+				let buff ;
+				if (data.length < 126) {
+					buff = Buffer.allocUnsafe(2) ;
+					buff[1] = data.length ;
+				} else if (data.length < (1<<16)-1) {
+					buff = Buffer.allocUnsafe(3) ;
+					buff.writeUInt16BE(data.length, 1) ;
+				} else if (data.length < (1<<63)-1) {
+					buff = Buffer.allocUnsafe(9) ;
+					buff.writeUInt32BE(data.length>>32, 1) ;
+					buff.writeUInt32BE(data.length&((1<<32)-1), 5) ;
 				} else {
-					opcode = 2 ;
+					throw new Error("Too much data to send in a single frame!") ;
 				}
-			}
-			buff[0] += opcode ;
-			req.socket.write(buff) ;
-			req.socket.write(data) ;
-			if (isEnd && que.length > 0) {
-				que.shift()() ;
+				if (isEnd) {
+					buff[0] = 1<<7 ;
+				} else {
+					buff[0] = 0 ;
+				}
+				if (!ended) {
+					opcode = 0 ;
+				} else if (isNaN(opcode)) {
+					if (typeof data === "string") {
+						opcode = 1 ;
+					} else {
+						opcode = 2 ;
+					}
+				}
+				ended = isEnd ;
+				buff[0] += opcode ;
+				req.socket.write(buff) ;
+				req.socket.write(data) ;
+				if (isEnd && que.length > 0) {
+					que.shift()() ;
+				}
+			} catch (err) {
+				console.warn("Error sending frame:") ;
+				console.warn(err.stack) ;
 			}
 		},
 		end: (data, opcode)=>resp.write(data, opcode, true),
@@ -236,10 +244,8 @@ function handleUpgrade(req, s, secure) {
 					if (data) {
 						s.write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + data.toString("base64") + "\r\n\r\n") ;
 						aReq.url.protocol = "ws:" ;
-						cb() ;
-						return ;
+						cb() ; //eslint-disable-line callback-return
 					}
-					s.end() ;
 				}) ;
 				hash.write(req.headers["sec-websocket-key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11") ;
 				hash.end() ;
@@ -247,8 +253,8 @@ function handleUpgrade(req, s, secure) {
 			//Create the response object
 			let resp = newResponse(req) ;
 			//Set up the parser
-			newParser(req, resp) ;
-			module.exports.doEvent("websocket", aReq.url.host, ()=>{}, aReq, resp) ;
+			newParser(aReq, resp) ;
+			module.exports.serverCalls.doEvent("websocket", aReq.url.host, ()=>{}, aReq, resp) ;
 		} else {
 			s.end() ;
 		}

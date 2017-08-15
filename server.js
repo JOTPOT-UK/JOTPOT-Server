@@ -1274,8 +1274,8 @@ responseMaker.sendCache = (...args)=>sendCache(...args) ;
 responseMaker.sendFile = (...args)=>sendFile(...args) ;
 responseMaker.sendError = (...args)=>sendError(...args) ;
 responseMaker.enableLearning = config.enableLearning ;
-websockets.serverCalls.addReqProps = addReqProps ;
-websockets.serverCalls.doEvent = doEvent ;
+websockets.serverCalls.addReqProps = (...args)=>addReqProps(...args) ;
+websockets.serverCalls.doEvent = (...args)=>doEvent(...args) ;
 
 for (let doing in config.cache) {
 	try {
