@@ -1548,70 +1548,60 @@ module.exports = {
 							return responseMaker.addCache(url, cache, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
-						
 					},
 					"cacheFile": (url) => {
 						if (checkURLString(url)) {
 							return responseMaker.cacheFile(url) ;
 						} 
 						throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}'.`) ;
-						
 					},
 					"cacheFileAs": (url, file) => {
 						if (checkURLString(url) && checkURLString(file)) {
 							return responseMaker.cacheFileAs(url, file) ;
 						} 
 						throw new Error(`Sorry, you cannot create a cache for the host '${url.split("/").shift()}' or '${file.split("/").shift()}'.`) ;
-						
 					},
 					"isCache": (url, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.isCache(url, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
-						
 					},
 					"getCache": (url, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.getCache(url, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot view a cache for the host '${url.split("/").shift()}'.`) ;
-						
 					},
 					"removeCache": (url, incSearch=false) => {
 						if (checkURLString(url)) {
 							return responseMaker.removeCache(url, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot remove a cache for the host '${url.split("/").shift()}'.`) ;
-						
 					},
 					"createLink": (from, to, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.createLink(from, to, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot create a link for the host '${from.split("/").shift()}'.`) ;
-						
 					},
 					"isLink": (from, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.isLink(from, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
-						
 					},
 					"getLink": (from, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.getLink(from, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot view a link for the host '${from.split("/").shift()}'.`) ;
-						
 					},
 					"removeLink": (from, incSearch=false) => {
 						if (checkURLString(from)) {
 							return responseMaker.removeLink(from, incSearch) ;
 						} 
 						throw new Error(`Sorry, you cannot remove a link for the host '${from.split("/").shift()}'.`) ;
-						
 					}
 				},
 				
@@ -1621,21 +1611,32 @@ module.exports = {
 						return responseMaker.handlePage(url, handler, incSearch) ;
 					} 
 					throw new Error(`Sorry, you cannot handle a page for the host '${url.split("/").shift()}'.`) ;
-					
 				},
 				"isHandled": (url, incSearch=false) => {
 					if (checkURLString(url)) {
 						return responseMaker.isHandled(url, incSearch) ;
 					} 
 					throw new Error(`Sorry, you cannot view a handler for the host '${url.split("/").shift()}'.`) ;
-					
 				},
 				"removePageHandler": (url, incSearch=false) => {
 					if (checkURLString(url)) {
 						return responseMaker.removePageHandler(url, incSearch) ;
 					} 
 					throw new Error(`Sorry, you cannot remove a handler for the host '${url.split("/").shift()}'.`) ;
-					
+				},
+				
+				//WebSockets handling
+				"handleWebSocket": (url, handler, incSearch=false) => {
+					if (checkURLString(url)) {
+						return websockets.handleWebSocket(url, handler, incSearch) ;
+					}
+					throw new Error(`Sorry, you cannot handle a web socket for the host '${url.split("/").shift()}'.`) ;
+				},
+				"isWebSocketHandled": (url, incSearch=false) => {
+					if (checkURLString(url)) {
+						return websockets.isHandled(url, incSearch) ;
+					}
+					throw new Error(`Sorry, you cannot handle a web socket for the host '${url.split("/").shift()}'.`) ;
 				},
 				
 				//Linking
@@ -1644,14 +1645,12 @@ module.exports = {
 						return responseMaker.isLearned(url, checkLevel) ;
 					} 
 					throw new Error(`Sorry, you cannot view learning details for the host '${url.split("/").shift()}'.`) ;
-					
 				},
 				"unlearn": (url, level=0) => {
 					if (checkURLString(url)) {
 						return responseMaker.isLearned(url, level) ;
 					} 
 					throw new Error(`Sorry, you cannot change learning details for the host '${url.split("/").shift()}'.`) ;
-					
 				},
 				
 				//Other stuff
