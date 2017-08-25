@@ -37,7 +37,8 @@ const defaultConfig = {
 	
 	"httpServers": [
 		{
-			"port": 80
+			"port": 80,
+			"websocket": false
 		}
 	],
 	"httpsServers": [],

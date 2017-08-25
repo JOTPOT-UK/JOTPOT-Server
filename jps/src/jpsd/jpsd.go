@@ -110,7 +110,7 @@ func newProc(wd string, args jpsutil.Args, startNewGo bool) bool {
 	stdout := &procReader{""}
 	stderr := &procReader{""}
 	//                          Module path...................................................., Data port.... , User args.........
-	callArgs := append([]string{filepath.Join(filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock}, args.ToServer()...)
+	callArgs := append([]string{filepath.Join(filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock, "--allow-all-data"}, args.ToServer()...)
 	c := exec.Command(jpsutil.GetNodePath(), callArgs...)
 	c.Stdout = stdout
 	c.Stderr = stderr

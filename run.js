@@ -499,7 +499,7 @@ if (cluster.isMaster) {
 				
 				if (config.controlers.length > 0) {
 					
-					if (config.controlers.indexOf(s.remoteAddress) === -1) {
+					if (config.controlers.indexOf(s.remoteAddress) === -1 && !flags["--allow-all-data"]) {
 						
 						s.write("No perms") ;
 						return ;

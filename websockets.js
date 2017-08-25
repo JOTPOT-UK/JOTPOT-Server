@@ -42,15 +42,17 @@ function newParser(req, resp) {
 	let finalDataLeft = 0 ;
 	let parseStage = 0 ;
 	function gotData(d, i) {
-		if (i >= d.length) {
+		if (i >= d.length && parseStage !== 5 && dataLeft > 0) {
 			return ;
 		}
 		if (parseStage === 0) {
+			//Parse fin bit
 			if (d[i]&128) {
 				isThisTheEnd = true ;
 			} else {
 				isThisTheEnd = false ;
 			}
+			//Parse op code
 			currentOpCode = d[i]&15 ;
 			parseStage = 1 ;
 			gotData(d, i+1) ;
@@ -60,12 +62,15 @@ function newParser(req, resp) {
 				req.socket.end() ;
 				return ;
 			}
+			//Determine the length
 			finalDataLeft = d[i] - 128 ;
 			if (finalDataLeft < 126) {
+				//Set up for stage 4
 				parseStage = 4 ;
 				dataLeft = 4 ;
 				mask = Buffer.alloc(4) ;
 			} else {
+				//Or if we need to read the next few bits
 				parseStage = dataLeft - 124 ;
 				dataLeft = parseStage===2?2:8 ;
 				currentDataFrame = Buffer.alloc(dataLeft) ;
@@ -73,9 +78,11 @@ function newParser(req, resp) {
 			currentDataPosition = 0 ;
 			gotData(d, i+1) ;
 		} else if (parseStage < 4) {
+			//Get all the needed data
 			if (d.length - i > dataLeft) {
 				let readTo = i + dataLeft ;
 				d.copy(currentDataFrame, currentDataPosition, i, readTo) ;
+				//When we're done, parse the length
 				if (parseStage === 2) {
 					finalDataLeft = currentDataFrame.readUInt16BE(0) ;
 				} else {
@@ -83,6 +90,7 @@ function newParser(req, resp) {
 					finalDataLeft += currentDataFrame.readUInt32BE(4) ;
 				}
 				currentDataPosition = 0 ;
+				//Set up for stage 4
 				parseStage = 4 ;
 				dataLeft = 4 ;
 				mask = Buffer.alloc(4) ;
@@ -91,9 +99,11 @@ function newParser(req, resp) {
 				d.copy(currentDataFrame, currentDataPosition, i, d.length) ;
 			}
 		} else if (parseStage === 4) {
-			if (d.length - i > dataLeft) {
+			//When we have all the data
+			if (d.length - i >= dataLeft) {
 				let readTo = i + dataLeft ;
 				d.copy(mask, currentDataPosition, i, readTo) ;
+				//Set up for stage 5
 				currentDataPosition = 0 ;
 				dataLeft = finalDataLeft ;
 				parseStage = 5 ;
