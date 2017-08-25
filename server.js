@@ -1388,6 +1388,10 @@ module.exports = {
 				"isHandled": (url, incSearch=false) => responseMaker.isHandled(url, incSearch),
 				"removePageHandler": (url, incSearch=false) => responseMaker.removePageHandler(url, incSearch),
 				
+				//WebSockets handling
+				"handleWebSocket": (url, handler, incSearch=false) => websockets.handleWebSocket(url, handler, incSearch),
+				"isWebSocketHandled": (url, incSearch=false) => websockets.isHandled(url, incSearch),
+				
 				//Linking
 				"isLearned": (url, checkLevel=0) => responseMaker.isLearned(url, checkLevel),
 				"unlearn": (url, level=0) => responseMaker.unlearn(url, level),

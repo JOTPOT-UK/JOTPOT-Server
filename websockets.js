@@ -254,7 +254,13 @@ function handleUpgrade(req, s, secure) {
 			let resp = newResponse(req) ;
 			//Set up the parser
 			newParser(aReq, resp) ;
-			module.exports.serverCalls.doEvent("websocket", aReq.url.host, ()=>{}, aReq, resp) ;
+			module.exports.serverCalls.doEvent("websocket", aReq.url.host, ()=>{
+				if (handlersWS[aReq.url.host]) {
+					handlersWS[aReq.url.host](req, resp) ;
+				} else if (handlers[aReq.url.hostname]) {
+					handlers[aReq.url.hostname](req, resp) ;
+				}
+			}, aReq, resp) ;
 		} else {
 			s.end() ;
 		}
@@ -264,10 +270,28 @@ function handleUpgrade(req, s, secure) {
 	}
 }
 
+let handlers = new Object() ;
+let handlersWS = new Object() ;
+function handleWebSocket(url, handler, incSearch=false) {
+	if (incSearch) {
+		handlersWS[url] = handler ;
+	} else {
+		handlers[url] = handler ;
+	}
+}
+function isHandled(url, incSearch=false) {
+	if (incSearch) {
+		return Boolean(handlersWS[url]) ;
+	}
+	return Boolean(handlers[url]) ;
+}
+
 module.exports = {
 	handleUpgrade,
 	serverCalls: {
 		addReqProps: ()=>{},
 		doEvent: ()=>{}
-	}
+	},
+	handleWebSocket,
+	isHandled
 } ;
