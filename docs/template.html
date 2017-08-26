@@ -280,7 +280,7 @@
 	</ul>
 </div>
 <h2>The config.json file</h2>
-<span class="indent">This JSON file contains the basic configuration for JOTPOT Server. There are simple versions and demo versions available from <a href="/server">jotpot.co.uk/server</a></span>
+<span class="indent">This JSON file contains the basic configuration for JOTPOT Server. There are simple versions and demo versions available from <a href="/server">jotpot.co.uk/server</a>. Please note that extensions can modify properties in the server.config object, this will have the effect on the server, however the file will remoained unchanged unless rwriten implicitly.</span>
 <div class="indent">
 Properties:
 	<br>
@@ -288,7 +288,7 @@ Properties:
 	<br>'behindLoadBalencer': Boolean. true if headers set be the JOTPOT Server load balencer should be used, for example when determining the source IP address or if the request was HTTPS.
 	<br>'cache': Array of Strings. server.cache.cacheFile is called with each item of the array on server boot.
 	<br>'controlers': Array of strings. If the array isn't empty, only IP addresses listed in the array are allowed to connect to the data server (this ensures that other divices on the network cannot perform actions on the server).
-	<br>'CORS': Array of Arrays. For each item in the array, server.addCORSRule is called with the array as the arguments.
+	<br>'CORS': Array of Arrays. For each item in the array, <a href="#server-addCORSRule">server.addCORSRule</a> is called with the array as the arguments.
 	<br>'dataPort': Number||String. The port you would like the server to listen on for data connection (transfering logs and signals), if Number, it listens on 0.0.0.0 on the given port, if it is a string in the format "ip:port", it will listen on the given IP under the given port.
 	<br>'defaultHost': String. The host to use by default if the http request contains no host header or useDefaultHostIfHostDoesNotExist is true and the host requested doesn't exist.
 	<br>'dontRedirect': Array. When a redirect is considered by the server, it won't redirect if the url value is within this array.

@@ -242,18 +242,21 @@
 		]
 	},
 	{
-		"title": "server.limited",
-		"id":"server-limited",
+		"title": "server.isHandled(url, incSearch)",
+		"id":"server-isHandled",
 		"support": [
+			false,
 			true,
-			true,
-			true,
+			false,
 			true
 		],
-		"added": "Pre 25A",
+		"added": "26A",
 		"extra": "",
-		"desc": "\ttrue if the extension is limited, false if not.\n",
-		"args": []
+		"desc": "Checks if the server has a handler set up for the given URL (in the form host/path), returns a boolean with the result.",
+		"args": [
+			"url &lt;String&gt; The URL to see if it is handled.",
+			"checkLevel &lt;Boolean&gt; Whether or not the search is included."
+		]
 	},
 	{
 		"title": "server.isLearned(url, checkLevel)",
@@ -271,6 +274,20 @@
 			"url &lt;String&gt; The URL to see if it is learned.",
 			"checkLevel &lt;Number&gt; If not 0, all searches will be checked."
 		]
+	},
+	{
+		"title": "server.limited",
+		"id":"server-limited",
+		"support": [
+			true,
+			true,
+			true,
+			true
+		],
+		"added": "Pre 25A",
+		"extra": "",
+		"desc": "\ttrue if the extension is limited, false if not.\n",
+		"args": []
 	},
 	{
 		"title": "server.loadExt(path[, lock])",
