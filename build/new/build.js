@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 26A-0
+	Version 26A-1
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -78,6 +78,7 @@ if (flags["-jsonly"]) {
 	for (let copyer of config["jps-files"]) {
 		copy(path.join(src, copyer), path.join(out, copyer)) ;
 	}
+	copy(path.join(src, "LICENSE"), path.join(out, "LICENSE")) ;
 	process.exit(0) ;
 }
 
@@ -89,6 +90,7 @@ for (let copyer of config["jps-files"]) {
 copy(path.join(src, "config.json"), path.join(out, "jps-main", "defaultConfig.json")) ;
 copy(path.join(src, "errorTemp.jpt"), path.join(out, "jps-main", "defaultErrorTemp.jpt")) ;
 copy(path.join(src, "sites", "default", "index.html"), path.join(out, "jps-main", "defaultIndex.html")) ;
+copy(path.join(src, "LICENSE"), path.join(out, "LICENSE")) ;
 
 const isWindows = (process.env.GOOS || process.platform).replace("win32", "windows") === "windows" ;
 const cp = require("child_process") ;

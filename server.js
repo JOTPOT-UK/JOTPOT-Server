@@ -1406,7 +1406,6 @@ module.exports = {
 					urlObject.defaultHost = config.defaultHost ;
 					urlObject.createURLFromString(url) ;
 				}
-				
 			} ;
 		} ;
 		let currentLimitedAccountSystem = 0 ;
