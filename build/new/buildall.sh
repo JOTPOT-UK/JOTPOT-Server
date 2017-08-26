@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #	JOTPOT Server
-#	Version 26A-0
+#	Version 26A-1
 #
 #	Copyright (c) 2016-2017 Jacob O'Toole
 #

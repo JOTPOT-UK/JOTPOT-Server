@@ -88,7 +88,7 @@
 	}
 	
 </style>
-<h1>JOTPOT Server Docs <span style="font-size: 0.8em;">26</span><span style="font-size: 0.6em;">-0</span></h1>
+<h1>JOTPOT Server Docs <span style="font-size: 0.8em;">26A</span><span style="font-size: 0.6em;">-1</span></h1>
 <a href="/server" style="float: right;" ID="the_link">JOTPOT Server Main Page</a>
 <div class="indent">
 <i>Please note that this page is still a work in progress, and is no where near complete. It may not look the best yet but the content should be good :)</i>
@@ -125,11 +125,11 @@
 	<p>So, you have decided that you want to use JOTPOT Server (JPS)! YAY!!! Let's get started!</p>
 	<p>To start, please make sure that you have a working installation of Node.js on your system. JOTPOT Server first checks through the PATH environment variable for a file called nodejs, then for one called node, so one of them should point to an installation of Node.js. It is recommended that you use the current LTS release of node. If you don't want a systemwide installation, then after you have installed JOTPOT Server, create a directory named node in the directory with the binary files in, and place the node executable in there.</p>
 	<p>Next up, if upgrading, we recomend removing the old installation first.</p>
-	<p>First off, download the correct package for your system, for downloads, see jotpot.uk/server or for more downloads (for even more platforms), see jotpot.uk/releases/26A-0/downloads.html</p>
+	<p>First off, download the correct package for your system, for downloads, see jotpot.uk/server or for more downloads (for even more platforms), see jotpot.uk/releases/26A-1/downloads.html</p>
 	<p>You could also get the file via the command line via the following URL: https://jotpot.uk/releases/$VERSION/jps-$OS-$ARCH.tar.gz.</p>
-	<p>Here is an exmaple of downloading version 26A-0 on linux for a x86-64 CPU:</p>
+	<p>Here is an exmaple of downloading version 26A-1 on linux for a x86-64 CPU:</p>
 	<pre>
-	wget https://jotpot.uk/releases/26A-0/jps-linux-x86-64.tar.gz</pre>
+	wget https://jotpot.uk/releases/26A-1/jps-linux-x86-64.tar.gz</pre>
 	<p>Next up, we recommend installing JOTPOT Server to the /usr/local/jps directory, if you wish to install it to a different directory, follow these same instructions, but with your own directory path.</p>
 	<p>Installing will almost definatily require root priviliges, so you might want to run these commands in a root shell, use 'sudo su' to start a root shell.</p>
 	<p>First, lets create the directory to install jps to. An example on linux:</p>
@@ -154,7 +154,7 @@
 	#Set preferences
 	OS="linux"
 	ARCH="x86-64"
-	VERSION="26A-0"
+	VERSION="26A-1"
 	#Download archive
 	wget https://jotpot.uk/releases/$VERSION/jps-$OS-$ARCH.tar.gz
 	#Create directory, extract and delete that archive
