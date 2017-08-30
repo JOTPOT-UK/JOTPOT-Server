@@ -1,0 +1,84 @@
+[
+	{
+		"title": "wsrequest.accept(callback)",
+		"id":"wsrequest-accept",
+		"added": "26B",
+		"extra": "",
+		"desc": "wsrequest.accept accepts the upgrade request to websockets, so for a websockets session to start, accept must be called. It returns undefined and the callback is called once the upgrade has been accepted, the callback recieves 1 argument, this is the corresponding wsresponse object.",
+		"args": [
+			"callback &lt;Function&gt; Function to call once the upgraded, it is given 2 arguments, the first either error or null, and the second is the corresponding wsresponse object (or null of there was an error)."
+		]
+	},
+	{
+		"title": "wsrequest.destroy([error])",
+		"id":"wsrequest-destroy",
+		"added": "26B",
+		"extra": "",
+		"desc": "See the <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_message_destroy_error\" target=\"_blank\">Node.js documentation</a>.",
+		"args": []
+	},
+	{
+		"title": "wsrequest.end([data][, encoding])",
+		"id":"wsrequest-end",
+		"added": "26B",
+		"extra": "",
+		"desc": "Same as <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/net.html#net_socket_end_data_encoding\" target=\"_blank\">wsrequest.socket.end</a>",
+		"args": []
+	},
+	{
+		"title": "wsrequest.headers",
+		"id":"wsrequest-headers",
+		"added": "26B",
+		"extra": "",
+		"desc": "An object representing the HTTP headers of the upgrade request. (In key-value pairs)",
+		"args": []
+	},
+	{
+		"title": "wsrequest.httpVersion",
+		"id":"wsrequest-httpVersion",
+		"added": "26B",
+		"extra": "",
+		"desc": "See the <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_message_httpversion\" target=\"_blank\">Node.js documentation</a>.",
+		"args": []
+	},
+	{
+		"title": "wsrequest.httpVersionMajor",
+		"id":"wsrequest-httpVersionMajor",
+		"added": "26B",
+		"extra": "",
+		"desc": "See the <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_message_httpversion\" target=\"_blank\">Node.js documentation</a>.",
+		"args": []
+	},
+	{
+		"title": "wsrequest.httpVersionMinor",
+		"id":"wsrequest-httpVersionMinor",
+		"added": "26B",
+		"extra": "",
+		"desc": "See the <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_message_httpversion\" target=\"_blank\">Node.js documentation</a>.",
+		"args": []
+	},
+	{
+		"title": "wsrequest.rawHeaders",
+		"id":"wsrequest-rawHeaders",
+		"added": "26B",
+		"extra": "",
+		"desc": "See the <a href=\"https://nodejs.org/dist/latest-v6.x/docs/api/http.html#http_message_rawheaders\" target=\"_blank\">Node.js documentation</a>.",
+		"args": []
+	},
+	{
+		"title": "wsrequest.socket",
+		"id":"wsrequest-socket",
+		"added": "26B",
+		"extra": "",
+		"desc": "The socket coresponding to the request.",
+		"args": []
+	},
+	{
+		"title": "wsrequest.url",
+		"id":"wsrequest-url",
+		"added": "26B",
+		"extra": "",
+		"desc": "This is a JOTPOT Server <a href=\"#url-object\">URL object</a> that represents the URL that was requested by the client.<br>Limited extensions may not change the host of the request.url object. Between the request event and the fullrequest event, the pathname property has all occurences of '..', double slashes and any trailing slashes removed.",
+		"args": []
+	}
+]

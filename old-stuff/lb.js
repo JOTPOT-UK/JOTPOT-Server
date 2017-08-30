@@ -44,7 +44,7 @@ let http = require("http") ;
 function sendToServer(req,resp,server) {
 	
 	config.servers[server].load += config.servers[server].capacity ;
-	req.headers["jp-source"] = req.headers["jp-source"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress ;
+	req.headers["jp-source"] = req.headers["jp-source"] || (req.socket || req.connection || req.connection.socket).remoteAddress ;
 	
 	let f = http.request({
 		

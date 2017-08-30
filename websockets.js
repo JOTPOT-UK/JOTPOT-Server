@@ -248,7 +248,7 @@ function handleUpgrade(req, s, secure) {
 				end: s.end
 			}) ;
 			//Add the jps request properties
-			module.exports.serverCalls.addReqProps(req, secure) ;
+			module.exports.serverCalls.addReqProps(aReq, secure) ;
 			
 			let accepted = false ;
 			//Function to accept the upgrade (must be called by the extension)
@@ -272,8 +272,6 @@ function handleUpgrade(req, s, secure) {
 						//Set up the parser
 						newParser(aReq, resp) ;
 						cb(null, resp) ; //eslint-disable-line callback-return
-					} else {
-						cb(new Error("No hash data"), null) ; //eslint-disable-line callback-return
 					}
 				}) ;
 				hash.write(req.headers["sec-websocket-key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11") ;
@@ -282,10 +280,10 @@ function handleUpgrade(req, s, secure) {
 			
 			module.exports.serverCalls.doEvent("websocket", aReq.url.host, ()=>{
 				let rv = false ;
-				if (handlersWS[aReq.url.host]) {
-					rv = handlersWS[aReq.url.host](req) ;
-				} else if (handlers[aReq.url.hostname]) {
-					rv = handlers[aReq.url.hostname](req) ;
+				if (handlersWS[aReq.url.fullvalue]) {
+					rv = handlersWS[aReq.url.fullvalue](aReq) ;
+				} else if (handlers[aReq.url.value]) {
+					rv = handlers[aReq.url.value](aReq) ;
 				}
 				if (!rv) {
 					s.end() ;

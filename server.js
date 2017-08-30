@@ -839,12 +839,12 @@ function wrapURL(req, secure, defaultHost) {
 function addReqProps(req, secure) {
 	let user_ip, user_ip_remote ;
 	if (config.behindLoadBalancer) {
-		user_ip = (req.headers["x-forwarded-for"] || req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-		user_ip_remote = (req.headers["jp-source-ip"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+		user_ip = (req.headers["x-forwarded-for"] || req.headers["jp-source-ip"] || (req.socket || req.connection || req.connection.socket).remoteAddress).replace(/::ffff:/g,"") ;
+		user_ip_remote = (req.headers["jp-source-ip"] || (req.socket || req.connection || req.connection.socket).remoteAddress).replace(/::ffff:/g,"") ;
 		secure = req.headers["jp-source-secure"] === "https" ;
 	} else {
-		user_ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
-		user_ip_remote = (req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress).replace(/::ffff:/g,"") ;
+		user_ip = (req.headers["x-forwarded-for"] || (req.socket || req.connection || req.connection.socket).remoteAddress).replace(/::ffff:/g,"") ;
+		user_ip_remote = ((req.socket || req.connection || req.connection.socket).remoteAddress).replace(/::ffff:/g,"") ;
 	}
 	
 	//Add stuff to the req object

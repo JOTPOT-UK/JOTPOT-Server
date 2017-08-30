@@ -26,7 +26,8 @@
 */
 
 const url = require("url") ;
-const path = require("path") ;
+
+const validProtocols = ["http:", "https:", "ws:"] ;
 
 function parseHost(host, https) {
 	let splithost = host.split(":") ;
@@ -120,7 +121,6 @@ class URL {
 			purl.hash = val ;
 		}, enumerable:true, configurable:false}) ;
 		
-		const validProtocols = ["http:", "https:"] ;
 		Object.defineProperty(this, "accualProtocol", {
 			configurable: false,
 			enumerable: true,

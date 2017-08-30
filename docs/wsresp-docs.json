@@ -1,0 +1,41 @@
+[
+	{
+		"title": "wsresponse.end(data[, opcode])",
+		"id":"wsresponse-end",
+		"added": "26B",
+		"extra": "",
+		"desc": "wsresponse.end = (data, opcode) => wsresponse.write(data, opcode, true) ;<br>So see <a href=\"#wsresponse-write\">wsresponse.write</a>.",
+		"args": []
+	},
+	{
+		"title": "wsresponse.isEnded()",
+		"id":"wsresponse-isEnded",
+		"added": "26B",
+		"extra": "",
+		"desc": "Returns true if the last frame was a finish frame (so the current message is ended), or false if not.",
+		"args": []
+	},
+	{
+		"title": "wsresponse.que(callback[, fasttrack])",
+		"id":"wsresponse-que",
+		"added": "26B",
+		"extra": "",
+		"desc": "Puts the given callback in a que, every time a message is ended (so a FIN frame sent), the first function in this que is called. If wsresponse.isEnded() returns true and the que is empty, the function will be called immediatally.<br>If fasttrack is true (defaults to false), the callback will be added at the start of the que, instead of the end.<br>Returns the new length of the que.",
+		"args": [
+			"callback &lt;Function&gt; Function to call when there are no open messages and it is at the top of the que.",
+			"fasttrack &lt;Boolean&gt; Whether or not to add this at the start of the que, defaults to false."
+		]
+	},
+	{
+		"title": "wsresponse.write(data[, opcode][, isEnd])",
+		"id":"wsresponse-write",
+		"added": "26B",
+		"extra": "",
+		"desc": "wsrequest.write writes a frame to the socket, the frame contains the given data and is sent with the specified opcode (defaults to 0 if the last frame wasn't a FIN frame, else 1 if data is a string, else 2 if data is a Buffer). isEnd determines if this is the final frame (so FIN is 1) and thus the message will be completed.",
+		"args": [
+			"data &lt;String&gt;|&lt;Buffer&gt; Data to send in this frame",
+			"opcode &lt;Number&gt; The opcode of this frame. It will be automatically set if not supplied.",
+			"isEnd &lt;Boolean&gt; If this is the last frame in the current message. Defaults to false."
+		]
+	}
+]

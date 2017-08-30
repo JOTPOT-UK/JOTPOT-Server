@@ -111,7 +111,7 @@ function getUserID(req) {
 	}
 	
 	//Otherwise, generate their ID.
-	return `${req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${cookies.JOTPOTUID}` ;
+	return `${req.headers["x-forwarded-for"] || (req.socket || req.connection || req.connection.socket).remoteAddress}(${(req.socket || req.connection || req.connection.socket).remoteAddress})---${cookies.JOTPOTUID}` ;
 	
 }
 
@@ -133,7 +133,7 @@ function makeNewUID(req,resp) {
 	resp.setHeader("Set-Cookie","JOTPOTUID=" + Math.round(newUID).toString(36)) ;
 	
 	//Return their ID.
-	return `${req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress}(${req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress})---${newUID}` ;
+	return `${req.headers["x-forwarded-for"] || (req.socket || req.connection || req.connection.socket).remoteAddress}(${(req.socket || req.connection || req.connection.socket).remoteAddress})---${newUID}` ;
 	
 }
 
