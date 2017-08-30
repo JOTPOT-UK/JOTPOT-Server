@@ -199,7 +199,7 @@
 		],
 		"added": "Pre 25A",
 		"extra": "",
-		"desc": "Setting a handle for an event allows the function to overwrite or add to the default behavior for the event being handled.\n\t<br>\n\tThe function should return undefined, a Boolean or a promise - that should resolve with undefined or a Boolean.\n\t<br>\n\tIf the function returns true or the returned promise resolves true then the server will consider the event 'handled' and thus not continue with the default behavior\n\t<br>\n\tAll the events that can be handles are detailed in the Server Events section.\n",
+		"desc": "Setting a handle for an event allows the function to overwrite or add to the default behavior for the event being handled.\n\t<br>\n\tThe function should return undefined, a Boolean or a promise - that should resolve with undefined or a Boolean.\n\t<br>\n\tIf the function returns true or the returned promise resolves true then the server will consider the event 'handled' and thus not continue with the default behavior<br>All the events that can be handles are detailed in the <a href=\"#using-server-events\">Server Events section.</a>",
 		"args": [
 			"events &lt;Array&lt;String&gt;|String&gt; An event or array of events this function should handle.",
 			"callback &lt;Function&gt; Function to call to handle the event."
@@ -218,8 +218,26 @@
 		"extra": "",
 		"desc": "The handler function will be called when the URL that matches the URL string is requested. The function will recieve 2 arguments, request and response - which are for the request that is requesting the page. It may return a boolean or a promise. If a promise is returned, it should resolve with a boolean. If the returned/resolved boolean is true, the server takes the request as handled and thus stops processing it (so it is the handlers responsibility to write the head, body and to end the response). If false is returned/resolved however, the server continues as normal, however taking into account any propertues the habdler may have changed, such as a change in the URL, or an added header value.<br>URL should be in the form 'hostname:port/pathname', if incSearch is true, then the URL may contain a search (so end in ?test=test for example) and that handler will only apply to that search. Also, the port is only included if request.usePortInDirectory is true - see the default behavior for that.",
 		"args": [
-			"url &lt;String&gt; The URL that this handler applies to..",
+			"url &lt;String&gt; The URL that this handler applies to.",
 			"handler &lt;Function&gt; Function to call when the page is requested.",
+			"incSearch &lt;Boolean&gt; Whether or not this URL must match the search of the URL as well."
+		]
+	},
+	{
+		"title": "server.handleWebSocket(url, handler, incSearch)",
+		"id":"server-handleWebSocket",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "26B",
+		"extra": "",
+		"desc": "The handler function will be called when a websocket upgrade request is recieved for the URL that matches the URL string given. The function will recieve a <a href=\"#wsrequest-object\">wsrequest object</a> as the only argument. See <a href=\"ws-intro\">WebSockets in JOTPOT Server</a>.",
+		"args": [
+			"url &lt;String&gt; The URL that this handler applies to.",
+			"handler &lt;Function&gt; Function to call when an upgrade is requested for the URL.",
 			"incSearch &lt;Boolean&gt; Whether or not this URL must match the search of the URL as well."
 		]
 	},
@@ -253,6 +271,23 @@
 		"added": "26A",
 		"extra": "",
 		"desc": "Checks if the server has a handler set up for the given URL (in the form host/path), returns a boolean with the result.",
+		"args": [
+			"url &lt;String&gt; The URL to see if it is handled.",
+			"checkLevel &lt;Boolean&gt; Whether or not the search is included."
+		]
+	},
+	{
+		"title": "server.isWebSocketHandled(url, incSearch)",
+		"id":"server-isWebSocketHandled",
+		"support": [
+			false,
+			true,
+			false,
+			true
+		],
+		"added": "26B",
+		"extra": "",
+		"desc": "Checks if the server has a handler set up for a WebSocket upgrade request for the given URL (in the form host/path), returns a boolean with the result.",
 		"args": [
 			"url &lt;String&gt; The URL to see if it is handled.",
 			"checkLevel &lt;Boolean&gt; Whether or not the search is included."

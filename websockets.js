@@ -184,10 +184,12 @@ function newResponse(req) {
 				} else {
 					buff[0] = 0 ;
 				}
-				if (!ended) {
-					opcode = 0 ;
+				if (!ended && !isNaN(opcode) && opcode !== 0) {
+					throw new Error("Current message not ended, opcode must be 0.") ;
 				} else if (isNaN(opcode)) {
-					if (typeof data === "string") {
+					if (!ended) {
+						opcode = 0 ;
+					} else if (typeof data === "string") {
 						opcode = 1 ;
 					} else {
 						opcode = 2 ;
@@ -236,9 +238,10 @@ function handleUpgrade(req, s, secure) {
 				socket: s,
 				headers: req.headers,
 				httpVersion: req.httpVersion,
+				httpVersionMajor: req.httpVersionMajor,
+				httpVersionMinor: req.httpVersionMinor,
 				method: req.method,
 				rawHeaders: req.rawHeaders,
-				rawTrailers: req.rawTrailers,
 				destroy: req.destroy,
 				url: req.url,
 				
@@ -246,31 +249,54 @@ function handleUpgrade(req, s, secure) {
 			}) ;
 			//Add the jps request properties
 			module.exports.serverCalls.addReqProps(req, secure) ;
+			
+			let accepted = false ;
 			//Function to accept the upgrade (must be called by the extension)
 			aReq.accept = cb => {
+				if (accepted) {
+					console.warn("WS upgrade may only be accepted once!") ;
+					cb(new Error("WS upgrade may only be accepted once!"), null) ;
+					return ;
+				}
+				accepted = true ;
 				const hash = createHash("sha1") ;
 				hash.on("readable", ()=>{
 					const data = hash.read() ;
 					if (data) {
+						//Accept
 						s.write("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + data.toString("base64") + "\r\n\r\n") ;
+						//Change protocol
 						aReq.url.protocol = "ws:" ;
-						cb() ; //eslint-disable-line callback-return
+						//Create the response object
+						let resp = newResponse(req) ;
+						//Set up the parser
+						newParser(aReq, resp) ;
+						cb(null, resp) ; //eslint-disable-line callback-return
+					} else {
+						cb(new Error("No hash data"), null) ; //eslint-disable-line callback-return
 					}
 				}) ;
 				hash.write(req.headers["sec-websocket-key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11") ;
 				hash.end() ;
 			} ;
-			//Create the response object
-			let resp = newResponse(req) ;
-			//Set up the parser
-			newParser(aReq, resp) ;
+			
 			module.exports.serverCalls.doEvent("websocket", aReq.url.host, ()=>{
+				let rv = false ;
 				if (handlersWS[aReq.url.host]) {
-					handlersWS[aReq.url.host](req, resp) ;
+					rv = handlersWS[aReq.url.host](req) ;
 				} else if (handlers[aReq.url.hostname]) {
-					handlers[aReq.url.hostname](req, resp) ;
+					rv = handlers[aReq.url.hostname](req) ;
 				}
-			}, aReq, resp) ;
+				if (!rv) {
+					s.end() ;
+				} else if (typeof rv.then === "function") {
+					rv.then(h=>{
+						if (!h) {
+							s.end() ;
+						}
+					}) ;
+				}
+			}, aReq) ;
 		} else {
 			s.end() ;
 		}
@@ -300,7 +326,8 @@ module.exports = {
 	handleUpgrade,
 	serverCalls: {
 		addReqProps: ()=>{},
-		doEvent: ()=>{}
+		doEvent: ()=>{},
+		isThereAHandler: ()=>{}
 	},
 	handleWebSocket,
 	isHandled

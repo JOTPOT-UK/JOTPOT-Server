@@ -90,6 +90,8 @@ func newProc(wd string, args jpsutil.Args, startNewGo bool) bool {
 			return false
 		}
 	}
+	//                   Module path..............................................., Data port option
+	callArgs := []string{filepath.Join(filepath.Dir(os.Args[0]), "jps-main", "run"), "-data"}
 	var sock string
 	if runtime.GOOS == "windows" {
 		socks := [5]string{"127.5.5.5:5", "127.55.55.55:55", "127.7.7.7:7", "127.77.77.77:77", "127.3.5.7:9"}
@@ -104,13 +106,18 @@ func newProc(wd string, args jpsutil.Args, startNewGo bool) bool {
 		if !done {
 			panic("No available addresses for data server")
 		}
+		//Add data port to args
+		callArgs = append(callArgs, sock)
 	} else {
 		sock = filepath.Join(dir, "data"+strconv.Itoa(len(procs))+".sock")
+		//Add data port to args and allow all connections
+		callArgs = append(callArgs, sock, "--allow-all-data")
 	}
 	stdout := &procReader{""}
 	stderr := &procReader{""}
-	//                          Module path...................................................., Data port.... , User args.........
-	callArgs := append([]string{filepath.Join(filepath.Dir(os.Args[0]), "jps-main", "run"), "-data", sock, "--allow-all-data"}, args.ToServer()...)
+	//Add user args to arguments
+	callArgs = append(callArgs, args.ToServer()...)
+	//Run the command
 	c := exec.Command(jpsutil.GetNodePath(), callArgs...)
 	c.Stdout = stdout
 	c.Stderr = stderr

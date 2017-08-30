@@ -781,6 +781,13 @@ function doEvent(event, host, callback, ...eventArgs) {
 	}) ;
 }
 
+function isThereAHandler(event, host) {
+	if (externals.handles[event] || externals.handles[`${host}/${event}`]) {
+		return true ;
+	}
+	return false ;
+}
+
 //Add the URL property to a request object. Make it so that if it is set, it sets the value instead.
 function wrapURL(req, secure, defaultHost) {
 	const defaultProtocols = ["http:", "https:"] ;
@@ -1276,6 +1283,7 @@ responseMaker.sendError = (...args)=>sendError(...args) ;
 responseMaker.enableLearning = config.enableLearning ;
 websockets.serverCalls.addReqProps = (...args)=>addReqProps(...args) ;
 websockets.serverCalls.doEvent = (...args)=>doEvent(...args) ;
+websockets.serverCalls.isThereAHandler = (...args)=>isThereAHandler(...args) ;
 
 for (let doing in config.cache) {
 	try {
