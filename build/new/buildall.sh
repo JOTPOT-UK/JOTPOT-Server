@@ -50,7 +50,7 @@ echo "Packaging..."
 cd "$out/jps-js-source"
 tar -cf "$out/jps-js-source.tar" *
 tar -czf "$out/jps-js-source.tar.gz" *
-zip -q "$out/jps-js-source.zip" *
+zip -qr "$out/jps-js-source.zip" *
 cd "$wd"
 if [ $deletedirs == true ]
 then
@@ -61,18 +61,18 @@ echo "Packaging source..."
 cd "$in"
 tar -cf "$out/jps-source.tar" *
 tar -czf "$out/jps-source.tar.gz" *
-zip -q "$out/jps-source.zip" *
+zip -qr "$out/jps-source.zip" *
 cd "$wd"
 
 echo "<html><head><title>JOTPOT Server downloads for version $3</title></head><body><!--Auto generated, do not edit.--><h1>JOTPOT Server downloads for version $3</h1><a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/tag/$3\" target=\"_blank\">View release (with release notes) on GitHub (github.com/JOTPOT-UK/JOTPOT-Server/releases/tag/$3)</a><ul>">"$htmlfile"
 
 echo "<li>jps-source.tar: <a href=\"jps-source.tar\">Download from JOTPOT</a></li>">>"$htmlfile"
-echo "<li>jps-source.tar.gz: <a href=\"jps-source.tar.gz\">Download from JOTPOT</a><a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/archive/$version.tar.gz\">Download from GitHub</a></li>">>"$htmlfile"
-echo "<li>jps-source.zip: <a href=\"jps-source.zip\">Download from JOTPOT</a><a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/archive/$version.zip\">Download from GitHub</a></li>">>"$htmlfile"
+echo "<li>jps-source.tar.gz: <a href=\"jps-source.tar.gz\">Download from JOTPOT</a> or <a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/archive/$version.tar.gz\">Download from GitHub</a></li>">>"$htmlfile"
+echo "<li>jps-source.zip: <a href=\"jps-source.zip\">Download from JOTPOT</a> or <a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/archive/$version.zip\">Download from GitHub</a></li>">>"$htmlfile"
 
 echo "<li>jps-js-source.tar: <a href=\"jps-js-source.tar\">Download from JOTPOT</a></li>">>"$htmlfile"
-echo "<li>jps-js-source.tar.gz: <a href=\"jps-js-source.tar.gz\">Download from JOTPOT</a><a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-js-source.tar.gz\">Download from GitHub</a></li>">>"$htmlfile"
-echo "<li>jps-js-source.zip: <a href=\"jps-js-source.zip\">Download from JOTPOT</a><a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-js-source.zip\">Download from GitHub</a></li>">>"$htmlfile"
+echo "<li>jps-js-source.tar.gz: <a href=\"jps-js-source.tar.gz\">Download from JOTPOT</a> or <a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-js-source.tar.gz\">Download from GitHub</a></li>">>"$htmlfile"
+echo "<li>jps-js-source.zip: <a href=\"jps-js-source.zip\">Download from JOTPOT</a> or <a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-js-source.zip\">Download from GitHub</a></li>">>"$htmlfile"
 
 function build {
 	export GOOS="$1"
@@ -110,11 +110,11 @@ function build {
 		cd "$out/jps-$1-$arch"
 		tar -cf "$out/jps-$1-$arch.tar" *
 		tar -czf "$out/jps-$1-$arch.tar.gz" *
-		zip -q "$out/jps-$1-$arch.zip" *
+		zip -qr "$out/jps-$1-$arch.zip" *
 		cd "$wd"
 		echo "<li>jps-$1-$archlabel.tar: <a href=\"jps-$1-$arch.tar\">Download from JOTPOT</a></li>">>"$htmlfile"
-		echo "<li>jps-$1-$archlabel.tar.gz: <a href=\"jps-$1-$arch.tar.gz\">Download from JOTPOT</a><a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-$1-$arch.tar.gz\">Download from GitHub</a></li>">>"$htmlfile"
-		echo "<li>jps-$1-$archlabel.zip: <a href=\"jps-$1-$arch.zip\">Download from JOTPOT</a><a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-$1-$arch.zip\">Download from GitHub</a></li>">>"$htmlfile"
+		echo "<li>jps-$1-$archlabel.tar.gz: <a href=\"jps-$1-$arch.tar.gz\">Download from JOTPOT</a> or <a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-$1-$arch.tar.gz\">Download from GitHub</a></li>">>"$htmlfile"
+		echo "<li>jps-$1-$archlabel.zip: <a href=\"jps-$1-$arch.zip\">Download from JOTPOT</a> or <a href=\"https://github.com/JOTPOT-UK/JOTPOT-Server/releases/download/$version/jps-$1-$arch.zip\">Download from GitHub</a></li>">>"$htmlfile"
 	else
 		echo "!!! $1 on $arch failed to build"
 	fi
