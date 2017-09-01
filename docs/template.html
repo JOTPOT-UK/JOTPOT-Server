@@ -53,6 +53,17 @@
 		.indent {
 			padding-left: 20px;
 		}
+		#quick-links {
+			margin: 0px;
+			padding: 0px;
+			margin-left: 15px;
+		}
+		#quick-links > a {
+			margin: 5px;
+			margin-bottom: 10px;
+			margin-top: 0px;
+			display: inline-block;
+		}
 	</style>
 	<h1>JOTPOT Server Docs <span style="font-size: 0.8em;">26B</span><span style="font-size: 0.6em;">-0</span></h1>
 	<a href="/server" style="float: right;" ID="the_link">JOTPOT Server Main Page</a>
@@ -61,10 +72,20 @@
 
 		<i>Please note that this page is still a work in progress, and is no where near complete. It may not look the best yet but the content should be good :)</i>
 		<h2>Quick Links</h2>
-		<a href="#server-object">'server' object reference</a>
-		<a href="#request-object">'request' object reference</a>
-		<a href="#response-object">'response' object reference</a>
-		<a href="#url-object">'url' object reference</a>
+		<div ID="quick-links">
+			<a href="#download-and-installation">Download and installation</a>
+			<a href="#how-jotpot-server-serves-files">How JOTPOT Server serves files</a>
+			<a href="#command-ref">Command reference</a>
+			<a href="#config-file">config.json properties</a>
+			<a href="#extensions">An introduction to extensions</a>
+			<a href="#server-object">'server' object reference</a>
+			<a href="#request-object">'request' object reference</a>
+			<a href="#response-object">'response' object reference</a>
+			<a href="#url-object">'url' object reference</a>
+			<a href="#ws-intro">WebSockets in JOTPOT Server</a>
+			<a href="#wsrequest-object">'wsrequest' object reference</a>
+			<a href="#wsresponse-object">'wsresponse' object reference</a>
+		</div>
 		<h2>Getting started</h2>
 		<div class="indent">
 			<p>Welcome the the documentation for JOTPOT Server, this first section is a guide on getting started with JOTPOT Server.</p>
@@ -89,53 +110,55 @@
 			<p>Or, if you're building an online service or web app, JOTPOT Server is perfect, this was what the extension system was designed for. Run your JavaScript code server-side to do whatever you like, you can access everything you would normally access in Node.js, plus loads of simple APIs for interacting with the build in fetures in JOTPOT Server (all of which can be overriden with your own custom implementations). There truely are no limits.</p>
 			<p>Anything else is possible too, although there may be more elegant solutions out there for some projects (but if you want to use JOTPOT Server, I ain't going to stop you!).</p>
 			
-			<h3>Download and installation</h3>
-			<p>So, you have decided that you want to use JOTPOT Server (JPS)! YAY!!! Let's get started!</p>
-			<p>To start, please make sure that you have a working installation of Node.js on your system. JOTPOT Server first checks through the PATH environment variable for a file called nodejs, then for one called node, so one of them should point to an installation of Node.js. It is recommended that you use the current LTS release of node. If you don't want a systemwide installation, then after you have installed JOTPOT Server, create a directory named node in the directory with the binary files in, and place the node executable in there.</p>
-			<p>Next up, if upgrading, we recomend removing the old installation first.</p>
-			<p>First off, download the correct package for your system, for downloads, see jotpot.uk/server or for more downloads (for even more platforms), see jotpot.uk/releases/26A-1/downloads.html</p>
-			<p>You could also get the file via the command line via the following URL: https://jotpot.uk/releases/$VERSION/jps-$OS-$ARCH.tar.gz.</p>
-			<p>Here is an exmaple of downloading version 26A-1 on linux for a x86-64 CPU:</p>
-			<pre>
-			wget https://jotpot.uk/releases/26A-1/jps-linux-x86-64.tar.gz</pre>
-			<p>Next up, we recommend installing JOTPOT Server to the /usr/local/jps directory, if you wish to install it to a different directory, follow these same instructions, but with your own directory path.</p>
-			<p>Installing will almost definatily require root priviliges, so you might want to run these commands in a root shell, use 'sudo su' to start a root shell.</p>
-			<p>First, lets create the directory to install jps to. An example on linux:</p>
-			<pre>
-			mkdir /usr/local/jps</pre>
-			<p>Next up, we need to extract the contents of the archive we downloaded to the install location, so the executables jps, jpsd and jpslb, along with the jps-main directory are in the root of your chosen directory. Another example on linux, extracting it into the /usr/local/jps directory:</p>
-			<pre>
-			tar -C /usr/local/jps -xzf jps-$OS-$ARCH.tar.gz</pre>
-			<p>Next up, add it to the path. Again, an example on linux:</p>
-			<pre>
-			export PATH="$PATH:/usr/local/jps"</pre>
-			<p>If you want to make this perminant, add it to the profile file. Either to /etc/profile for all users or ~/.profile for only your user.</p>
-			<p>To test everything is working, run the 'jps' command. You should get an error saying that the sites directory must exist, or, if it does exist, then the server will boot up, just use ctrl^c to kill it.</p>
-			<p>The 'jpsd' command, or 'jps start-daemon' command will start the daemon. If you want it to start on boot, you can use your init system to start it up (run 'jps start-daemon'), if you have systemd, then the 'jps make-unit-file' command will generate a unit file based on your current installation. To add this unit file as a service, run the following commands:</p>
-			<pre>
-			jps make-unit-file>/etc/systemd/system/jps.service</pre>
-			systemctl enable jps
-			#To start the daemon now
-			systemctl start jps</pre>
-			<p>If you want to run all those steps in one go, just start a root terminal ('sudo su') and paste in the following (but add your own system options, and leave out the unit file creation if you arn't using systemd)</p>
-			<pre>
-			#Set preferences
-			OS="linux"
-			ARCH="x86-64"
-			VERSION="26A-1"
-			#Download archive
-			wget https://jotpot.uk/releases/$VERSION/jps-$OS-$ARCH.tar.gz
-			#Create directory, extract and delete that archive
-			mkdir /usr/local/jps
-			tar -C /usr/local/jps -xzf jps-$OS-$ARCH.tar.gz
-			rm jps-$OS-$ARCH.tar.gz
-			#Add it to the path (you might want to add this line to the profile file to make this perminant)
-			export PATH="$PATH:/usr/local/jps"
-			#Create the unit file
-			jps make-unit-file>/etc/systemd/system/jps.service</pre>
-			systemctl enable jps
-			#Start the daemon now
-			systemctl start jps</pre>
+			<span ID="download-and-installation">
+				<h3>Download and installation</h3>
+				<p>So, you have decided that you want to use JOTPOT Server (JPS)! YAY!!! Let's get started!</p>
+				<p>To start, please make sure that you have a working installation of Node.js on your system. JOTPOT Server first checks through the PATH environment variable for a file called nodejs, then for one called node, so one of them should point to an installation of Node.js. It is recommended that you use the current LTS release of node. If you don't want a systemwide installation, then after you have installed JOTPOT Server, create a directory named node in the directory with the binary files in, and place the node executable in there.</p>
+				<p>Next up, if upgrading, we recomend removing the old installation first.</p>
+				<p>First off, download the correct package for your system, for downloads, see jotpot.uk/server or for more downloads (for even more platforms), see jotpot.uk/releases/26A-1/downloads.html</p>
+				<p>You could also get the file via the command line via the following URL: https://jotpot.uk/releases/$VERSION/jps-$OS-$ARCH.tar.gz.</p>
+				<p>Here is an exmaple of downloading version 26A-1 on linux for a x86-64 CPU:</p>
+				<pre>
+				wget https://jotpot.uk/releases/26A-1/jps-linux-x86-64.tar.gz</pre>
+				<p>Next up, we recommend installing JOTPOT Server to the /usr/local/jps directory, if you wish to install it to a different directory, follow these same instructions, but with your own directory path.</p>
+				<p>Installing will almost definatily require root priviliges, so you might want to run these commands in a root shell, use 'sudo su' to start a root shell.</p>
+				<p>First, lets create the directory to install jps to. An example on linux:</p>
+				<pre>
+				mkdir /usr/local/jps</pre>
+				<p>Next up, we need to extract the contents of the archive we downloaded to the install location, so the executables jps, jpsd and jpslb, along with the jps-main directory are in the root of your chosen directory. Another example on linux, extracting it into the /usr/local/jps directory:</p>
+				<pre>
+				tar -C /usr/local/jps -xzf jps-$OS-$ARCH.tar.gz</pre>
+				<p>Next up, add it to the path. Again, an example on linux:</p>
+				<pre>
+				export PATH="$PATH:/usr/local/jps"</pre>
+				<p>If you want to make this perminant, add it to the profile file. Either to /etc/profile for all users or ~/.profile for only your user.</p>
+				<p>To test everything is working, run the 'jps' command. You should get an error saying that the sites directory must exist, or, if it does exist, then the server will boot up, just use ctrl^c to kill it.</p>
+				<p>The 'jpsd' command, or 'jps start-daemon' command will start the daemon. If you want it to start on boot, you can use your init system to start it up (run 'jps start-daemon'), if you have systemd, then the 'jps make-unit-file' command will generate a unit file based on your current installation. To add this unit file as a service, run the following commands:</p>
+				<pre>
+				jps make-unit-file>/etc/systemd/system/jps.service</pre>
+				systemctl enable jps
+				#To start the daemon now
+				systemctl start jps</pre>
+				<p>If you want to run all those steps in one go, just start a root terminal ('sudo su') and paste in the following (but add your own system options, and leave out the unit file creation if you arn't using systemd)</p>
+				<pre>
+				#Set preferences
+				OS="linux"
+				ARCH="x86-64"
+				VERSION="26A-1"
+				#Download archive
+				wget https://jotpot.uk/releases/$VERSION/jps-$OS-$ARCH.tar.gz
+				#Create directory, extract and delete that archive
+				mkdir /usr/local/jps
+				tar -C /usr/local/jps -xzf jps-$OS-$ARCH.tar.gz
+				rm jps-$OS-$ARCH.tar.gz
+				#Add it to the path (you might want to add this line to the profile file to make this perminant)
+				export PATH="$PATH:/usr/local/jps"
+				#Create the unit file
+				jps make-unit-file>/etc/systemd/system/jps.service</pre>
+				systemctl enable jps
+				#Start the daemon now
+				systemctl start jps</pre>
+			</span>
 			
 			<h3>Setting up and an introduction</h3>
 			<p>Now that we have JOTPOT Server installed, we can get on with setting it up.</p>
@@ -215,89 +238,97 @@
 			<br><a href="https://github.com/JOTPOT-UK/JOTPOT-Server" target="_blank">JOTPOT Server is all open source on GitHub, so if you encounter any problems, or have any features would like to suggest or add yourself, head over there.</a>
 			<br><br>-->
 		</div>
-		<h2>Command reference</h2>
-		<div class="indent">
-			<p>JOTPOT Server has 3 commands, these are 'jps', 'jpsd' and 'jpslb'</p>
-			
-			<h3>The 'jpsd' command</h3>
-			<p>Running 'jpsd' is an alias for running 'jps start-daemon'.</p>
-			
-			<h3>The 'jps' command</h3>
-			<p>This is the command used to control the server (not the load balencer).</p>
-			<p>It should be used in the format: 'jps [command] [...arguments]'</p>
-			<p>If run without a command, it defaults to 'jps run'</p>
-			<p><b>Available commands:</b></p>
-			<ul>
-				<li>error: Prints the stderr of the given server. So 'jps info 5' will print the stderr from server 5.</li>
-				<li>info: Prints the stdout of the given server. So 'jps info 5' will print the stdout from server 5.</li>
-				<li>list: list lists the servers managed by the daemon, gives a status, either running, errored or stopped, along with their working directory.</li>
-				<li>logs: Prints the server logs of the given server. So 'jps info 5' will print the logs from server 5.</li>
-				<li>make-unit-file: This generates a systemd unit file that runs the JOTPOT Server daemon based on the current installation.</li>
-				<li>restart: restart stops the server given by the first and only argument, and starts one with the same working directory and flags as the one stopped. For example 'jps stop 3' would stop server 3 under the daemon and start a new one with the same working directory and arguments as the one stopped, note that this will start as a new server and thus not share the same ID. (Use 'jps list' to get a list of running servers)</li>
-				<li>run: Starts a JOTPOT Server instance in the current working directory. This is bound to the current stdout, stderr and stdin. To stop the server, use control^c to interupt the programme. All given arguments are passed to the server (see the server flga below).</li>
-				<li>setup: This sets up the current directory as a simple server. It creates a directory named 'sites', within that, a directory named 'default', and within that a default index.html file. It then creates a simple config.json file and a basic errorTemp.jpt file. After this command is run, the directory can serve as a basic HTTP server listening on port 80.</li>
-				<li>start: Instructs the daemon to start a JOTPOT Server instance in the current working directory. Thus once started this instance will run in the background as a child process of the daemon. All given arguments are passed to the server (see the server flga below).</li>
-				<li>start-daemon: Starts the daemon.</li>
-				<li>stop: stop stops the server given by the first and only argument. For example 'jps stop 3' would stop server 3 under the daemon. (Use 'jps list' to get a list of running servers)</li>
-			</ul>
-			<p><b>Server flags:</b></p>
-			<ul>
-				<li>-data: When NOT used under the daemon, this determines the port that the data server listens on.</li>
-				<li>-keepalive: When this flag is presant, and the server run under the daemon, if the server crashes, then a new one is started with the same flags and working directory as the current one, to keep it alive.</li>
-				<li>-port: Any given port options will be listened on via HTTP, multiple options may be given, for example 'jps start -port 8080 8081 8082 -port 8083', will listen on ports 8080-8083 inclusive.</li>
-			</ul>
-		</div>
-		<h2>The config.json file</h2>
-		<span class="indent">This JSON file contains the basic configuration for JOTPOT Server. There are simple versions and demo versions available from <a href="/server">jotpot.co.uk/server</a>. Please note that extensions can modify properties in the server.config object, this will have the effect on the server, however the file will remoained unchanged unless rwriten implicitly.</span>
-		<div class="indent">
-			Properties:
-				<br>
-				<br>'addVarsByDefault': Boolean, true to replace anything served in the format "$:::&lt;var name&gt;:::$" with the value of the variable or false to not replace be default.
-				<br>'behindLoadBalencer': Boolean. true if headers set be the JOTPOT Server load balencer should be used, for example when determining the source IP address or if the request was HTTPS.
-				<br>'cache': Array of Strings. server.cache.cacheFile is called with each item of the array on server boot.
-				<br>'controlers': Array of strings. If the array isn't empty, only IP addresses listed in the array are allowed to connect to the data server (this ensures that other divices on the network cannot perform actions on the server).
-				<br>'CORS': Array of Arrays. For each item in the array, <a href="#server-addCORSRule">server.addCORSRule</a> is called with the array as the arguments.
-				<br>'dataPort': Number||String. The port you would like the server to listen on for data connection (transfering logs and signals), if Number, it listens on 0.0.0.0 on the given port, if it is a string in the format "ip:port", it will listen on the given IP under the given port.
-				<br>'defaultHost': String. The host to use by default if the http request contains no host header or useDefaultHostIfHostDoesNotExist is true and the host requested doesn't exist.
-				<br>'dontRedirect': Array. When a redirect is considered by the server, it won't redirect if the url value is within this array.
-				<br>'doVarsForIfNotByDefault': Array of Strings. Any pages included in this array will have variables added to them even if doing them by default is set to false, they are in the form of the value of the URL (does listen to req.usePortInDirectory, so if the directory name doesn't have a port, than the value shouldn't have the port).
-				<br>'errorTemplate': String. The file to use as the error page.
-				<br>'enableLearning': Boolean. Whether or not learning should be enabled. See <a href="#learning">learning</a>.
-				<br>'fallbackToNoPort': Boolean. If true, when a user makes a request and the host directory doesn't exist, it will try to fall back to the hostname as the driectory (rather than the host). <a href="#how-jotpot-server-serves-files">See 'How JOTPOT Server serves files' for a further description.</a>
-				<br>'hostAlias': Object. Similar to hostRedirects however rather then redirecting the server will handle the request as if it came from the host you set - without the user being redirected.
-				<br>'hostnameAlias': Object. Similar hostAlias, however only for the hostname.
-				<br>'hostnameRedirects': Object. Format: {"host_you_want_redirecting.com": "host_to_redirect_to.com"}, similar to hostAlias, however it only applies the the hostname (so not the port)
-				<br>'hostRedirects': Object. Format: {"host_you_want_redirecting.com:xx": "host_to_redirect_to.com:xx"}, when a request is recieved, if the host is a key in this object, the user is redirected to the same URL however with the host changed to the value corresponfing the the key in this object.
-				<br>'httpServers': Array. Each item of the array should be an object containing the HTTP server options.
-				<br>'httpsServers': Array. Each item of the array should be an object containing the HTTPS server options.
-				<br>'mustRedirectToHttps': Array. Similar to redirectToHttps, however the user will be redirected even if they don't request an upgrade - so forces HTTPS (note that the user may not support this).
-				<br>'pageAlias': Object. Implemented pre 26A, not currently implemented, use server.cache.createLink from an extension instead. It will be reimplemented soon.
-				<br>'redirectToHttps': Array. Each item of the array should be a string of any domains you want to be redirected to the https version of the site if the request requests an upgrade.
-				<br>'threads': Number. The number of worker threads the server should start, if 0, so number of CPU cores will be used.
-				<br>'useDefaultHostIfHostDoesNotExist': Boolean. true if the default host should be used like an alias if the host the user is requesting does not exist.
-				<br>
-				<br>HTTP Server Options:
-				<br>'port': Number, the port you would like the server to be opened on.
-				<br>
-				<br>HTTPS Server Options:
-				<br>'port': Number, the port you would like the server to be opened on.
-		</div>
+		<span ID="command-ref">
+			<h2>Command reference</h2>
+			<div class="indent">
+				<p>JOTPOT Server has 3 commands, these are 'jps', 'jpsd' and 'jpslb'</p>
+				
+				<h3>The 'jpsd' command</h3>
+				<p>Running 'jpsd' is an alias for running 'jps start-daemon'.</p>
+				
+				<h3>The 'jps' command</h3>
+				<p>This is the command used to control the server (not the load balencer).</p>
+				<p>It should be used in the format: 'jps [command] [...arguments]'</p>
+				<p>If run without a command, it defaults to 'jps run'</p>
+				<p><b>Available commands:</b></p>
+				<ul>
+					<li>error: Prints the stderr of the given server. So 'jps info 5' will print the stderr from server 5.</li>
+					<li>info: Prints the stdout of the given server. So 'jps info 5' will print the stdout from server 5.</li>
+					<li>list: list lists the servers managed by the daemon, gives a status, either running, errored or stopped, along with their working directory.</li>
+					<li>logs: Prints the server logs of the given server. So 'jps info 5' will print the logs from server 5.</li>
+					<li>make-unit-file: This generates a systemd unit file that runs the JOTPOT Server daemon based on the current installation.</li>
+					<li>restart: restart stops the server given by the first and only argument, and starts one with the same working directory and flags as the one stopped. For example 'jps stop 3' would stop server 3 under the daemon and start a new one with the same working directory and arguments as the one stopped, note that this will start as a new server and thus not share the same ID. (Use 'jps list' to get a list of running servers)</li>
+					<li>run: Starts a JOTPOT Server instance in the current working directory. This is bound to the current stdout, stderr and stdin. To stop the server, use control^c to interupt the programme. All given arguments are passed to the server (see the server flga below).</li>
+					<li>setup: This sets up the current directory as a simple server. It creates a directory named 'sites', within that, a directory named 'default', and within that a default index.html file. It then creates a simple config.json file and a basic errorTemp.jpt file. After this command is run, the directory can serve as a basic HTTP server listening on port 80.</li>
+					<li>start: Instructs the daemon to start a JOTPOT Server instance in the current working directory. Thus once started this instance will run in the background as a child process of the daemon. All given arguments are passed to the server (see the server flga below).</li>
+					<li>start-daemon: Starts the daemon.</li>
+					<li>stop: stop stops the server given by the first and only argument. For example 'jps stop 3' would stop server 3 under the daemon. (Use 'jps list' to get a list of running servers)</li>
+				</ul>
+				<p><b>Server flags:</b></p>
+				<ul>
+					<li>-data: When NOT used under the daemon, this determines the port that the data server listens on.</li>
+					<li>-keepalive: When this flag is presant, and the server run under the daemon, if the server crashes, then a new one is started with the same flags and working directory as the current one, to keep it alive.</li>
+					<li>-port: Any given port options will be listened on via HTTP, multiple options may be given, for example 'jps start -port 8080 8081 8082 -port 8083', will listen on ports 8080-8083 inclusive.</li>
+				</ul>
+			</div>
+		</span>
+		<span ID="config-file">
+			<h2>The config.json file</h2>
+			<span class="indent">This JSON file contains the basic configuration for JOTPOT Server. There are simple versions and demo versions available from <a href="/server">jotpot.co.uk/server</a>. Please note that extensions can modify properties in the server.config object, this will have the effect on the server, however the file will remoained unchanged unless rwriten implicitly.</span>
+			<div class="indent">
+				Properties:
+					<br>
+					<br>'addVarsByDefault': Boolean, true to replace anything served in the format "$:::&lt;var name&gt;:::$" with the value of the variable or false to not replace be default.
+					<br>'behindLoadBalencer': Boolean. true if headers set be the JOTPOT Server load balencer should be used, for example when determining the source IP address or if the request was HTTPS.
+					<br>'cache': Array of Strings. server.cache.cacheFile is called with each item of the array on server boot.
+					<br>'controlers': Array of strings. If the array isn't empty, only IP addresses listed in the array are allowed to connect to the data server (this ensures that other divices on the network cannot perform actions on the server).
+					<br>'CORS': Array of Arrays. For each item in the array, <a href="#server-addCORSRule">server.addCORSRule</a> is called with the array as the arguments.
+					<br>'dataPort': Number||String. The port you would like the server to listen on for data connection (transfering logs and signals), if Number, it listens on 0.0.0.0 on the given port, if it is a string in the format "ip:port", it will listen on the given IP under the given port.
+					<br>'defaultHost': String. The host to use by default if the http request contains no host header or useDefaultHostIfHostDoesNotExist is true and the host requested doesn't exist.
+					<br>'dontRedirect': Array. When a redirect is considered by the server, it won't redirect if the url value is within this array.
+					<br>'doVarsForIfNotByDefault': Array of Strings. Any pages included in this array will have variables added to them even if doing them by default is set to false, they are in the form of the value of the URL (does listen to req.usePortInDirectory, so if the directory name doesn't have a port, than the value shouldn't have the port).
+					<br>'errorTemplate': String. The file to use as the error page.
+					<br>'enableLearning': Boolean. Whether or not learning should be enabled. See <a href="#learning">learning</a>.
+					<br>'fallbackToNoPort': Boolean. If true, when a user makes a request and the host directory doesn't exist, it will try to fall back to the hostname as the driectory (rather than the host). <a href="#how-jotpot-server-serves-files">See 'How JOTPOT Server serves files' for a further description.</a>
+					<br>'hostAlias': Object. Similar to hostRedirects however rather then redirecting the server will handle the request as if it came from the host you set - without the user being redirected.
+					<br>'hostnameAlias': Object. Similar hostAlias, however only for the hostname.
+					<br>'hostnameRedirects': Object. Format: {"host_you_want_redirecting.com": "host_to_redirect_to.com"}, similar to hostAlias, however it only applies the the hostname (so not the port)
+					<br>'hostRedirects': Object. Format: {"host_you_want_redirecting.com:xx": "host_to_redirect_to.com:xx"}, when a request is recieved, if the host is a key in this object, the user is redirected to the same URL however with the host changed to the value corresponfing the the key in this object.
+					<br>'httpServers': Array. Each item of the array should be an object containing the HTTP server options.
+					<br>'httpsServers': Array. Each item of the array should be an object containing the HTTPS server options.
+					<br>'mustRedirectToHttps': Array. Similar to redirectToHttps, however the user will be redirected even if they don't request an upgrade - so forces HTTPS (note that the user may not support this).
+					<br>'pageAlias': Object. Implemented pre 26A, not currently implemented, use server.cache.createLink from an extension instead. It will be reimplemented soon.
+					<br>'redirectToHttps': Array. Each item of the array should be a string of any domains you want to be redirected to the https version of the site if the request requests an upgrade.
+					<br>'threads': Number. The number of worker threads the server should start, if 0, so number of CPU cores will be used.
+					<br>'useDefaultHostIfHostDoesNotExist': Boolean. true if the default host should be used like an alias if the host the user is requesting does not exist.
+					<br>
+					<br>HTTP Server Options:
+					<br>'port': Number, the port you would like the server to be opened on.
+					<br>
+					<br>HTTPS Server Options:
+					<br>'port': Number, the port you would like the server to be opened on.
+			</div>
+		</span>
 		<br><br>
-		<h2>What are JOTPOT Server extensions and how do they work?</h2>
-		<div class="indent">
-			JOTPOT Server allows JavaScript files to be run and take control over the server, anything is possible via extensions and 'limited' extensions can be run to ensure an extension can only handle requests etc. from a specific domain/domains for security and stability.
-			<br>
-			Any file in the working directory of the server, with the full filename ending in '.jpe.js' will be loaded as extensions. There are 2 types of extensions, 'Master' extensions, and 'worker' extensions. JOTPOT Server runs using the 
-			<a href="https://nodejs.org/dist/latest-v6.x/docs/api/cluster.html">Node.js cluster modules</a>, 
-			this means that there is a master process and then an amount of workers. The master process runs all extensions (where the server.isMaster variable will be true) and each worker runs all the extensions (where the server.isMaster variable is false). 
-			They have some shared API features however some different features.
-			<br>
-			Every extension is loaded with the standard Node.js require function, console object, setTimeout along with the setInterval and setImmediate functions.
-			<br>
-			There is also a 'server' object for controlling and interacting with the current JOTPOT Server instance, documented below.
-			<br>
-			The most key consent of extensions is server.handle, and for developing simple applications, it can be all that is needed.
-		</div>
+		<span ID="extensions">
+			<h2>What are JOTPOT Server extensions and how do they work?</h2>
+			<div class="indent">
+				JOTPOT Server allows JavaScript files to be run and take control over the server, anything is possible via extensions and 'limited' extensions can be run to ensure an extension can only handle requests etc. from a specific domain/domains for security and stability.
+				<br>
+				Any file in the working directory of the server, with the full filename ending in '.jpe.js' will be loaded as extensions. There are 2 types of extensions, 'Master' extensions, and 'worker' extensions. JOTPOT Server runs using the 
+				<a href="https://nodejs.org/dist/latest-v6.x/docs/api/cluster.html">Node.js cluster modules</a>, 
+				this means that there is a master process and then an amount of workers. The master process runs all extensions (where the server.isMaster variable will be true) and each worker runs all the extensions (where the server.isMaster variable is false). 
+				They have some shared API features however some different features.
+				<br>
+				Every extension is loaded with the standard Node.js require function, console object, setTimeout along with the setInterval and setImmediate functions.
+				<br>
+				There is also a 'server' object for controlling and interacting with the current JOTPOT Server instance, documented below.
+				<br>
+				The most key consent of extensions is server.handle, and for developing simple applications, it can be all that is needed.
+				<br>
+				Please note that in limited extensions, limitations to apply, such as any functions called can only apply to their limited set of domains, so functions like server.handle and server.addCORSRule can only apply to specific domains (all functions are set up with these safety features for limited extensions). They also can't change the host in the request.url object, so files from other domains cannot be served. Limited extensions can also only require 'safe' modules, and the fs module is faked to only allow access to the domains files. The structor makes it so the root directory is "./extensions/$HOST" and "/webspace" is "./sites/$HOST".
+			</div>
+		</span>
 		<br><br>
 		<span ID="server-object">
 			<h2>'server' object</h2>
