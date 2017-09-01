@@ -54,7 +54,7 @@
 			padding-left: 20px;
 		}
 	</style>
-	<h1>JOTPOT Server Docs <span style="font-size: 0.8em;">26A</span><span style="font-size: 0.6em;">-1</span></h1>
+	<h1>JOTPOT Server Docs <span style="font-size: 0.8em;">26B</span><span style="font-size: 0.6em;">-0</span></h1>
 	<a href="/server" style="float: right;" ID="the_link">JOTPOT Server Main Page</a>
 
 	<div class="indent">
@@ -453,8 +453,9 @@
 				The 'wsresponse' object.
 			</h2>
 			<div class="indent">
-				<p>This object is used to represent the WS upgrade request and all incoming WS messages.</p>
-				<p>The most important consept to grasp here is the difference between frames and messages, a message can be a single frame, or more than one frame. The wsresponse.write function is used to send a frame, if the isEnd argument is true, then when the client recieves this frame, it will create a message based on all frames recieved since the last end frame. So you could send a single frame that is the end and would thus be a message, or multiple frames in a row that all come togoether to make a message. Also, rather than calling wsresponse.write with the isEnd argument every time, you can rely on its default being false and use wsresponse.end to call wsresponse.write with isEnd as true. An important note here is that wsresponse.end doesn't end the session, it only ends the current frame, to end a session, call wsrequest.socket.end().</p>
+				<p>This object is used to represent the WS communication from the server to the client.</p>
+				<p>The most important consept to wsresponse is the difference between frames and messages, a message can be a single frame, or more than one frame. The wsresponse.write function is used to send a frame, if the isEnd argument is true, then when the client recieves this frame, it will create a message based on all frames recieved since the last end frame. So you could send a single frame that is the end and would thus be a message, or multiple frames in a row that all come togoether to make a message. Also, rather than calling wsresponse.write with the isEnd argument every time, you can rely on its default being false and use wsresponse.end to call wsresponse.write with isEnd as true. An important note here is that wsresponse.end doesn't end the session, it only ends the current frame, to end a session, call wsrequest.socket.end().</p>
+				<p>For good practice, you should always use <a href="#wsresponse-que">wsresponse.que</a> to ensure to don't mix up frames for your messages.</p>
 			</div>
 			<div class="indent">
 				${formatObject("./wsresp-docs.json")}

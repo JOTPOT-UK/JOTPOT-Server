@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #	JOTPOT Server
-#	Version 26A-1
+#	Version 26B-0
 #
 #	Copyright (c) 2016-2017 Jacob O'Toole
 #
@@ -116,8 +116,6 @@ function build {
 	fi
 }
 
-build "linux" "arm" "7"
-exit
 build "android" "arm" "5"
 build "android" "arm" "6"
 build "android" "arm" "7"

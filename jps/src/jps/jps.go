@@ -1,7 +1,7 @@
 /*
 
 	JOTPOT Server
-	Version 26A-1
+	Version 26B-0
 
 	Copyright (c) 2016-2017 Jacob O'Toole
 
