@@ -266,7 +266,7 @@ function callHandlers(req, resp, val, ws, cb, rp) {
 		//Or send an error on a rejection
 		rv.then(v=>{
 			if (v) {
-				rp.callback() ;
+				rp.callback(false) ;
 			} else if (req.url.fullvalue !== origVal) {
 				cb(4) ; //eslint-disable-line callback-return
 			} else {
@@ -276,7 +276,7 @@ function callHandlers(req, resp, val, ws, cb, rp) {
 			jpsUtil.coughtError(err, " in a request handler", resp, req.jpid, "An error occured in a request handler!") ;
 		}) ;
 	} else {
-		rp.callback() ;
+		rp.callback(false) ;
 	}
 }
 
