@@ -71,59 +71,77 @@ function removeLink(from, incSearch=false) {
 
 //Cache, sets URL to respond with the content provided in the cache argument
 let pages = new Object() ;
+let pagesMTime = new Object() ;
 let pagesWS = new Object() ;
-function addCache(from, cache, incSearch=false) {
+let pagesWSMTime = new Object() ;
+function addCache(from, cache, incSearch=false, modTime=NaN) {
 	if (incSearch) {
 		pagesWS[from] = cache ;
+		pagesWSMTime[from] = modTime ;
 	} else {
 		pages[from] = cache ;
+		pagesMTime[from] = modTime ;
 	}
 }
 function cacheFile(url) {
-	return new Promise((resolve, reject) => fs.readFile(path.join(process.cwd(), "sites", url), (err, data) => {
+	return new Promise((resolve, reject) => fs.stat(path.join(process.cwd(), "sites", url), (err, stats) => {
 		if (err) {
 			reject(err) ;
 		} else {
-			addCache(url, data, false) ;
+			fs.readFile(path.join(process.cwd(), "sites", url), (err, data) => {
+				if (err) {
+					reject(err) ;
+				} else {
+					addCache(url, data, false, stats.mtime.getDate()) ;
+				}
+			}) ;
 		}
 	})) ;
 }
 function cacheFileAs(url, file) {
-	return new Promise((resolve, reject) => fs.readFile(path.join(process.cwd(), "sites", file), (err, data) => {
+	return new Promise((resolve, reject) => fs.stat(path.join(process.cwd(), "sites", file), (err, stats) => {
 		if (err) {
 			reject(err) ;
 		} else {
-			addCache(url, data, false) ;
+			fs.readFile(path.join(process.cwd(), "sites", file), (err, data) => {
+				if (err) {
+					reject(err) ;
+				} else {
+					addCache(url, data, false, stats.mtime.getDate()) ;
+				}
+			}) ;
 		}
 	})) ;
 }
 function cacheFileSync(url) {
+	const stats = fs.statSync(path.join(process.cwd(), "sites", url)) ;
 	const data = fs.readFileSync(path.join(process.cwd(), "sites", url)) ;
-	addCache(url, data, false) ;
+	addCache(url, data, false, stats.mtime.getDate()) ;
 }
 function cacheFileAsSync(url, file) {
+	const stats = fs.statSync(path.join(process.cwd(), "sites", file)) ;
 	const data = fs.readFileSync(path.join(process.cwd(), "sites", file)) ;
-	addCache(url, data, false) ;
+	addCache(url, data, false, stats.mtime.getDate()) ;
 }
 function isCache(url, incSearch=false) {
 	if (incSearch) {
 		return Boolean(pagesWS[url]) ;
 	} 
 	return Boolean(pages[url]) ;
-	
 }
 function getCache(url, incSearch=false) {
 	if (incSearch) {
 		return pagesWS[url] ;
 	} 
 	return pages[url] ;
-	
 }
 function removeCache(url, incSearch=false) {
 	if (incSearch) {
 		pagesWS[url] = undefined ;
+		pagesWSMTime[url] = undefined ;
 	} else {
 		pages[url] = undefined ;
+		pagesMTime[url] = undefined ;
 	}
 }
 
@@ -290,7 +308,7 @@ function sendProcessLog(rID, timeRecieved) {
 function gotSendFileResult(req, resp, file, rp, done) {
 	if (done[0]) {
 		if (rp.canLearn) {
-			learning[rp.learnValue] = [2, file] ;
+			learning[rp.learnValue] = [2, file, done[1]] ;
 		}
 		rp.callback(false) ;
 		return ;
@@ -324,7 +342,7 @@ function gotSendFileResult(req, resp, file, rp, done) {
 function getFinalSendFileResult(req, resp, file, rp, done) {
 	if (done[0]) {
 		if (rp.canLearn) {
-			learning[rp.learnValue] = [2, file] ;
+			learning[rp.learnValue] = [2, file, done[2]] ;
 		}
 		rp.callback(false) ;
 		return ;
@@ -389,7 +407,7 @@ function handleeThing2(req, resp, val, rp) {
 		if (rp.canLearn) {
 			learning[rp.learnValue] = [0, file, val] ;
 		}
-		module.exports.sendCache(file, pagesWS[val], resp, resp.vars, req, 200) ;
+		module.exports.sendCache(file, pagesWS[val], resp, resp.vars, req, 200, pagesWSMTime[val]) ;
 		rp.callback(true) ;
 		return ;
 	}
@@ -425,7 +443,7 @@ function handleeThing3(req, resp, val, rp) {
 		if (rp.canLearn) {
 			learning[rp.learnValue] = [1, file, val] ;
 		}
-		module.exports.sendCache(file, pages[val], resp, resp.vars, req, 200) ;
+		module.exports.sendCache(file, pages[val], resp, resp.vars, req, 200, pagesMTime[val]) ;
 		rp.callback(true) ;
 		return ;
 	}
@@ -457,7 +475,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1], callback) {
 					return ;
 				}
 				sendProcessLog(req.jpid, timeRecieved) ;
-				module.exports.sendCache(learning[req.url.fullvalue][1], pagesWS[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
+				module.exports.sendCache(learning[req.url.fullvalue][1], pagesWS[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200, pagesWSMTime[learning[req.url.fullvalue][2]]) ;
 				callback(true) ; //eslint-disable-line callback-return
 			} else if (learning[req.url.fullvalue][0] === 1) {
 				//Unlearn this if it is now invalid
@@ -467,7 +485,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1], callback) {
 					return ;
 				}
 				sendProcessLog(req.jpid, timeRecieved) ;
-				module.exports.sendCache(learning[req.url.fullvalue][1], pages[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200) ;
+				module.exports.sendCache(learning[req.url.fullvalue][1], pages[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200, pagesMTime[learning[req.url.fullvalue][2]]) ;
 				callback(true) ; //eslint-disable-line callback-return
 			} else if (learning[req.url.fullvalue][0] === 2) {
 				sendProcessLog(req.jpid, timeRecieved) ;

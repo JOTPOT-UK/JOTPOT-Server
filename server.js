@@ -50,6 +50,7 @@ const parseFlags = requireJPS("flag-parser") ;
 const jpsUtil = requireJPS("jps-util") ;
 const urlObject = requireJPS("url-object") ;
 const websockets = requireJPS("websockets") ;
+const cachingHeaders = requireJPS("caching-headers") ;
 const {URL} = urlObject ;
 
 //Load the config
@@ -414,7 +415,8 @@ function sendFile(file, resp, customVars, req) {
 					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
 					doingTransform-- ;
 				}
-				
+				//We are now a fresh response because the content may be new as vars are being added.
+				resp.isFresh = true ;
 				//Then to the client.
 				mainPipe.pipe(resp) ;
 			} else if (doingTransform > -1) {
@@ -503,14 +505,19 @@ function sendFile(file, resp, customVars, req) {
 		return new Promise(resolve =>
 			getFile(file, stats => {
 				const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
-				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
 				if (status === 206) {
 					resp.setHeader("Content-Range", `bytes ${ranges[0]}-${isNaN(ranges[1])?(stats.size-1):Math.min(ranges[1],stats.size-1)}/${stats.size}`) ;
 					resp.setHeader("Content-Length", (isNaN(ranges[1])?(stats.size-1):Math.min(ranges[1],stats.size-1)) - ranges[0] + 1) ;
 				} else if (lengthknown) {
 					resp.setHeader("Content-Length", stats.size) ;
 				}
-				resp.writeHead(status,{
+				if (!resp.isFresh && status !== 206) {
+					if (!cachingHeaders.processCacheHeaders(req, resp, stats.mtime)) {
+						status = 304 ;
+					}
+				}
+				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
+				resp.writeHead(status, {
 					"Content-Type": mime,
 					"Accept-Ranges": lengthknown?"bytes":"none",
 					"Status": status
@@ -523,9 +530,9 @@ function sendFile(file, resp, customVars, req) {
 			}, mainPipe, (done, err) => {
 				//If we judt didn't need to send the body, then there isn't an error
 				if (!resp.sendBody && !done && err === "CBR") {
-					resolve([true,null]) ;
+					resolve([true, null]) ;
 				} else {
-					resolve([done,err]) ;
+					resolve([done, err]) ;
 				}
 			}, ranges)) ;
 	} catch (err) {
@@ -534,7 +541,7 @@ function sendFile(file, resp, customVars, req) {
 	}
 }
 
-function sendCache(file,cache,resp,customVars,req,status=200) {
+function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) {
 	try {
 		//Look in the sites dir.
 		file = path.join(process.cwd(),"sites",file) ;
@@ -558,7 +565,8 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
 					doingTransform-- ;
 				}
-				
+				//We are now a fresh response because the content may be new as vars are being added.
+				resp.isFresh = true ;
 				//Then to the client.
 				mainPipe.pipe(resp) ;
 			} else if (doingTransform > -1) {
@@ -725,6 +733,11 @@ function sendCache(file,cache,resp,customVars,req,status=200) {
 			resp.setHeader("Content-Length", Math.min(ranges[1],cache.length-1) - ranges[0] + 1) ;
 		} else if (lengthknown) {
 			resp.setHeader("Content-Length", cache.length) ;
+		}
+		if (!resp.isFresh && !isNaN(lastMod) && status !== 206) {
+			if (!cachingHeaders.processCacheHeaders(req, resp, new Date(lastMod))) {
+				status = 304 ;
+			}
 		}
 		resp.writeHead(status,{
 			"Content-Type": mime,
@@ -940,6 +953,7 @@ function handleRequest(req, resp, secure) {
 		resp.pipeThrough = new Array() ;
 		resp.forceDownload = false ;
 		resp.sendBody = true ;
+		resp.isFresh = false ;
 		//Set server header
 		resp.setHeader("Server", "JOTPOT Server") ;
 		//Set default headers
@@ -1311,7 +1325,7 @@ module.exports = {
 				
 				//Sending responses
 				"sendFile": (file, resp, req) => sendFile(file, resp, resp.vars, req),
-				"sendCache": (file, cache, resp, req, status=200) => sendCache(file, cache, resp, resp.vars, req, status),
+				"sendCache": (file, cache, resp, req, status=200, lastMod=NaN) => sendCache(file, cache, resp, resp.vars, req, status, lastMod),
 				"sendError":(code, message, resp, req={jpid:""})=>sendError(code, message, resp, req.jpid),
 				"vars": vars,
 				
@@ -1446,9 +1460,9 @@ module.exports = {
 					}
 					throw new Error(`This limited extension doesn't have power over ${file}.`) ;
 				},
-				"sendCache": (file, cache, resp, req, status=200) => {
+				"sendCache": (file, cache, resp, req, status=200, lastMod=NaN) => {
 					if (checkFile(file)) {
-						return sendCache(file, cache, resp, resp.vars, req, status) ;
+						return sendCache(file, cache, resp, resp.vars, req, status, lastMod) ;
 					}
 					throw new Error(`This limited extension doesn't have power over ${file}.`) ;
 				},
