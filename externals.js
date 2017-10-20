@@ -32,6 +32,7 @@ let vm = require("vm") ;
 let events = require("events") ;
 
 let fakefs = requireJPS("ExtensionFileSystem") ;
+let jpsUtil = requireJPS("jps-util") ;
 
 let handles = new Object() ;
 let handleOver = new Object() ;
@@ -134,36 +135,27 @@ module.exports.doEvt = function (evt,...args) {
 		
 		//Go through all the handles for the event.
 		for (let doing in handles[evt]) {
-			
-			//Call the handle
-			let val = handles[evt][doing](...args) ;
-			
+			//Call the handle, catch the error if one happens.
+			let val ;
+			try {
+				val = handles[evt][doing](...args)
+			} catch (err) {
+				jpsUtil.coughtError(err, " in a handler for "+evt, null, (args[0]||{jpid:""}).jpid||"") ;
+			}
 			//If it is falsey, then we cant check because it will error when we try to get .then.
 			if (!val) {
-				
 				continue ;
-				
 			}
-			
 			//Is it a promise?
 			if (typeof val.then === "function") {
-				
 				//One more pending promise.
 				totalPromises++ ;
-				
 				//Set up the handleResolved function when it resolves.
 				val.then(handleResolved) ;
-				
-			}
-			
-			//If it returns true
-			else if (val) {
-				
-				//Then we should resolve true... But later
+			} else if (val) {
+				//If it returns true, then we should resolve true... But later
 				rv = true ;
-				
 			}
-			
 		}
 		
 		//If there aren't any pending promesses, then resolve.
