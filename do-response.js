@@ -92,7 +92,7 @@ function cacheFile(url) {
 				if (err) {
 					reject(err) ;
 				} else {
-					addCache(url, data, false, stats.mtime.getDate()) ;
+					addCache(url, data, false, stats.mtime.getTime()) ;
 				}
 			}) ;
 		}
@@ -107,7 +107,7 @@ function cacheFileAs(url, file) {
 				if (err) {
 					reject(err) ;
 				} else {
-					addCache(url, data, false, stats.mtime.getDate()) ;
+					addCache(url, data, false, stats.mtime.getTime()) ;
 				}
 			}) ;
 		}
@@ -116,12 +116,15 @@ function cacheFileAs(url, file) {
 function cacheFileSync(url) {
 	const stats = fs.statSync(path.join(process.cwd(), "sites", url)) ;
 	const data = fs.readFileSync(path.join(process.cwd(), "sites", url)) ;
-	addCache(url, data, false, stats.mtime.getDate()) ;
+	console.info(
+		stats.mtime.getTime()
+	) ;
+	addCache(url, data, false, stats.mtime.getTime()) ;
 }
 function cacheFileAsSync(url, file) {
 	const stats = fs.statSync(path.join(process.cwd(), "sites", file)) ;
 	const data = fs.readFileSync(path.join(process.cwd(), "sites", file)) ;
-	addCache(url, data, false, stats.mtime.getDate()) ;
+	addCache(url, data, false, stats.mtime.getTime()) ;
 }
 function isCache(url, incSearch=false) {
 	if (incSearch) {

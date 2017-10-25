@@ -26,11 +26,12 @@
 */
 
 let net = require("net") ;
-let s = net.connect({host:"127.0.0.1",port:500}) ;
+let s = net.connect({
+	host: "127.0.0.1",
+	port: parseInt(process.argv[2] || 500, 10)
+}) ;
 s.on("data",d=>{
-	
 	console.log(d.toString()) ;
 	s.end() ;
-	
 }) ;
 s.write("getlogs") ;

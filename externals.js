@@ -764,7 +764,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 		//Run it with the required arguments
 		vm.runInNewContext(source,{},{
 			
-			filename: file + "fun"
+			filename: file
 			
 		})(requireFunc,serverObj,console,setTimeout,setInterval,setImmediate,lock.fs) ;
 		
@@ -775,7 +775,7 @@ module.exports.loadMasterExt = (file,lock=null,vars,funcs) => {
 	catch(err) {
 		
 		//Somthing went wrong:
-		console.info(err) ;
+		console.warn(err.stack || err) ;
 		return {"loaded":false,"error":err} ;
 		
 	}

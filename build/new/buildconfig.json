@@ -12,6 +12,7 @@
 		"url-object.js",
 		"jps-util.js",
 		"websockets.js",
+		"caching-headers.js",
 		"config.json",
 		"mimes.json",
 		"errorTemp.jpt"
