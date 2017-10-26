@@ -116,9 +116,6 @@ function cacheFileAs(url, file) {
 function cacheFileSync(url) {
 	const stats = fs.statSync(path.join(process.cwd(), "sites", url)) ;
 	const data = fs.readFileSync(path.join(process.cwd(), "sites", url)) ;
-	console.info(
-		stats.mtime.getTime()
-	) ;
 	addCache(url, data, false, stats.mtime.getTime()) ;
 }
 function cacheFileAsSync(url, file) {

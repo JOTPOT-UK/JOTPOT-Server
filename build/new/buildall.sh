@@ -124,8 +124,6 @@ function build {
 	fi
 }
 
-build "linux" "amd64"
-exit
 build "android" "arm" "5"
 build "android" "arm" "6"
 build "android" "arm" "7"
