@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 26B-0
+	Version 27A-0
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -38,7 +38,6 @@ const http = require("http") ;
 const https = require("https") ;
 const fs = require("fs") ;
 const path = require("path") ;
-const {Transform} = require("stream") ;
 let cluster ;
 
 //JPS Modules
@@ -51,6 +50,7 @@ const jpsUtil = requireJPS("jps-util") ;
 const urlObject = requireJPS("url-object") ;
 const websockets = requireJPS("websockets") ;
 const cachingHeaders = requireJPS("caching-headers") ;
+const addVars = requireJPS("templating") ;
 const {URL} = urlObject ;
 
 //Load the config
@@ -103,10 +103,6 @@ let implementedMethods = {} ;
 //Set up current ID
 let currentID = 0 ;
 
-//Get buffer of string for inserting vars.
-let startOfVar = Buffer.from("$::") ;
-let endOfVar = Buffer.from("::$") ;
-
 //Error file
 let errorFile ;
 if (!jpsUtil.doesConfigFileExist(config.errorTemplate)) {
@@ -138,103 +134,6 @@ let errorCodes = new Object() ;
 errorCodes[403] = "Sorry, however you are not permitted to access this file." ;
 errorCodes[404] = "The page you are looking for may have been removed or moved to a new location!" ;
 errorCodes[500] = "An unknown error occured." ;
-
-//Pipe for adding vars
-//When creating, give 1st argument as the path of the path of the file that will be piped.
-class addVars extends Transform {
-	
-	constructor (path,extraVars={},ignoreList=false,arg) {
-		
-		if (typeof path === "undefined") {
-			
-			throw new Error("DUDE!!! WHAT IS THE PATH YOU ARE PIPING TO ME??? (Top tip, first argument needs to be the path.)") ;
-			
-		}
-		super(arg) ;
-		this.lastData = "" ;
-		this.path = path ;
-		this.extraVars = extraVars ;
-		this.ignoreList = ignoreList ;
-		
-	}
-	
-	_transform (data,encoding,callback) {
-		
-		try {
-			
-			let doPush = true ;
-			
-			for (;;) {
-				
-				if (data.indexOf(startOfVar) !== -1) {
-					
-					if (data.indexOf(endOfVar) !== -1) {
-						
-						let dataString = this.lastData.toString() + data.toString() ;
-						
-						let varsKeys = Object.keys(this.extraVars) ;
-						for (let doing in varsKeys) {
-							
-							let toReplace = `\\$\\:\\:\\:${varsKeys[doing]}\\:\\:\\:\\$` ;
-							let replaceWith = String(this.extraVars[varsKeys[doing]]) ;
-							dataString = dataString.replace(new RegExp(toReplace,"g"),replaceWith) ;
-							
-						}
-						
-						varsKeys = Object.keys(vars) ;
-						for (let doingScope in varsKeys) {
-							
-							let innerVars = Object.keys(vars[varsKeys[doingScope]]) ;
-							for (let doing in innerVars) {
-								
-								let toReplace = `\\$\\:\\:\\:${innerVars[doing]}\\:\\:\\:\\$` ;
-								let replaceWith = String(vars[varsKeys[doingScope]][innerVars[doing]]) ;
-								dataString = dataString.replace(new RegExp(toReplace,"g"),replaceWith) ;
-								
-							}
-							
-						}
-						
-						data = dataString ;
-						
-						break ;
-						
-					}
-					
-					else {
-						
-						this.lastData = data ;
-						doPush = false ;
-						break ;
-						
-					}
-					
-				}
-				
-				else {
-					
-					break ;
-					
-				}
-				
-			}
-			
-			if (doPush) {
-				this.push(data) ;
-			}
-			
-			callback() ;
-			return ;
-			
-		}
-		
-		catch(err) {
-			jpsUtil.coughtError(err, " in templating pipe.") ;
-		}
-		
-	}
-	
-}
 
 if (!jpsUtil.doesConfigFileExist("mimes.json")) {
 	throw new Error("mimes.json file not found!") ;
@@ -409,7 +308,7 @@ function sendFile(file, resp, customVars, req) {
 			//If we need to add vars.
 			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 				//Vars go first.
-				mainPipe = new addVars(file,customVars) ;
+				mainPipe = new addVars(customVars, vars) ;
 				//Add the resp.pipeThrough
 				while (doingTransform > -1) {
 					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
@@ -558,7 +457,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 			//If we need to add vars.
 			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
 				//Vars go first.
-				mainPipe = new addVars(file,customVars) ;
+				mainPipe = new addVars(customVars, vars) ;
 				
 				//Add the resp.pipeThrough
 				while (doingTransform > -1) {
