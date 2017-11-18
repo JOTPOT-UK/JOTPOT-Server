@@ -360,7 +360,7 @@ class URL {
 		}
 	}
 	static toDir(v) {
-		return v.replace(/:/g,";") ;
+		return v.replace(/:/g, ';') ;
 	}
 }
 

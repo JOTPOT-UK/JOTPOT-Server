@@ -1,33 +1,41 @@
 Request Comes In
 
-Header Server set to JOTPOT Server
-
 If config.behindLoadBalencer:
 	Load balencer headers parsed
 
 Add to req:  url, overHttps, secure, secureToServer,
-             ip, remoteAddress, usePortInDirectory
-Add to resp: vars, pipeThrough=[],
-             forceDownload=false, sendBody=true
+             ip, remoteAddress, usePortInDirectory,
+			 uri, orig_url, time
+Add to resp: vars={}, pipeThrough=[],
+             forceDownload=false, sendBody=true,
+			 isFresh=false
+			 
+Header Server set to JOTPOT Server
 
 Add headers from config.defaultHeaders
 
 EVENT: request
 
-'..' removed from pathname
+remove ".." and "//" from pathname
+remove trailing "/"
 
 //Do redirects to HTTPS
 If request is not HTTPS and req.url.value is not in config.dontRedirect:
 	If req.url.host is in config.mustRedirectToHttps:
-		302 Found response redirecting user to HTTPS version.
+		307 Moved Temporarily or 302 Found (302 if HTTP/1.0) response redirecting user to HTTPS version.
 		Done.
 	If req.url.host is in config.redirectToHttps and Upgrade-Insecure-Requests header is 1:
-		307 Moved Temporarily response redirecting user to HTTPS version.
+		307 Moved Temporarily or 302 Found (302 if HTTP/1.0) response redirecting user to HTTPS version.
 		Done.
 
-//Apply host alias
-while req.url.host in config.hostAlias:
-	req.url.host = config.hostAlias[req.url.host]
+//Apply host/hostname alias
+while req.url.host in config.hostAlias or req.url.hostname in config.hostnameAlias:
+	//Apply host alias
+	while req.url.host in config.hostAlias:
+		req.url.host = config.hostAlias[req.url.host]
+	//Apply host alias
+	while req.url.hostname in config.hostnameAlias:
+		req.url.hostname = config.hostnameAlias[req.url.hostname]
 
 //Host fallbacks dependent of contents of sites directory
 //Please note that the contents of the sites directory
@@ -52,7 +60,14 @@ If req.url.host is in config.hostRedirects and req.url.value is not in config.do
 	//Note that this redirect also follows the logic in the
 	// HTTPS redirect section for the new host to reduce
 	// the ammount of redirects.
-	302 Found response redirecting to the new host followed by the bath
+	307 Moved Temporarily or 302 Found (302 if HTTP/1.0) response redirecting to the new host followed by the bath
+	Done.
+//Hostname redirects
+If req.url.hostname is in config.hostnameRedirects and req.url.value is not in config.dontRedirect:
+	//Note that this redirect also follows the logic in the
+	// HTTPS redirect section for the new host to reduce
+	// the ammount of redirects.
+	307 Moved Temporarily or 302 Found (302 if HTTP/1.0) redirecting to the new host followed by the bath
 	Done.
 
 Apply page links

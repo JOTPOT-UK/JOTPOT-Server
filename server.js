@@ -841,6 +841,7 @@ function handleRequest(req, resp, secure) {
 		let requestTime = new Date() ;
 		
 		//Request object stuff
+		req.time = requestTime ;
 		let rrv = addReqProps(req, secure, config) ;
 		let user_ip = rrv[0] ;
 		let user_ip_remote = rrv[1] ;
@@ -848,11 +849,12 @@ function handleRequest(req, resp, secure) {
 		stage++ ;
 		
 		//Add stuff to resp object.
-		resp.vars = {"user_ip":user_ip,"user_ip_remote":user_ip_remote,"time":requestTime.getTime().toString(),"href":req.url.href,"method":req.method} ;
+		resp.vars = {} ;
 		resp.pipeThrough = new Array() ;
 		resp.forceDownload = false ;
 		resp.sendBody = true ;
 		resp.isFresh = false ;
+		
 		//Set server header
 		resp.setHeader("Server", "JOTPOT Server") ;
 		//Set default headers
@@ -863,7 +865,6 @@ function handleRequest(req, resp, secure) {
 		
 		//Request event
 		doEvent("request", req.url.host, ()=>handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, stage), req, resp) ;
-		
 	} catch (err) {
 		jpsUtil.coughtError(err, afterRequestStages[stage], resp, req.jpid) ;
 	}
@@ -930,13 +931,15 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 		}
 	}
 	
-	//Is the host an alias?
-	while (typeof config.hostAlias[req.url.host] !== "undefined") {
-		req.url.host = config.hostAlias[req.url.host] ;
-	}
-	//Is the hostname an alias?
-	while (typeof config.hostnameAlias[req.url.hostname] !== "undefined") {
-		req.url.hostname = config.hostnameAlias[req.url.hostname] ;
+	while (config.hostAlias[req.url.host] || config.hostnameAlias[req.url.hostname]) {
+		//Is the host an alias?
+		while (config.hostAlias[req.url.host]) {
+			req.url.host = config.hostAlias[req.url.host] ;
+		}
+		//Is the hostname an alias?
+		while (config.hostnameAlias[req.url.hostname]) {
+			req.url.hostname = config.hostnameAlias[req.url.hostname] ;
+		}
 	}
 	
 	//If we might need to fallback and the host doesn't exist
@@ -962,7 +965,7 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 	}
 	
 	//Should we redirect to another host.
-	if (typeof config.hostRedirects[req.url.host] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
+	if (config.hostRedirects[req.url.host] && config.dontRedirect.indexOf(req.url.value) === -1) {
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		
 		//Set new host
@@ -990,7 +993,7 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 		return true ;
 	}
-	if (typeof config.hostnameRedirects[req.url.hostname] !== "undefined" && config.dontRedirect.indexOf(req.url.value) === -1) {
+	if (config.hostnameRedirects[req.url.hostname] && config.dontRedirect.indexOf(req.url.value) === -1) {
 		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
 		
 		//Set new host
@@ -1160,7 +1163,7 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 					}
 				}
 			}
-			//Send empty response with allow header as the sorted protocols
+			//Send empty response with allow header as the sorted methods
 			resp.writeHead(200,{
 				"Allow": defaultMethods.concat(suppMethods).sort().join(", "),
 				"Content-Length": 0
@@ -1168,7 +1171,7 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 			resp.end() ;
 			return ;
 		} else {
-			//We cannot handle that protocol, so set the allow header (as in the OPTIONS method)
+			//We cannot handle that method, so set the allow header (as in the OPTIONS method)
 			let suppMethods = [] ;
 			for (let doing in implementedMethods) {
 				for (let theOne in implementedMethods[doing]) {
@@ -1186,7 +1189,6 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 		return ;
 	} catch (err) {
 		jpsUtil.coughtError(err, " doing method actions", resp, req.jpid) ;
-		console.log("Error trace: Request allowed, issue processubg headers.") ;
 	}
 }
 

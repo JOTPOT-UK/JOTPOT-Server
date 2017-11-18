@@ -1,0 +1,3 @@
+Rework the way the addVars pipe works
+Sort out server.implementMethod (it's a mess)
+Finish new docs
