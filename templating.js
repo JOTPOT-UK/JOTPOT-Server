@@ -25,6 +25,8 @@
 	
 */
 
+"use strict";
+
 const {Transform} = require("stream") ;
 
 const openCB = Buffer.from("{") ;
@@ -44,6 +46,14 @@ class addVars extends Transform {
 		//Init variables
 		this.data = Buffer.alloc(0) ;
 		this.open = false ;
+	}
+	willDoAnything() {
+		for (let v in this.vars) {
+			if (this.vars[v]) {
+				return true ;
+			}
+		}
+		return false ;
 	}
 	//For detecting an opening
 	stage1() {

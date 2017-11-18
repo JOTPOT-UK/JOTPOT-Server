@@ -1,7 +1,7 @@
 /*
 	
 	JOTPOT Server
-	Version 26B-0
+	Version 27A-0
 	
 	Copyright (c) 2016-2017 Jacob O'Toole
 	
@@ -24,6 +24,8 @@
 	SOFTWARE.
 	
 */
+
+"use strict";
 
 //incSearch argument: whether or not the search should be included in the link/cache URL/func URL
 

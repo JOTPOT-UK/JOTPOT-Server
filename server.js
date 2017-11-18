@@ -25,6 +25,8 @@
 	
 */
 
+"use strict";
+
 //Console is now YAY!!!
 console.log = console.warn = (...args) => {
 	process.send(["log",args.join(" ")]) ;
@@ -83,8 +85,7 @@ if (config.useDefaultHostIfHostDoesNotExist || config.fallbackToNoPort) {
 }
 
 //Vars to add to files
-let vars = new Object ;
-vars.Global = new Object() ;
+let vars = new Object() ;
 
 //Setup accounts
 let allAccountSystems = new Array() ;
@@ -157,6 +158,56 @@ function getMimeType(file) {
 		jpsUtil.coughtError(err, " parsing mime type") ;
 		return "text/plain" ;
 	}
+}
+
+//sortOutPipes takes the req and resp, and returns the pipe of which to pipe the data for the response to.
+function sortOutPipes(req, resp) {
+	//If we need to pipe through addVars, add the transform
+	if (
+		resp.addVars > -1 && !(
+			resp.addVars === 0 && !(
+				config.addVarsByDefault || doVarsFor.indexOf(req.url.value) !== -1
+			)
+		)
+	) {
+		let theTransform = new addVars(resp.vars, vars) ;
+		if (theTransform.willDoAnything()) {
+			//Only store in the array if we need it
+			if (resp.sendBody) {
+				resp.pipeThrough.unshift(theTransform) ;
+			}
+			resp.isFresh = true ;
+			resp.lengthKnown = false ;
+		}
+	}
+	//If there is nothing to pipe through, or we aren't needing to send the body, return the resp
+	if (resp.pipeThrough.length === 0 || !resp.sendBody) {
+		return resp ;
+	}
+	let currentPipe = 0 ;
+	let mainPipe ;
+	//Returns true if the transform will do anything, false if not - uses willDoAnything method
+	const willDoAnything = () => (resp.pipeThrough[currentPipe].willDoAnything && resp.pipeThrough[currentPipe].willDoAnything()) ;
+	//Skip all the transforms that won't do anything
+	while (currentPipe < resp.pipeThrough.length && !willDoAnything()) {
+		currentPipe++ ;
+	}
+	//Return only the response if there are no transforms
+	if (currentPipe === resp.pipeThrough.length) {
+		return resp ;
+	}
+	//Start at the first transform that does
+	mainPipe = resp.pipeThrough[currentPipe] ;
+	//Add all the transforms that will do anything
+	while (currentPipe < resp.pipeThrough.length) {
+		if (willDoAnything()) {
+			mainPipe.pipe(resp.pipeThrough[currentPipe]) ;
+		}
+		currentPipe++ ;
+	}
+	//Finally pipe to the response
+	mainPipe.pipe(resp) ;
+	return mainPipe ;
 }
 
 //Pipes the file through the transform pipe into the main pipe.
@@ -289,63 +340,20 @@ function sendFile(file, resp, customVars, req) {
 	try {
 		//Look in the sites dir.
 		let start = path.join(process.cwd(), "sites") ;
-		file = path.join(start,URL.toDir(file)) ;
+		file = path.join(start, URL.toDir(file)) ;
 		
 		//If we aren't in the sites dir, then throw.
 		if (file.indexOf(start) !== 0) {
 			throw new Error("Server has left the serving directory!") ;
 		}
 		
-		//Make a pipe to send it to.
-		let mainPipe ;
-		let doingTransform = resp.pipeThrough.length - 1 ;
-		let lengthknown = false ;
 		let ranges = null ;
 		let status = 200 ;
 		
 		//Only bother with the pipes if we are accualy sending the body
-		if (resp.sendBody) {
-			//If we need to add vars.
-			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
-				//Vars go first.
-				mainPipe = new addVars(customVars, vars) ;
-				//Add the resp.pipeThrough
-				while (doingTransform > -1) {
-					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-					doingTransform-- ;
-				}
-				//We are now a fresh response because the content may be new as vars are being added.
-				resp.isFresh = true ;
-				//Then to the client.
-				mainPipe.pipe(resp) ;
-			} else if (doingTransform > -1) {
-				//No vars, but still pipe.
-				
-				//Start at last thing
-				mainPipe = resp.pipeThrough[doingTransform] ;
-				doingTransform-- ;
-				
-				//Now do the rest
-				while (doingTransform > -1) {
-					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-					doingTransform-- ;
-				}
-				
-				//And guess what... The client!
-				mainPipe.pipe(resp) ;
-			} else {
-				//No pipes at all, so only to client.
-				mainPipe = resp ;
-				//We can now get the length from the stats
-				lengthknown = true ;
-			}
-			
-		} else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
-			lengthknown = true ;
-			mainPipe = resp ;
-		}
+		let mainPipe = sortOutPipes(req, resp) ;
 		
-		if (lengthknown && typeof req.headers.range === "string") {
+		if (resp.lengthKnown && typeof req.headers.range === "string") {
 			let rangesArr = req.headers.range.split("=") ;
 			
 			//We can only use bytes as a range value
@@ -407,7 +415,7 @@ function sendFile(file, resp, customVars, req) {
 				if (status === 206) {
 					resp.setHeader("Content-Range", `bytes ${ranges[0]}-${isNaN(ranges[1])?(stats.size-1):Math.min(ranges[1],stats.size-1)}/${stats.size}`) ;
 					resp.setHeader("Content-Length", (isNaN(ranges[1])?(stats.size-1):Math.min(ranges[1],stats.size-1)) - ranges[0] + 1) ;
-				} else if (lengthknown) {
+				} else if (resp.lengthKnown) {
 					resp.setHeader("Content-Length", stats.size) ;
 				}
 				if (!resp.isFresh && status !== 206) {
@@ -418,7 +426,7 @@ function sendFile(file, resp, customVars, req) {
 				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
 				resp.writeHead(status, {
 					"Content-Type": mime,
-					"Accept-Ranges": lengthknown?"bytes":"none",
+					"Accept-Ranges": resp.lengthKnown?"bytes":"none",
 					"Status": status
 				}) ;
 				if (!resp.sendBody) {
@@ -445,57 +453,12 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 		//Look in the sites dir.
 		file = path.join(process.cwd(),"sites",file) ;
 		
-		//Make a pipe to send it to.
-		let mainPipe ;
-		resp.pipeThrough = [] ;
-		let doingTransform = resp.pipeThrough.length - 1 ;
-		let lengthknown = false ;
 		let ranges = null ;
 		
-		//Only bother with the pipes if we accualy have to send the requests
-		if (resp.sendBody) {
-			//If we need to add vars.
-			if (config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) {
-				//Vars go first.
-				mainPipe = new addVars(customVars, vars) ;
-				
-				//Add the resp.pipeThrough
-				while (doingTransform > -1) {
-					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-					doingTransform-- ;
-				}
-				//We are now a fresh response because the content may be new as vars are being added.
-				resp.isFresh = true ;
-				//Then to the client.
-				mainPipe.pipe(resp) ;
-			} else if (doingTransform > -1) {
-				// No vars, but still pipe.
-				
-				//Start at last thing
-				mainPipe = resp.pipeThrough[doingTransform] ;
-				doingTransform-- ;
-				
-				//Now do the rest
-				while (doingTransform > -1) {
-					mainPipe.pipe(resp.pipeThrough[doingTransform]) ;
-					doingTransform-- ;
-				}
-				
-				//And guess what... The client!
-				mainPipe.pipe(resp) ;
-			} else {
-				//No pipes at all, so only to client.
-				lengthknown = true ;
-				mainPipe = resp ;
-			}
-		} else if (!(config.addVarsByDefault || doVarsFor.indexOf(file) !== -1) && doingTransform < 0) {
-			lengthknown = true ;
-			mainPipe = resp ;
-		} else {
-			mainPipe = resp ;
-		}
+		//Only bother with the pipes if we are accualy sending the body
+		let mainPipe = sortOutPipes(req, resp) ;
 		
-		if (lengthknown && typeof req.headers.range === "string") {
+		if (resp.lengthKnown && typeof req.headers.range === "string") {
 			let rangesArr = req.headers.range.split("=") ;
 			
 			//We can only use bytes as a range value
@@ -630,7 +593,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 		if (status === 206) {
 			resp.setHeader("Content-Range", `bytes ${ranges[0]}-${Math.min(ranges[1],cache.length-1)}/${cache.length}`) ;
 			resp.setHeader("Content-Length", Math.min(ranges[1],cache.length-1) - ranges[0] + 1) ;
-		} else if (lengthknown) {
+		} else if (resp.lengthKnown) {
 			resp.setHeader("Content-Length", cache.length) ;
 		}
 		if (!resp.isFresh && !isNaN(lastMod) && status !== 206) {
@@ -640,7 +603,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 		}
 		resp.writeHead(status,{
 			"Content-Type": mime,
-			"Accept-Ranges": lengthknown?"bytes":"none",
+			"Accept-Ranges": resp.lengthKnown?"bytes":"none",
 			"Status": status
 		}) ;
 		//Write the cached data (if we need to) & end.
@@ -850,10 +813,12 @@ function handleRequest(req, resp, secure) {
 		
 		//Add stuff to resp object.
 		resp.vars = {} ;
+		resp.addVars = 0 ;
 		resp.pipeThrough = new Array() ;
 		resp.forceDownload = false ;
 		resp.sendBody = true ;
 		resp.isFresh = false ;
+		resp.lengthKnown = true ;
 		
 		//Set server header
 		resp.setHeader("Server", "JOTPOT Server") ;
@@ -1657,7 +1622,6 @@ module.exports = {
 		}
 		//Get the cluster module of parent.
 		cluster = clusterGiven ;
-		vars.Global["thread_id"] = cluster.worker.id ;
 		//Ready event
 		externals.doEvt("ready") ;
 	}
