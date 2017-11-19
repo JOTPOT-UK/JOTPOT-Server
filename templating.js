@@ -88,13 +88,21 @@ class addVars extends Transform {
 		let theVarString = theVar.toString() ;
 		//If we have something to insert
 		if (typeof this.vars[theVarString] !== "undefined") {
+			let val ;
+			if (typeof this.vars[theVarString] === "function") {
+				val = this.vars[theVarString]() ;
+			} else {
+				val = this.vars[theVarString] ;
+			}
 			let toPush ;
-			try {
-				//Convert it to a buffer
-				toPush = Buffer.from(this.vars[theVarString]) ;
-			} catch (err) {
-				console.warn("Unable to insert variable", theVarString) ;
-				console.warn(err.stack) ;
+			if (!Buffer.isBuffer(val)) {
+				try {
+					//Convert it to a buffer
+					toPush = Buffer.from(val) ;
+				} catch (err) {
+					console.warn("Unable to convert variable to buffer:", theVarString) ;
+					console.warn(err.stack) ;
+				}
 			}
 			//Push it
 			this.push(toPush) ;

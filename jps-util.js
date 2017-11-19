@@ -196,12 +196,22 @@ function getFilePath(req) {
 	return path.normalize((req.url.usePortInDirectory?req.url.host:req.url.hostname).replace(":", ";") + req.url.pathname) ;
 }
 
+function escapeHTML(text) {
+	return text
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&#34;")
+		.replace(/'/g, "&#39;") ;
+}
+
 module.exports = {
-	loadConfig,
-	doesConfigFileExist,
-	loadConfigFile,
-	getData,
 	coughtError,
+	doesConfigFileExist,
+	escapeHTML,
+	getData,
 	getFilePath,
+	loadConfig,
+	loadConfigFile,
 	sendError: ()=>{}
 } ;

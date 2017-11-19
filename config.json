@@ -23,7 +23,7 @@
 	"pageAlias":{},
 	
 	"addVarsByDefault": false,
-	"doVarsForIfNotByDefault": ["default/index.html"],
+	"doVarsForIfNotByDefault": [],
 	
 	"cache": [],
 	

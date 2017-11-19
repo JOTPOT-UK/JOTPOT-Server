@@ -166,7 +166,9 @@ function sortOutPipes(req, resp) {
 	if (
 		resp.addVars > -1 && !(
 			resp.addVars === 0 && !(
-				config.addVarsByDefault || doVarsFor.indexOf(req.url.value) !== -1
+				config.addVarsByDefault || (
+					req.url && doVarsFor.indexOf(req.url.value) !== -1
+				)
 			)
 		)
 	) {
@@ -198,6 +200,7 @@ function sortOutPipes(req, resp) {
 	}
 	//Start at the first transform that does
 	mainPipe = resp.pipeThrough[currentPipe] ;
+	currentPipe++ ;
 	//Add all the transforms that will do anything
 	while (currentPipe < resp.pipeThrough.length) {
 		if (willDoAnything()) {
@@ -621,6 +624,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 }
 
 function sendError(code,message,resp,rID="") {
+	resp.addVars = 1 ;
 	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},{jpid:rID,headers:{}},code) ;
 }
 
@@ -809,6 +813,7 @@ function handleRequest(req, resp, secure) {
 		let user_ip = rrv[0] ;
 		let user_ip_remote = rrv[1] ;
 		secure = rrv[2] ;
+		req.HandledPOST = false ;
 		stage++ ;
 		
 		//Add stuff to resp object.
@@ -1074,8 +1079,8 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 		} else if (req.method === "HEAD") {
 			//Carry on, but don't send the body of the request.
 			resp.sendBody = false ;
-		} else if (req.method === "POST") {
-			//Only if we havn't already got the data
+		} else if (req.method === "POST" && req.HandledPOST) {
+			/*//Only if we havn't already got the data
 			if (!postDone) {
 				//Collect the data (optimise if content-length is set)
 				if (typeof req.headers["content-length"] !== "undefined") {
@@ -1099,8 +1104,8 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 						currentPos += d.copy(data, currentPos) ;
 					}) ;
 					req.on("end", ()=>{
-						//Encode data in base64 and add it to resp.vars
-						resp.vars.body = data.toString("base64") ;
+						//Add it to the req object
+						req.data = data ;
 						doMethodLogic(req, resp, timeRecieved, true) ;
 					}) ;
 					return ;
@@ -1110,12 +1115,12 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 					data = Buffer.concat([data, d], data.length + d.length) ;
 				}) ;
 				req.on("end", ()=>{
-					//Encode data in base64 and add it to resp.vars
-					resp.vars.body = data.toString("base64") ;
+					//Add it to the req object
+					req.data = data ;
 					doMethodLogic(req, resp, timeRecieved, true) ;
 				}) ;
 				return ;
-			}
+			}*/
 		} else if (req.method === "OPTIONS") {
 			//What custom methods support this URL?
 			let suppMethods = [] ;
@@ -1285,7 +1290,6 @@ module.exports = {
 				"unlearn": (url, level=0) => responseMaker.unlearn(url, level),
 				
 				//Other stuff
-				"getMimeType": (...args)=>getMimeType(...args),
 				"createURL": opts=>{
 					urlObject.defaultHost = config.defaultHost ;
 					urlObject.createURL(opts) ;
@@ -1293,7 +1297,9 @@ module.exports = {
 				"createURLFromString": url=>{
 					urlObject.defaultHost = config.defaultHost ;
 					urlObject.createURLFromString(url) ;
-				}
+				},
+				"escapeHTML": (html)=>jpsUtil.escapeHTML(html),
+				"getMimeType": (...args)=>getMimeType(...args)
 			} ;
 		} ;
 		let currentLimitedAccountSystem = 0 ;
