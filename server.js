@@ -91,14 +91,10 @@ let vars = new Object() ;
 let allAccountSystems = new Array() ;
 
 //Vars config
-let doVarsFor = ["error_page"].concat(config.doVarsForIfNotByDefault) ;
-for (let doing in doVarsFor) {
-	doVarsFor[doing] = path.normalize(doVarsFor[doing]) ;
-	doVarsFor[doing] = path.join(process.cwd(),"sites",doVarsFor[doing]) ;
-}
+let doVarsFor = [].concat(config.doVarsForIfNotByDefault) ;
 
 //Currently imprelemted methods
-const defaultMethods = ["GET", "POST", "HEAD", "OPTIONS"] ;
+const defaultMethods = ["GET", "HEAD", "OPTIONS"] ;
 let implementedMethods = {} ;
 
 //Set up current ID
@@ -776,7 +772,9 @@ function handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, st
 			doEvent("fullrequest", req.url.host, ()=>
 				checkAuth(req, resp, timeRecieved, ()=>
 					doEvent("allowedrequest", req.url.host, ()=>{
-						doMethodLogic(req, resp, timeRecieved, false) ;
+						if (doMethodLogic(req, resp, timeRecieved, false)) {
+							return ;
+						}
 						//Use responseMaker to generate the response, see do-response.js
 						responseMaker.createResponse(req, resp, timeRecieved, hmmm=>{
 							//Log if it was leared from
@@ -1048,7 +1046,7 @@ function checkAuth(req, resp, timeRecieved, callback) {
 	nextCheck() ;
 }
 
-//Should be called when a request is allowed.
+//Should be called when a request is allowed. Returns true if there was an error
 function doMethodLogic(req, resp, timeRecieved, postDone) {
 	try {
 		//Determine how to handle the method
@@ -1065,11 +1063,11 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 									doMethodLogic(req, resp, timeRecieved, true) ;
 								}
 							}) ;
-							return ;
+							return false ;
 						}
 						//Dont run if we returned true
 						else if (rv) {
-							return ;
+							return false ;
 						}
 					}
 				}
@@ -1139,7 +1137,7 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 				"Content-Length": 0
 			}) ;
 			resp.end() ;
-			return ;
+			return true ;
 		} else {
 			//We cannot handle that method, so set the allow header (as in the OPTIONS method)
 			let suppMethods = [] ;
@@ -1153,12 +1151,13 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 			}
 			resp.setHeader("Allow", defaultMethods.concat(suppMethods).sort().join(", ")) ;
 			//And send a 405
-			sendError(405, "That method is not supported for this URL. Sorry :(") ;
-			return ;
+			sendError(405, "That method is not supported for this URL. Sorry :(", resp, req.jpid) ;
+			return true ;
 		}
-		return ;
+		return false ;
 	} catch (err) {
 		jpsUtil.coughtError(err, " doing method actions", resp, req.jpid) ;
+		return true ;
 	}
 }
 
@@ -1166,6 +1165,7 @@ responseMaker.sendCache = (...args)=>sendCache(...args) ;
 responseMaker.sendFile = (...args)=>sendFile(...args) ;
 responseMaker.sendError = (...args)=>sendError(...args) ;
 responseMaker.enableLearning = config.enableLearning ;
+jpsUtil.sendError = (...args)=>sendError(...args) ;
 websockets.serverCalls.addReqProps = (...args)=>addReqProps(...args) ;
 websockets.serverCalls.doEvent = (...args)=>doEvent(...args) ;
 websockets.serverCalls.isThereAHandler = (...args)=>isThereAHandler(...args) ;
