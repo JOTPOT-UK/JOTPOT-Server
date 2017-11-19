@@ -9,6 +9,7 @@ if (!server.isMaster) {
 	}) ;
 	//Add user_ip, user_ip_remote variables to default/index.html
 	server.handlePage("default/index.html", (req, resp) => { // eslint-disable-line consistent-return
+		req.HandledPOST = true ;
 		resp.addVars = 1 ;
 		resp.vars["user_ip"] = req.ip ;
 		resp.vars["user_ip_remote"] = req.remoteAddress ;

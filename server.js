@@ -245,13 +245,17 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 	}) ;
 }
 
-function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err) {
+function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend) {
 	if (err) {
 		resolve([false, err]) ;
 		return ;
 	}
 	if (!stats.isFile()) {
 		resolve([false, "DIR"]) ;
+		return ;
+	}
+	if (willSend && willSend(req, resp)) {
+		resolve([true, null]) ;
 		return ;
 	}
 	let cont = true ;
@@ -335,7 +339,7 @@ function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, s
 }
 
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
-function sendFile(file, resp, customVars, req) {
+function sendFile(file, resp, customVars, req, willSend) {
 	try {
 		//Look in the sites dir.
 		let start = path.join(process.cwd(), "sites") ;
@@ -404,12 +408,16 @@ function sendFile(file, resp, customVars, req) {
 				}
 			} else if (rangesArr.length > 1) {
 				//Return promise, get stats and pass everything on to the gotRangesStats function.
-				return new Promise((resolve, reject) => fs.stat(file, (err, stats) => gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err))) ;
+				return new Promise((resolve, reject) => fs.stat(file, (err, stats) => gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend))) ;
 			}
 		}
 		
 		return new Promise(resolve =>
 			getFile(file, stats => {
+				if (willSend && willSend(req, resp)) {
+					resolve([true, null]) ;
+					return ;
+				}
 				const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 				if (status === 206) {
 					resp.setHeader("Content-Range", `bytes ${ranges[0]}-${isNaN(ranges[1])?(stats.size-1):Math.min(ranges[1],stats.size-1)}/${stats.size}`) ;
@@ -619,7 +627,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 	}
 }
 
-function sendError(code,message,resp,rID="") {
+function sendError(code, message, resp, rID="") {
 	resp.addVars = 1 ;
 	sendCache("error_page",errorFile,resp,{error_code:code,error_type:http.STATUS_CODES[code],error_message:message},{jpid:rID,headers:{}},code) ;
 }
@@ -711,7 +719,7 @@ function wrapURL(req, secure, defaultHost) {
 }
 
 //Adds main properties to the request object. Used in HTTP and WebSockets requests.
-function addReqProps(req, secure) {
+function addReqProps(req, secure, requestTime) {
 	let user_ip, user_ip_remote ;
 	if (config.behindLoadBalancer) {
 		user_ip = (req.headers["x-forwarded-for"] || req.headers["jp-source-ip"] || (req.socket || req.connection || req.connection.socket).remoteAddress).replace(/::ffff:/g,"") ;
@@ -726,6 +734,7 @@ function addReqProps(req, secure) {
 	req.ip = user_ip ;
 	req.remoteAddress = user_ip_remote ;
 	req.usePortInDirectory = true ;
+	req.time = requestTime ;
 	//Create URL object and secure, and overHttps and secureToServer
 	wrapURL(req, secure, config.defaultHost || config.defaultDomain) ;
 	//orig_url object
@@ -772,9 +781,6 @@ function handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, st
 			doEvent("fullrequest", req.url.host, ()=>
 				checkAuth(req, resp, timeRecieved, ()=>
 					doEvent("allowedrequest", req.url.host, ()=>{
-						if (doMethodLogic(req, resp, timeRecieved, false)) {
-							return ;
-						}
 						//Use responseMaker to generate the response, see do-response.js
 						responseMaker.createResponse(req, resp, timeRecieved, hmmm=>{
 							//Log if it was leared from
@@ -806,8 +812,7 @@ function handleRequest(req, resp, secure) {
 		let requestTime = new Date() ;
 		
 		//Request object stuff
-		req.time = requestTime ;
-		let rrv = addReqProps(req, secure, config) ;
+		let rrv = addReqProps(req, secure, requestTime) ;
 		let user_ip = rrv[0] ;
 		let user_ip_remote = rrv[1] ;
 		secure = rrv[2] ;
@@ -819,9 +824,9 @@ function handleRequest(req, resp, secure) {
 		resp.addVars = 0 ;
 		resp.pipeThrough = new Array() ;
 		resp.forceDownload = false ;
-		resp.sendBody = true ;
 		resp.isFresh = false ;
 		resp.lengthKnown = true ;
+		resp.sendBody = req.method !== "HEAD" ;
 		
 		//Set server header
 		resp.setHeader("Server", "JOTPOT Server") ;
@@ -1046,8 +1051,26 @@ function checkAuth(req, resp, timeRecieved, callback) {
 	nextCheck() ;
 }
 
-//Should be called when a request is allowed. Returns true if there was an error
-function doMethodLogic(req, resp, timeRecieved, postDone) {
+function getSupportedMethods(req) {
+	//What custom methods support this URL?
+	let suppMethods = [] ;
+	for (let doing in implementedMethods) {
+		for (let theOne in implementedMethods[doing]) {
+			//If this handler supports it, push this method to the array and move on to the next method
+			if (implementedMethods[doing][theOne][0](req)) {
+				suppMethods.push(doing) ;
+				break ;
+			}
+		}
+	}
+	if (req.HandledPOST) {
+		suppMethods.push("POST") ;
+	}
+	return defaultMethods.concat(suppMethods).sort() ;
+}
+
+//Should be called when a request is allowed. Returns true if the request has been handled.
+function doMethodLogic(req, resp, postDone) {
 	try {
 		//Determine how to handle the method
 		if (typeof implementedMethods[req.method] !== "undefined") {
@@ -1060,7 +1083,7 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 						if (typeof rv.then === "function") {
 							rv.then(handled=>{
 								if (!handled) {
-									doMethodLogic(req, resp, timeRecieved, true) ;
+									doMethodLogic(req, resp, true) ;
 								}
 							}) ;
 							return false ;
@@ -1072,84 +1095,19 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 					}
 				}
 			}
-		} else if (req.method === "GET") {
-			//Do nothing, jsut dont check the rest lol
-		} else if (req.method === "HEAD") {
-			//Carry on, but don't send the body of the request.
-			resp.sendBody = false ;
-		} else if (req.method === "POST" && req.HandledPOST) {
-			/*//Only if we havn't already got the data
-			if (!postDone) {
-				//Collect the data (optimise if content-length is set)
-				if (typeof req.headers["content-length"] !== "undefined") {
-					let dLength = parseInt(req.headers["content-length"], 10) ;
-					if (isNaN(dLength)) {
-						sendError(400, "Content-Length header must be a number") ;
-						return ;
-					}
-					let data = Buffer.alloc(dLength) ;
-					let currentPos = 0 ;
-					let errorSent = false ;
-					req.on("data", d=>{
-						if (currentPos + d.length > data.length) {
-							if (errorSent) {
-								return ;
-							}
-							errorSent = true ;
-							sendError(400, "Request body was longer than the Content-Length header.") ;
-							return ;
-						}
-						currentPos += d.copy(data, currentPos) ;
-					}) ;
-					req.on("end", ()=>{
-						//Add it to the req object
-						req.data = data ;
-						doMethodLogic(req, resp, timeRecieved, true) ;
-					}) ;
-					return ;
-				} 
-				let data = Buffer.alloc(0) ;
-				req.on("data", d=>{
-					data = Buffer.concat([data, d], data.length + d.length) ;
-				}) ;
-				req.on("end", ()=>{
-					//Add it to the req object
-					req.data = data ;
-					doMethodLogic(req, resp, timeRecieved, true) ;
-				}) ;
-				return ;
-			}*/
+		} else if (req.method === "GET" || req.method === "HEAD" || (req.method === "POST" && req.HandledPOST)) {
+			//Just carry on
+			return false ;
 		} else if (req.method === "OPTIONS") {
-			//What custom methods support this URL?
-			let suppMethods = [] ;
-			for (let doing in implementedMethods) {
-				for (let theOne in implementedMethods[doing]) {
-					//If this handler supports it, push this method to the array and move on to the next method
-					if (implementedMethods[doing][theOne][0](req)) {
-						suppMethods.push(doing) ;
-						break ;
-					}
-				}
-			}
 			//Send empty response with allow header as the sorted methods
 			resp.writeHead(200,{
-				"Allow": defaultMethods.concat(suppMethods).sort().join(", "),
+				"Allow": getSupportedMethods(req).join(", "),
 				"Content-Length": 0
 			}) ;
 			resp.end() ;
 			return true ;
 		} else {
-			//We cannot handle that method, so set the allow header (as in the OPTIONS method)
-			let suppMethods = [] ;
-			for (let doing in implementedMethods) {
-				for (let theOne in implementedMethods[doing]) {
-					if (implementedMethods[doing][theOne][0](req)) {
-						suppMethods.push(doing) ;
-						break ;
-					}
-				}
-			}
-			resp.setHeader("Allow", defaultMethods.concat(suppMethods).sort().join(", ")) ;
+			resp.setHeader("Allow", getSupportedMethods(req).join(", ")) ;
 			//And send a 405
 			sendError(405, "That method is not supported for this URL. Sorry :(", resp, req.jpid) ;
 			return true ;
@@ -1161,14 +1119,15 @@ function doMethodLogic(req, resp, timeRecieved, postDone) {
 	}
 }
 
-responseMaker.sendCache = (...args)=>sendCache(...args) ;
-responseMaker.sendFile = (...args)=>sendFile(...args) ;
-responseMaker.sendError = (...args)=>sendError(...args) ;
+responseMaker.sendCache = (file, cache, resp, customVars, req, status=200, lastMod=NaN) => sendCache(file, cache, resp, customVars, req, status, lastMod) ;
+responseMaker.sendFile = (file, resp, customVars, req, willSend) => sendFile(file, resp, customVars, req, willSend) ;
+responseMaker.sendError = (code, message, resp, rID="") => sendError(code, message, resp, rID) ;
+responseMaker.doMethodLogic = (req, resp) => doMethodLogic(req, resp, false) ;
 responseMaker.enableLearning = config.enableLearning ;
-jpsUtil.sendError = (...args)=>sendError(...args) ;
-websockets.serverCalls.addReqProps = (...args)=>addReqProps(...args) ;
-websockets.serverCalls.doEvent = (...args)=>doEvent(...args) ;
-websockets.serverCalls.isThereAHandler = (...args)=>isThereAHandler(...args) ;
+jpsUtil.sendError = (code, message, resp, rID="") => sendError(code, message, resp, rID) ;
+websockets.serverCalls.addReqProps = (req, secure) => addReqProps(req, secure) ;
+websockets.serverCalls.doEvent = (event, host, callback, ...eventArgs) => doEvent(event, host, callback, ...eventArgs) ;
+websockets.serverCalls.isThereAHandler = (event, host) => isThereAHandler(event, host) ;
 
 for (let doing in config.cache) {
 	try {

@@ -250,7 +250,7 @@ function handleUpgrade(req, s, secure) {
 				end: s.end
 			}) ;
 			//Add the jps request properties
-			module.exports.serverCalls.addReqProps(aReq, secure) ;
+			module.exports.serverCalls.addReqProps(aReq, secure, new Date()) ;
 			
 			let accepted = false ;
 			//Function to accept the upgrade (must be called by the extension)
