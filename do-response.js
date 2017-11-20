@@ -226,6 +226,7 @@ function unlearn(url, level=0) {
 
 function doLinks(req) {
 	let doTheLoop = false ;
+	let wasChanged = false ;
 	let origValue ;
 	do {
 		doTheLoop = false ;
@@ -235,15 +236,18 @@ function doLinks(req) {
 			if (req.url.fullvalue === origValue) {
 				break ;
 			}
+			wasChanged = true ;
 		}
 		if (links[req.url.fullvalue]) {
 			origValue = req.url.value ;
 			req.url.value = links[req.url.value] ;
 			if (req.url.value !== origValue) {
 				doTheLoop = true ;
+				wasChanged = true ;
 			}
 		}
 	} while (doTheLoop) ;
+	return wasChanged ;
 }
 
 //Calls any function handlers.
@@ -338,7 +342,7 @@ function gotSendFileResult(req, resp, file, rp, done) {
 		return ;
 	}
 	rp.isFinal = true ;
-	handleeThing(req, resp, rp) ;
+	handleeThing0(req, resp, rp) ;
 }
 
 function getFinalSendFileResult(req, resp, file, rp, done) {
@@ -375,8 +379,21 @@ class internalResponseProps {
 	}
 }
 
-function handleeThing(req, resp, rp) {
-	doLinks(req) ;
+function handleeThing0(req, resp, rp) {
+	let origURL = req.url.fullvalue ;
+	module.exports.doEvent("handle", req.url.host, ()=>{
+		if (req.url.fullvalue === origURL) {
+			handleeThing1(req, resp, rp) ;
+		} else {
+			handleeThing0(req, resp, rp) ;
+		}
+	}) ;
+}
+
+function handleeThing1(req, resp, rp) {
+	if (doLinks(req)) {
+		handleeThing0(req, resp, rp) ;
+	}
 	let val = req.usePortInDirectory?req.url.fullvalue:req.url.fullvaluenoport ;
 	callHandlers(req, resp, val, true, handleLevel=>{
 		if (handleLevel) {
@@ -384,13 +401,13 @@ function handleeThing(req, resp, rp) {
 			if (handleLevel === 1) {
 				handleeThing2(req, resp, val, rp) ;
 			} else if (handleLevel === 3) {
-				handleeThing(req, resp, rp) ;
+				handleeThing0(req, resp, rp) ;
 			} else {
 				try {
 					if (handleLevel === 2) {
 						handleeThing2(req, resp, val, rp) ;
 					} else {
-						handleeThing(req, resp, rp) ;
+						handleeThing0(req, resp, rp) ;
 					}
 				} catch (err) {
 					jpsUtil.coughtError(err, " creating the response", resp, req.jpid) ;
@@ -422,13 +439,13 @@ function handleeThing2(req, resp, val, rp) {
 			if (handleLevel === 1) {
 				handleeThing3(req, resp, val, rp) ;
 			} else if (handleLevel === 3) {
-				handleeThing(req, resp, rp) ;
+				handleeThing0(req, resp, rp) ;
 			} else {
 				try {
 					if (handleLevel === 2) {
 						handleeThing3(req, resp, val, rp) ;
 					} else {
-						handleeThing(req, resp, rp) ;
+						handleeThing0(req, resp, rp) ;
 					}
 				} catch (err) {
 					jpsUtil.coughtError(err, " creating the response", resp, req.jpid) ;
@@ -534,7 +551,7 @@ function createResponse(req, resp, timeRecieved=[-1,-1], callback) {
 		
 		resp.setHeader("JP-Was-Learned", "0") ;
 		
-		handleeThing(req, resp, new internalResponseProps(callback, timeRecieved, req.url.fullvalue)) ;
+		handleeThing0(req, resp, new internalResponseProps(callback, timeRecieved, req.url.fullvalue)) ;
 		
 		/* eslint-enable consistent-return */
 	} catch (err) {
@@ -572,5 +589,6 @@ module.exports = {
 	sendCache: ()=>{},
 	sendError: ()=>{},
 	doMethodLogic: ()=>{},
+	doEvent: ()=>{},
 	enableLearning: true
 } ;

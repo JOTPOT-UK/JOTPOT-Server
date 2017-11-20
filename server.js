@@ -93,9 +93,8 @@ let allAccountSystems = new Array() ;
 //Vars config
 let doVarsFor = [].concat(config.doVarsForIfNotByDefault) ;
 
-//Currently imprelemted methods
-const defaultMethods = ["GET", "HEAD", "OPTIONS"] ;
-let implementedMethods = {} ;
+//Currently implelemted methods
+const defaultMethods = ["GET", "HEAD", "OPTIONS"].sort() ;
 
 //Set up current ID
 let currentID = 0 ;
@@ -416,7 +415,7 @@ function sendFile(file, resp, customVars, req, willSend) {
 			getFile(file, stats => {
 				if (willSend && willSend(req, resp)) {
 					resolve([true, null]) ;
-					return ;
+					return false ;
 				}
 				const mime = resp.forceDownload?"application/octet-stream":getMimeType(file) ;
 				if (status === 206) {
@@ -816,7 +815,6 @@ function handleRequest(req, resp, secure) {
 		let user_ip = rrv[0] ;
 		let user_ip_remote = rrv[1] ;
 		secure = rrv[2] ;
-		req.HandledPOST = false ;
 		stage++ ;
 		
 		//Add stuff to resp object.
@@ -827,6 +825,23 @@ function handleRequest(req, resp, secure) {
 		resp.isFresh = false ;
 		resp.lengthKnown = true ;
 		resp.sendBody = req.method !== "HEAD" ;
+		
+		//Start with all the default methods
+		req.methods = defaultMethods.slice() ;
+		Object.defineProperty(req, "HandledPOST", {
+			set: v=>{
+				let i = req.methods.indexOf("POST") ;
+				if (v) {
+					req.methods.push("POST") ;
+				} else {
+					while (i !== -1) {
+						req.methods.splice(i, 1) ;
+						i = req.methods.indexOf("POST") ;
+					}
+				}	
+			},
+			get: ()=>req.methods.includes("POST")
+		}) ;
 		
 		//Set server header
 		resp.setHeader("Server", "JOTPOT Server") ;
@@ -1052,53 +1067,21 @@ function checkAuth(req, resp, timeRecieved, callback) {
 }
 
 function getSupportedMethods(req) {
-	//What custom methods support this URL?
-	let suppMethods = [] ;
-	for (let doing in implementedMethods) {
-		for (let theOne in implementedMethods[doing]) {
-			//If this handler supports it, push this method to the array and move on to the next method
-			if (implementedMethods[doing][theOne][0](req)) {
-				suppMethods.push(doing) ;
-				break ;
-			}
+	let suppMethods = new Array() ;
+	req.methods.forEach(v=>{
+		v = v.toUpperCase() ;
+		if (suppMethods.indexOf(v) === -1) {
+			suppMethods.push(v) ;
 		}
-	}
-	if (req.HandledPOST) {
-		suppMethods.push("POST") ;
-	}
-	return defaultMethods.concat(suppMethods).sort() ;
+	}) ;
+	return suppMethods.sort() ;
 }
 
 //Should be called when a request is allowed. Returns true if the request has been handled.
-function doMethodLogic(req, resp, postDone) {
+function doMethodLogic(req, resp) {
 	try {
 		//Determine how to handle the method
-		if (typeof implementedMethods[req.method] !== "undefined") {
-			if (!postDone) {
-				for (let doing in implementedMethods[req.method]) {
-					if (implementedMethods[req.method][doing][0](req, resp)) {
-						//If it is a custom method and it hasn't already run call it.
-						let rv =  implementedMethods[req.method][doing][1](req, resp) ;
-						//Promise? If it resolved false, then rerun
-						if (typeof rv.then === "function") {
-							rv.then(handled=>{
-								if (!handled) {
-									doMethodLogic(req, resp, true) ;
-								}
-							}) ;
-							return false ;
-						}
-						//Dont run if we returned true
-						else if (rv) {
-							return false ;
-						}
-					}
-				}
-			}
-		} else if (req.method === "GET" || req.method === "HEAD" || (req.method === "POST" && req.HandledPOST)) {
-			//Just carry on
-			return false ;
-		} else if (req.method === "OPTIONS") {
+		if (req.method === "OPTIONS" && req.methods.includes("OPTIONS")) {
 			//Send empty response with allow header as the sorted methods
 			resp.writeHead(200,{
 				"Allow": getSupportedMethods(req).join(", "),
@@ -1106,13 +1089,15 @@ function doMethodLogic(req, resp, postDone) {
 			}) ;
 			resp.end() ;
 			return true ;
-		} else {
-			resp.setHeader("Allow", getSupportedMethods(req).join(", ")) ;
-			//And send a 405
-			sendError(405, "That method is not supported for this URL. Sorry :(", resp, req.jpid) ;
-			return true ;
 		}
-		return false ;
+		if (req.methods.includes(req.method)) {
+			//Just carry on
+			return false ;
+		}
+		resp.setHeader("Allow", getSupportedMethods(req).join(", ")) ;
+		//And send a 405
+		sendError(405, "That method is not supported for this URL. Sorry :(", resp, req.jpid) ;
+		return true ;
 	} catch (err) {
 		jpsUtil.coughtError(err, " doing method actions", resp, req.jpid) ;
 		return true ;
@@ -1122,6 +1107,7 @@ function doMethodLogic(req, resp, postDone) {
 responseMaker.sendCache = (file, cache, resp, customVars, req, status=200, lastMod=NaN) => sendCache(file, cache, resp, customVars, req, status, lastMod) ;
 responseMaker.sendFile = (file, resp, customVars, req, willSend) => sendFile(file, resp, customVars, req, willSend) ;
 responseMaker.sendError = (code, message, resp, rID="") => sendError(code, message, resp, rID) ;
+responseMaker.doEvent = (event, host, callback, ...eventArgs) => doEvent(event, host, callback, ...eventArgs) ;
 responseMaker.doMethodLogic = (req, resp) => doMethodLogic(req, resp, false) ;
 responseMaker.enableLearning = config.enableLearning ;
 jpsUtil.sendError = (code, message, resp, rID="") => sendError(code, message, resp, rID) ;
@@ -1195,29 +1181,6 @@ module.exports = {
 				},
 				
 				//HTTP Stuff
-				//Methods
-				"implementMethod": (method, checker, handler) => {
-					
-					method = method.toUpperCase() ;
-					
-					//Check types
-					if (typeof checker !== "function" || typeof handler !== "function" || typeof method !== "string") {
-						
-						throw new Error("Both the checker and the handler has to be functions, and the method must be a string.") ;
-						
-					}
-					
-					//If there are no current implementations of this method, create it as an empty array.
-					if (typeof implementedMethods[method] !== "object") {
-						
-						implementedMethods[method] = new Array() ;
-						
-					}
-					
-					//Push the implementation
-					implementedMethods[method].push([checker, handler]) ;
-					
-				},
 				//CORS
 				"addCORSRule": (...args) => CORS.addRule(...args),
 				

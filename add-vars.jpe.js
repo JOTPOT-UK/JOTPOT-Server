@@ -21,4 +21,5 @@ if (!server.isMaster) {
 			}) ;
 		}
 	}) ;
+	server.cache.cacheFile("default/test.txt") ;
 }
