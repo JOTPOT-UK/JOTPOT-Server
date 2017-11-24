@@ -195,7 +195,6 @@ class URL {
 				return url.format(purl).replace(purl.host, purl.hostname) ;
 			} 
 			return url.format(purl) ;
-			
 		}, set:val=>{
 			purl = url.parse(val) ;
 		}, enumerable:true, configurable:false}) ;

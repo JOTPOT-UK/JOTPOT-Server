@@ -304,14 +304,7 @@ function callHandlers(req, resp, val, ws, cb, rp) {
 	}
 }
 
-function sendProcessLog(rID, timeRecieved) {
-	if (timeRecieved[0] !== -1 && timeRecieved[1] !== -1) {
-		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${rID}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to process.`) ;
-	}
-}
-
-function gotSendFileResult(req, resp, file, rp, done) {
+function afterFirstSendFile(req, resp, file, rp, done) {
 	if (done[0]) {
 		if (rp.canLearn) {
 			learning[rp.learnValue] = [2, file, done[1]] ;
@@ -338,14 +331,14 @@ function gotSendFileResult(req, resp, file, rp, done) {
 	}
 	if (rp.canLearn && learning[req.url.fullvalue]) {
 		learning[rp.learnValue] = learning[req.url.fullvalue] ;
-		createResponse(req, resp, rp.timeRecieved, rp.callback) ;
+		createResponse(req, resp, rp.callback) ;
 		return ;
 	}
 	rp.isFinal = true ;
 	handleeThing0(req, resp, rp) ;
 }
 
-function getFinalSendFileResult(req, resp, file, rp, done) {
+function AfterFinalSendFile(req, resp, file, rp, done) {
 	if (done[0]) {
 		if (rp.canLearn) {
 			learning[rp.learnValue] = [2, file, done[2]] ;
@@ -369,8 +362,7 @@ function getFinalSendFileResult(req, resp, file, rp, done) {
 }
 
 class internalResponseProps {
-	constructor(callback, timeRecieved, learnValue, canLearn=true, code=500, isFinal=false) {
-		this.timeRecieved = timeRecieved ;
+	constructor(callback, learnValue, canLearn=true, code=500, isFinal=false) {
 		this.learnValue = learnValue ;
 		this.canLearn = canLearn ;
 		this.code = code ;
@@ -477,21 +469,20 @@ function handleeThing3(req, resp, val, rp) {
 			resp.vars,
 			req,
 			()=>module.exports.doMethodLogic(req, resp, false)
-		).then(done=>getFinalSendFileResult(req, resp, file, rp, done)) ;
+		).then(done=>AfterFinalSendFile(req, resp, file, rp, done)) ;
 	} else {
-		sendProcessLog(req.jpid, rp.timeRecieved) ;
 		module.exports.sendFile(
 			file,
 			resp,
 			resp.vars,
 			req,
 			()=>module.exports.doMethodLogic(req, resp, false)
-		).then(done=>gotSendFileResult(req, resp, file, rp, done)) ;
+		).then(done=>afterFirstSendFile(req, resp, file, rp, done)) ;
 	}
 }
 
 //Function that sends a response for the given request
-function createResponse(req, resp, timeRecieved=[-1,-1], callback) {
+function createResponse(req, resp, callback) {
 	try {
 		/* eslint-disable consistent-return */
 		//If we have leared how to handle the request
@@ -506,10 +497,9 @@ function createResponse(req, resp, timeRecieved=[-1,-1], callback) {
 				//Unlearn this if it is now invalid
 				if (!pagesWS[learning[req.url.fullvalue][2]]) {
 					learning[req.url.fullvalue] = undefined ;
-					createResponse(req, resp, timeRecieved, callback) ;
+					createResponse(req, resp, callback) ;
 					return ;
 				}
-				sendProcessLog(req.jpid, timeRecieved) ;
 				if (!module.exports.doMethodLogic(req, resp, false)) {
 					module.exports.sendCache(learning[req.url.fullvalue][1], pagesWS[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200, pagesWSMTime[learning[req.url.fullvalue][2]]) ;
 				}
@@ -518,40 +508,37 @@ function createResponse(req, resp, timeRecieved=[-1,-1], callback) {
 				//Unlearn this if it is now invalid
 				if (!pages[learning[req.url.fullvalue][2]]) {
 					learning[req.url.fullvalue] = undefined ;
-					createResponse(req, resp, timeRecieved, callback) ;
+					createResponse(req, resp, callback) ;
 					return ;
 				}
-				sendProcessLog(req.jpid, timeRecieved) ;
 				if (!module.exports.doMethodLogic(req, resp, false)) {
 					module.exports.sendCache(learning[req.url.fullvalue][1], pages[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200, pagesMTime[learning[req.url.fullvalue][2]]) ;
 				}
 				callback(true) ; //eslint-disable-line callback-return
 			} else if (learning[req.url.fullvalue][0] === 2) {
-				sendProcessLog(req.jpid, timeRecieved) ;
 				module.exports.sendFile(learning[req.url.fullvalue][1], resp, resp.vars, req, ()=>module.exports.doMethodLogic(req, resp, false)).then(done=>{
 					//Unlearn this if it is now invalid
 					if (!done[0]) {
 						learning[req.url.fullvalue] = undefined ;
-						createResponse(req, resp, timeRecieved, callback) ;
+						createResponse(req, resp, callback) ;
 						return ;
 					}
 					callback(true) ;
 				}) ;
 			} else if (learning[req.url.fullvalue][0] === 3) {
-				sendProcessLog(req.jpid, timeRecieved, callback) ;
 				module.exports.sendError(404, errorMessages[404] || errorMessages[0], resp, req.jpid) ;
 				callback(true) ; //eslint-disable-line callback-return
 			} else {
 				//Try again if this isn't valid
 				learning[req.url.fullvalue] = undefined ;
-				createResponse(req, resp, timeRecieved, callback) ;
+				createResponse(req, resp, callback) ;
 			}
 			return ;
 		}
 		
 		resp.setHeader("JP-Was-Learned", "0") ;
 		
-		handleeThing0(req, resp, new internalResponseProps(callback, timeRecieved, req.url.fullvalue)) ;
+		handleeThing0(req, resp, new internalResponseProps(callback, req.url.fullvalue)) ;
 		
 		/* eslint-enable consistent-return */
 	} catch (err) {

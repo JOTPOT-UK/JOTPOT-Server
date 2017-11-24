@@ -245,6 +245,7 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 }
 
 function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend) {
+	req.timer.stopFileOp() ;
 	if (err) {
 		resolve([false, err]) ;
 		return ;
@@ -306,7 +307,7 @@ function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, s
 				"Content-Type": `multipart/byteranges; boundary=${boundary}`,
 				"Content-Length": length,
 				"Status": 206
-			}) ;
+			}, ['0', '-']) ;
 			if (!resp.sendBody) {
 				resp.end() ;
 				return ;
@@ -320,12 +321,14 @@ function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, s
 					return ;
 				}
 				mainPipe.write(getBoundary(rangesArr[doing][0], rangesArr[doing][1])) ;
+				req.timer.startFileOp() ;
 				let reader = fs.createReadStream(file, {
 					flags: "r",
 					autoClose: true,
 					start: rangesArr[doing][0],
 					end: rangesArr[doing][1]
 				}) ;
+				req.timer.stopFileOp() ;
 				reader.on("data", d=>mainPipe.write(d)) ;
 				reader.on("end", nextWrite) ;
 			} ;
@@ -406,13 +409,16 @@ function sendFile(file, resp, customVars, req, willSend) {
 					}
 				}
 			} else if (rangesArr.length > 1) {
+				req.timer.startFileOp() ;
 				//Return promise, get stats and pass everything on to the gotRangesStats function.
 				return new Promise((resolve, reject) => fs.stat(file, (err, stats) => gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend))) ;
 			}
 		}
 		
+		req.timer.startFileOp() ;
 		return new Promise(resolve =>
 			getFile(file, stats => {
+				req.timer.stopFileOp() ;
 				if (willSend && willSend(req, resp)) {
 					resolve([true, null]) ;
 					return false ;
@@ -429,12 +435,11 @@ function sendFile(file, resp, customVars, req, willSend) {
 						status = 304 ;
 					}
 				}
-				console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from disk.`) ;
 				resp.writeHead(status, {
 					"Content-Type": mime,
 					"Accept-Ranges": resp.lengthKnown?"bytes":"none",
 					"Status": status
-				}) ;
+				}, ['0', '-']) ;
 				if (!resp.sendBody) {
 					resp.end() ;
 					return false ;
@@ -561,7 +566,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 						"Content-Type": `multipart/byteranges; boundary=${boundary}`,
 						"Content-Length": length,
 						"Status": 206
-					}) ;
+					}, ['1', '-']) ;
 					if (!resp.sendBody) {
 						resp.end() ;
 						return ;
@@ -591,11 +596,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 			if (!redirectingTo) {
 				console.warn("!!! 3xx response sent without Location header !!! <----- You have a BIG problem!") ;
 			}
-			console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   Redirecting to ${redirectingTo}.`) ;
-		} else {
-			console.log(`${req.jpid}\t${status} ${http.STATUS_CODES[status]}.   ${file} (${mime}) loaded from cache.`) ;
 		}
-		
 		if (status === 206) {
 			resp.setHeader("Content-Range", `bytes ${ranges[0]}-${Math.min(ranges[1],cache.length-1)}/${cache.length}`) ;
 			resp.setHeader("Content-Length", Math.min(ranges[1],cache.length-1) - ranges[0] + 1) ;
@@ -611,7 +612,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 			"Content-Type": mime,
 			"Accept-Ranges": resp.lengthKnown?"bytes":"none",
 			"Status": status
-		}) ;
+		}, ['1', '-']) ;
 		//Write the cached data (if we need to) & end.
 		if (resp.sendBody) {
 			if (ranges === null) {
@@ -734,6 +735,7 @@ function addReqProps(req, secure, requestTime) {
 	req.remoteAddress = user_ip_remote ;
 	req.usePortInDirectory = true ;
 	req.time = requestTime ;
+	req.isOptions = req.method === "OPTIONS" ;
 	//Create URL object and secure, and overHttps and secureToServer
 	wrapURL(req, secure, config.defaultHost || config.defaultDomain) ;
 	//orig_url object
@@ -748,6 +750,30 @@ function addReqProps(req, secure, requestTime) {
 	return [user_ip, user_ip_remote, secure] ;
 }
 
+function newWriteHead(req, resp, origWriteHead, args) {
+	if (!args.length) {
+		throw new Error("writeHead requires arguments") ;
+	}
+	const location = resp.getHeaders()["location"] || '-' ;
+	let lastArgs = ['-', '-'] ;
+	if (args.length > 1) {
+		if (typeof args[args.length-1] === "object") {
+			if (args[args.length-1].length) {
+				if (args[args.length-1].length === 2) {
+					lastArgs = args.pop() ;
+				}
+			}
+		}
+	}
+	origWriteHead.call(resp, ...args) ;
+	jpsUtil.log(req, args[0], location, ...lastArgs) ;
+}
+
+function makeNewWriteHead(req, resp) {
+	const origWriteHead = resp.writeHead ;
+	resp.writeHead = (...args) => newWriteHead(req, resp, origWriteHead, args) ;
+}
+
 const afterRequestStages = [
 	" adding the request object properties",
 	" adding the response object properties or adding default headers",
@@ -758,10 +784,10 @@ const afterRequestStages = [
 	" processing the fullrequest"
 ] ;
 
-function handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, stage) {
+function handleRequestPart2(req, resp, user_ip, user_ip_remote, stage) {
 	try {
 		stage++ ;
-		if (!linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote)) {
+		if (!linksAndRedirects(req, resp)) {
 			stage++ ;
 			//Add ID
 			let rID = `#${cluster.worker.id}-${make6d((currentID++).toString(16).toUpperCase())}` ;
@@ -771,26 +797,21 @@ function handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, st
 				value: rID,
 				writable: false
 			}) ;
-			//Log
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
 			stage++ ;
 			//CORS stuff
 			CORS.setHeaders(req, resp) ;
 			stage++ ;
 			doEvent("fullrequest", req.url.host, ()=>
-				checkAuth(req, resp, timeRecieved, ()=>
+				checkAuth(req, resp, ()=>
 					doEvent("allowedrequest", req.url.host, ()=>{
 						//Use responseMaker to generate the response, see do-response.js
-						responseMaker.createResponse(req, resp, timeRecieved, hmmm=>{
+						responseMaker.createResponse(req, resp, hmmm=>{
 							//Log if it was leared from
-							if (hmmm[0]) {
+							if (hmmm) {
 								console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
 							} else {
 								console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
 							}
-							//Log times
-							let timeTaken = process.hrtime(timeRecieved) ;
-							console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 						}) ;
 					},
 					req, resp)
@@ -807,7 +828,7 @@ function handleRequest(req, resp, secure) {
 	let stage = 0 ;
 	try {
 		//Get time stuff.
-		let timeRecieved = process.hrtime() ;
+		req.timer = new jpsUtil.timer() ;
 		let requestTime = new Date() ;
 		
 		//Request object stuff
@@ -816,6 +837,9 @@ function handleRequest(req, resp, secure) {
 		let user_ip_remote = rrv[1] ;
 		secure = rrv[2] ;
 		stage++ ;
+		
+		//Change the resp.writeHead function
+		makeNewWriteHead(req, resp) ;
 		
 		//Add stuff to resp object.
 		resp.vars = {} ;
@@ -852,7 +876,7 @@ function handleRequest(req, resp, secure) {
 		stage++ ;
 		
 		//Request event
-		doEvent("request", req.url.host, ()=>handleRequestPart2(req, resp, timeRecieved, user_ip, user_ip_remote, stage), req, resp) ;
+		doEvent("request", req.url.host, ()=>handleRequestPart2(req, resp, user_ip, user_ip_remote, stage), req, resp) ;
 	} catch (err) {
 		jpsUtil.coughtError(err, afterRequestStages[stage], resp, req.jpid) ;
 	}
@@ -861,7 +885,7 @@ function handleRequest(req, resp, secure) {
 //Process URL, make it safe and follow links.
 //Redirect user based on hosts or upgrades.
 //Returns true if redirected, false if not.
-function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
+function linksAndRedirects(req, resp) {
 	//Secure URL. Remove '..' to prevent it from going to a parent directory.
 	//And replace // with /, along with removing any trailing /
 	do {
@@ -874,8 +898,6 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 	//Should we redirect to https.
 	if (!req.overHttps && config.dontRedirect.indexOf(req.url.value) === -1) {
 		if (config.mustRedirectToHttps.indexOf(req.url.host) !== -1) {
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
-			
 			//Change URL to make it HTTPS
 			req.url.protocol = "https:" ;
 			if (req.url.port === 80) {
@@ -890,12 +912,8 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 				code = 302 ;
 			}
 			sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
-			
-			let timeTaken = process.hrtime(timeRecieved) ;
-			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 			return true ;
 		} else if (config.redirectToHttps.indexOf(req.url.host) !== -1 && req.headers["upgrade-insecure-requests"] && req.headers["upgrade-insecure-requests"] === '1') {
-			console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url.value} being handled by thread ${cluster.worker.id}.`) ;
 			
 			//Change URL to make it HTTPS
 			req.url.protocol = "https:" ;
@@ -912,9 +930,6 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 				code = 302 ;
 			}
 			sendCache("redirect.txt", "Redirecting you to our secure site...", resp, {}, req, code) ;
-			
-			let timeTaken = process.hrtime(timeRecieved) ;
-			console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 			return true ;
 		}
 	}
@@ -954,8 +969,6 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 	
 	//Should we redirect to another host.
 	if (config.hostRedirects[req.url.host] && config.dontRedirect.indexOf(req.url.value) === -1) {
-		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
-		
 		//Set new host
 		req.url.host = config.hostRedirects[req.url.host] ;
 		
@@ -976,14 +989,9 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 			code = 302 ;
 		}
 		sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
-		
-		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 		return true ;
 	}
 	if (config.hostnameRedirects[req.url.hostname] && config.dontRedirect.indexOf(req.url.value) === -1) {
-		console.log(`${req.jpid}\tfrom ${user_ip_remote}(${user_ip}) for ${req.url} being handled by thread ${cluster.worker.id}.`) ;
-		
 		//Set new host
 		req.url.hostname = config.hostnameRedirects[req.url.hostname] ;
 		
@@ -1004,9 +1012,6 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 			code = 302 ;
 		}
 		sendCache("redirect.txt", "Redirecting you to " + req.url.location + "...", resp, {}, req, code) ;
-		
-		let timeTaken = process.hrtime(timeRecieved) ;
-		console.log(`${req.jpid}\tRequest took ${timeTaken[0] * 1000 + timeTaken[1] * 10e-6}ms to handle.`) ;
 		return true ;
 	}
 	
@@ -1014,7 +1019,7 @@ function linksAndRedirects(req, resp, timeRecieved, user_ip, user_ip_remote) {
 	return false ;
 }
 
-function checkAuth(req, resp, timeRecieved, callback) {
+function checkAuth(req, resp, callback) {
 	//If there are no account systems, then dont bother checking if the user has permission.
 	if (allAccountSystems.length === 0) {
 		callback() ;
@@ -1086,7 +1091,7 @@ function doMethodLogic(req, resp) {
 			resp.writeHead(200,{
 				"Allow": getSupportedMethods(req).join(", "),
 				"Content-Length": 0
-			}) ;
+			}, ['-', '-']) ;
 			resp.end() ;
 			return true ;
 		}
@@ -1128,6 +1133,7 @@ for (let doing in config.cache) {
 module.exports = {
 	//Function to init the server.
 	init:(clusterGiven) => {
+		process.title = `JOTPOT Server - Worker ${clusterGiven.worker.id}` ;
 		externals.generateServerObject = () => {
 			return {
 				

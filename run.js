@@ -85,7 +85,7 @@ if (cluster.isMaster) {
 	
 	console.info("Loading JOTPOT Server.") ;
 	console.log("Loading JOTPOT Server.") ;
-	process.title = "JOTPOT Server 3" ;
+	process.title = "JOTPOT Server - Master" ;
 	
 	let vars = new Object() ;
 	let modingVars = new Array() ;
@@ -163,6 +163,9 @@ if (cluster.isMaster) {
 				
 				//Add it to the loggs.
 				logs.push(toDo[1]) ;
+				if (logs.length > 1000) {
+					logs.splice(0, logs.length - 1000) ;
+				}
 				
 			}
 			

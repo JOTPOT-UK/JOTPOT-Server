@@ -30,6 +30,8 @@
 //Modules
 const fs = require("fs") ;
 const path = require("path") ;
+const os = require("os") ;
+const http = require("http") ;
 
 //Default configuration
 const defaultConfig = {
@@ -205,6 +207,138 @@ function escapeHTML(text) {
 		.replace(/'/g, "&#39;") ;
 }
 
+function getTime() {
+	let time = process.hrtime() ;
+	return time[0] * 10e3 + time[1] * 10e-6 ;
+}
+
+class time {
+	constructor(total, fileOp) {
+		this.total = total ;
+		this.fileOp = fileOp ;
+		this.process = total - fileOp ;
+	}
+}
+
+class timer {
+	constructor() {
+		this.fileOp = false ;
+		this.fileOpStart = 0 ;
+		this.fileOpTime = 0 ;
+		this.start = getTime() ;
+	}
+	startFileOp() {
+		if (!this.fileOp) {
+			this.fileOp = true ;
+			this.fileOpStart = getTime() ;
+		}
+	}
+	stopFileOp() {
+		if (this.fileOp) {
+			this.fileOpTime += getTime() - this.fileOpStart ;
+			this.fileOp = false ;
+		}
+	}
+	currentTime() {
+		const ct = getTime() ;
+		if (this.fileOp) {
+			this.fileOpTime += ct - this.fileOpStart ;
+			this.fileOpStart = ct ;
+		}
+		return new time(ct - this.start, this.fileOpTime) ;
+	}
+}
+
+function getLogDate(d=new Date()) {
+	return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}` ;
+}
+
+function getLogTime(d=new Date()) {
+	return `${d.getUTCHours()}-${d.getUTCMinutes()}-${d.getUTCSeconds()}.${d.getUTCMilliseconds()/1000}` ;
+}
+
+const fields = [
+	"r-id",
+	"c-ip",
+	"c-ip-forwarded",
+	"c-id",
+	"c-username",
+	"recieved-date",
+	"recieved-time",
+	"date",
+	"time",
+	"time-taken",
+	"time-taken-process",
+	"time-taken-disk",
+	"cs-method",
+	"cs-uri",
+	"cs-uri-stem",
+	"cs-uri-query",
+	"cs-url",
+	"sc-url-served",
+	"cs-requested",
+	"sc-served",
+	"cs-http-version",
+	"cs(User-Agent)",
+	"cs(Referer)",
+	"cached",
+	"learned",
+	"sc-status",
+	"sc-comment",
+	"sc-location"
+].join(" ") ;
+
+function startLog() {
+	const d = new Date() ;
+	return `#Version: 1.0${os.EOL}#Software: JOTPOT Server${os.EOL}#Start-Date: ${getLogDate(d)} ${getLogTime(d)}${os.EOL}#Fields: ${fields}` ;
+}
+
+function updateLog() {
+	const d = new Date() ;
+	return `#Date: ${getLogDate(d)} ${getLogTime(d)}` ;
+}
+
+function log(req, status, location, cached, learned) {
+	console.log(writeLog(req, status, location, cached, learned)) ;
+	//console.info(writeLog(req, status, location, cached, learned)) ;
+	//console.serverlog(writeLog(req, status, location, cached, learned)) ;
+}
+
+function writeLog(req, status, location, cached, learned) {
+	const d = new Date() ;
+	const t = req.timer.currentTime() ;
+	return [
+		req.jpid, //r-id
+		req.remoteAddress, //c-ip
+		req.ip, //c-ip-forward
+		req.user||'-', //c-id
+		'-', //c-username
+		getLogDate(req.time), //recieved-date
+		getLogTime(req.time), //recieved-time
+		getLogDate(d), //date
+		getLogTime(d), //time
+		t.total.toString(10), //time-taken
+		t.process.toString(10), //time-taken-process
+		t.fileOp.toString(10), //time-taken-disk
+		req.method, //cs-method
+		req.orig_url.path, //cs-uri
+		req.orig_url.pathname, //cs-uri-stem
+		req.orig_url.query, //cs-uri-query
+		req.orig_url.href, //cs-url
+		req.url.href, //sc-url-served
+		req.orig_url.fullvalue, //cs-requested
+		req.url.fullvalue, //cs-served
+		req.httpVersion, //cs-http-version
+		req.headers["user-agent"]||'-', //cs(User-Agent)
+		req.headers["referer"]||'-', //cs(Referer)
+		cached, //cached
+		learned, //leaned
+		status.toString(10), //sc-status
+		http.STATUS_CODES[status], //sc-comment
+		location //sc-location
+	].join(' ') ;
+}
+
 module.exports = {
 	coughtError,
 	doesConfigFileExist,
@@ -213,5 +347,9 @@ module.exports = {
 	getFilePath,
 	loadConfig,
 	loadConfigFile,
-	sendError: ()=>{}
+	log,
+	startLog,
+	updateLog,
+	sendError: ()=>{},
+	timer
 } ;
