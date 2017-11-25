@@ -1114,8 +1114,8 @@ responseMaker.sendFile = (file, resp, customVars, req, willSend) => sendFile(fil
 responseMaker.sendError = (code, message, resp, rID="") => sendError(code, message, resp, rID) ;
 responseMaker.doEvent = (event, host, callback, ...eventArgs) => doEvent(event, host, callback, ...eventArgs) ;
 responseMaker.doMethodLogic = (req, resp) => doMethodLogic(req, resp, false) ;
+responseMaker.isThereAHandler = (event, host) => isThereAHandler(event, host) ;
 responseMaker.enableLearning = config.enableLearning ;
-responseMaker.serverCalls.isThereAHandler = (event, host) => isThereAHandler(event, host) ;
 jpsUtil.sendError = (code, message, resp, rID="") => sendError(code, message, resp, rID) ;
 websockets.serverCalls.addReqProps = (req, secure) => addReqProps(req, secure) ;
 websockets.serverCalls.doEvent = (event, host, callback, ...eventArgs) => doEvent(event, host, callback, ...eventArgs) ;

@@ -373,7 +373,7 @@ class internalResponseProps {
 
 function handleeThing0(req, resp, rp) {
 	let origURL = req.url.fullvalue ;
-	if (module.export.isThereAHandler("handle", req.url.host)) {
+	if (module.exports.isThereAHandler("handle", req.url.host)) {
 		rp.canLearn = false ;
 		module.exports.doEvent("handle", req.url.host, ()=>{
 			if (req.url.fullvalue === origURL) {
