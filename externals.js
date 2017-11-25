@@ -140,7 +140,7 @@ module.exports.doEvt = function (evt,...args) {
 			//Call the handle, catch the error if one happens.
 			let val ;
 			try {
-				val = handles[evt][doing](...args)
+				val = handles[evt][doing](...args) ;
 			} catch (err) {
 				jpsUtil.coughtError(err, " in a handler for "+evt, null, (args[0]||{jpid:""}).jpid||"") ;
 			}

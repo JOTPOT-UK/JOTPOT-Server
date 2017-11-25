@@ -244,7 +244,7 @@ function getFile(file,callWithStats,pipeTo,callback,range=null) {
 	}) ;
 }
 
-function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend) {
+function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend, wasLearned) {
 	req.timer.stopFileOp() ;
 	if (err) {
 		resolve([false, err]) ;
@@ -307,7 +307,7 @@ function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, s
 				"Content-Type": `multipart/byteranges; boundary=${boundary}`,
 				"Content-Length": length,
 				"Status": 206
-			}, ['0', '-']) ;
+			}, ['0', wasLearned]) ;
 			if (!resp.sendBody) {
 				resp.end() ;
 				return ;
@@ -341,7 +341,7 @@ function gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, s
 }
 
 //Sends the file specified to the pipe as the second argument - goes through the getFile & thus vars pipe.
-function sendFile(file, resp, customVars, req, willSend) {
+function sendFile(file, resp, customVars, req, willSend, wasLearned='-') {
 	try {
 		//Look in the sites dir.
 		let start = path.join(process.cwd(), "sites") ;
@@ -411,7 +411,7 @@ function sendFile(file, resp, customVars, req, willSend) {
 			} else if (rangesArr.length > 1) {
 				req.timer.startFileOp() ;
 				//Return promise, get stats and pass everything on to the gotRangesStats function.
-				return new Promise((resolve, reject) => fs.stat(file, (err, stats) => gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend))) ;
+				return new Promise((resolve, reject) => fs.stat(file, (err, stats) => gotRangesStats(resolve, reject, req, resp, mainPipe, rangesArr, file, stats, err, willSend, wasLearned))) ;
 			}
 		}
 		
@@ -439,7 +439,7 @@ function sendFile(file, resp, customVars, req, willSend) {
 					"Content-Type": mime,
 					"Accept-Ranges": resp.lengthKnown?"bytes":"none",
 					"Status": status
-				}, ['0', '-']) ;
+				}, ['0', wasLearned]) ;
 				if (!resp.sendBody) {
 					resp.end() ;
 					return false ;
@@ -459,7 +459,7 @@ function sendFile(file, resp, customVars, req, willSend) {
 	}
 }
 
-function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) {
+function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN, wasLearned='-') {
 	try {
 		//Look in the sites dir.
 		file = path.join(process.cwd(),"sites",file) ;
@@ -566,7 +566,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 						"Content-Type": `multipart/byteranges; boundary=${boundary}`,
 						"Content-Length": length,
 						"Status": 206
-					}, ['1', '-']) ;
+					}, ['1', wasLearned]) ;
 					if (!resp.sendBody) {
 						resp.end() ;
 						return ;
@@ -612,7 +612,7 @@ function sendCache(file, cache, resp, customVars, req, status=200, lastMod=NaN) 
 			"Content-Type": mime,
 			"Accept-Ranges": resp.lengthKnown?"bytes":"none",
 			"Status": status
-		}, ['1', '-']) ;
+		}, ['1', wasLearned]) ;
 		//Write the cached data (if we need to) & end.
 		if (resp.sendBody) {
 			if (ranges === null) {
@@ -1115,6 +1115,7 @@ responseMaker.sendError = (code, message, resp, rID="") => sendError(code, messa
 responseMaker.doEvent = (event, host, callback, ...eventArgs) => doEvent(event, host, callback, ...eventArgs) ;
 responseMaker.doMethodLogic = (req, resp) => doMethodLogic(req, resp, false) ;
 responseMaker.enableLearning = config.enableLearning ;
+responseMaker.serverCalls.isThereAHandler = (event, host) => isThereAHandler(event, host) ;
 jpsUtil.sendError = (code, message, resp, rID="") => sendError(code, message, resp, rID) ;
 websockets.serverCalls.addReqProps = (req, secure) => addReqProps(req, secure) ;
 websockets.serverCalls.doEvent = (event, host, callback, ...eventArgs) => doEvent(event, host, callback, ...eventArgs) ;

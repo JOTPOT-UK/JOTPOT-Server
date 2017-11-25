@@ -338,7 +338,7 @@ function afterFirstSendFile(req, resp, file, rp, done) {
 	handleeThing0(req, resp, rp) ;
 }
 
-function AfterFinalSendFile(req, resp, file, rp, done) {
+function afterFinalSendFile(req, resp, file, rp, done) {
 	if (done[0]) {
 		if (rp.canLearn) {
 			learning[rp.learnValue] = [2, file, done[2]] ;
@@ -373,13 +373,18 @@ class internalResponseProps {
 
 function handleeThing0(req, resp, rp) {
 	let origURL = req.url.fullvalue ;
-	module.exports.doEvent("handle", req.url.host, ()=>{
-		if (req.url.fullvalue === origURL) {
-			handleeThing1(req, resp, rp) ;
-		} else {
-			handleeThing0(req, resp, rp) ;
-		}
-	}) ;
+	if (module.export.isThereAHandler("handle", req.url.host)) {
+		rp.canLearn = false ;
+		module.exports.doEvent("handle", req.url.host, ()=>{
+			if (req.url.fullvalue === origURL) {
+				handleeThing1(req, resp, rp) ;
+			} else {
+				handleeThing0(req, resp, rp) ;
+			}
+		}) ;
+	} else {
+		handleeThing1(req, resp, rp) ;
+	}
 }
 
 function handleeThing1(req, resp, rp) {
@@ -419,7 +424,16 @@ function handleeThing2(req, resp, val, rp) {
 			learning[rp.learnValue] = [0, file, val] ;
 		}
 		if (!module.exports.doMethodLogic(req, resp, false)) {
-			module.exports.sendCache(file, pagesWS[val], resp, resp.vars, req, 200, pagesWSMTime[val]) ;
+			module.exports.sendCache(
+				file,
+				pagesWS[val],
+				resp,
+				resp.vars,
+				req,
+				200,
+				pagesWSMTime[val],
+				rp.canLearn?'0':'-1'
+			) ;
 		}
 		rp.callback(true) ;
 		return ;
@@ -457,7 +471,16 @@ function handleeThing3(req, resp, val, rp) {
 			learning[rp.learnValue] = [1, file, val] ;
 		}
 		if (!module.exports.doMethodLogic(req, resp, false)) {
-			module.exports.sendCache(file, pages[val], resp, resp.vars, req, 200, pagesMTime[val]) ;
+			module.exports.sendCache(
+				file,
+				pages[val],
+				resp,
+				resp.vars,
+				req,
+				200,
+				pagesMTime[val],
+				rp.canLearn?'0':'-1'
+			) ;
 		}
 		rp.callback(true) ;
 		return ;
@@ -468,15 +491,17 @@ function handleeThing3(req, resp, val, rp) {
 			resp,
 			resp.vars,
 			req,
-			()=>module.exports.doMethodLogic(req, resp, false)
-		).then(done=>AfterFinalSendFile(req, resp, file, rp, done)) ;
+			()=>module.exports.doMethodLogic(req, resp, false),
+			rp.canLearn?'0':'-1'
+		).then(done=>afterFinalSendFile(req, resp, file, rp, done)) ;
 	} else {
 		module.exports.sendFile(
 			file,
 			resp,
 			resp.vars,
 			req,
-			()=>module.exports.doMethodLogic(req, resp, false)
+			()=>module.exports.doMethodLogic(req, resp, false),
+			rp.canLearn?'0':'-1'
 		).then(done=>afterFirstSendFile(req, resp, file, rp, done)) ;
 	}
 }
@@ -501,7 +526,16 @@ function createResponse(req, resp, callback) {
 					return ;
 				}
 				if (!module.exports.doMethodLogic(req, resp, false)) {
-					module.exports.sendCache(learning[req.url.fullvalue][1], pagesWS[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200, pagesWSMTime[learning[req.url.fullvalue][2]]) ;
+					module.exports.sendCache(
+						learning[req.url.fullvalue][1],
+						pagesWS[learning[req.url.fullvalue][2]],
+						resp,
+						resp.vars,
+						req,
+						200,
+						pagesWSMTime[learning[req.url.fullvalue][2]],
+						'1'
+					) ;
 				}
 				callback(true) ; //eslint-disable-line callback-return
 			} else if (learning[req.url.fullvalue][0] === 1) {
@@ -512,11 +546,27 @@ function createResponse(req, resp, callback) {
 					return ;
 				}
 				if (!module.exports.doMethodLogic(req, resp, false)) {
-					module.exports.sendCache(learning[req.url.fullvalue][1], pages[learning[req.url.fullvalue][2]], resp, resp.vars, req, 200, pagesMTime[learning[req.url.fullvalue][2]]) ;
+					module.exports.sendCache(
+						learning[req.url.fullvalue][1],
+						pages[learning[req.url.fullvalue][2]],
+						resp,
+						resp.vars,
+						req,
+						200,
+						pagesMTime[learning[req.url.fullvalue][2]],
+						'1'
+					) ;
 				}
 				callback(true) ; //eslint-disable-line callback-return
 			} else if (learning[req.url.fullvalue][0] === 2) {
-				module.exports.sendFile(learning[req.url.fullvalue][1], resp, resp.vars, req, ()=>module.exports.doMethodLogic(req, resp, false)).then(done=>{
+				module.exports.sendFile(
+					learning[req.url.fullvalue][1],
+					resp,
+					resp.vars,
+					req,
+					()=>module.exports.doMethodLogic(req, resp, false),
+					'1'
+				).then(done=>{
 					//Unlearn this if it is now invalid
 					if (!done[0]) {
 						learning[req.url.fullvalue] = undefined ;
@@ -577,5 +627,6 @@ module.exports = {
 	sendError: ()=>{},
 	doMethodLogic: ()=>{},
 	doEvent: ()=>{},
+	isThereAHandler: ()=>{},
 	enableLearning: true
 } ;
