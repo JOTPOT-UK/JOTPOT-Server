@@ -30,34 +30,35 @@
 //Set global requireJPS
 global.requireJPS = mod => require(path.join(__dirname, mod)) ;
 
-//process.send(["log",args.join(" ")]) ;
-const os = require("os") ;
-const consoleModule = requireJPS("console") ;
-console = new consoleModule.serverConsole( // eslint-disable-line no-global-assign
-	s => {
-		process.stderr.write(s + os.EOL) ;
-		process.send(["log", s.join(" ")]) ;
-	},
-	s => {
-		process.stdout.write(s + os.EOL) ;
-	},
-	s => {
-		process.send(["log", s.join(" ")]) ;
-	},
-	s => {
-		process.send(["log", s.join(" ")]) ;
-	},
-	s => {
-		process.send(["serverlog", s.join(" ")]) ;
-	}
-) ;
-
 //Node Modules
 const http = require("http") ;
 const https = require("https") ;
 const fs = require("fs") ;
 const path = require("path") ;
+const os = require("os") ;
 let cluster ;
+
+//console
+const consoleModule = requireJPS("console") ;
+Object.assign(console, new consoleModule.serverConsole( // eslint-disable-line no-global-assign
+	s => {
+		process.stderr.write(s + os.EOL) ;
+		process.send(["log", s]) ;
+	},
+	s => {
+		process.stdout.write(s + os.EOL) ;
+	},
+	s => {
+		process.send(["log", s]) ;
+	},
+	s => {
+		process.send(["log", s]) ;
+	},
+	s => {
+		process.send(["log", s]) ;
+		process.send(["slog", s]) ;
+	}
+)) ;
 
 //JPS Modules
 const proc = requireJPS("accounts") ;
@@ -822,14 +823,7 @@ function handleRequestPart2(req, resp, user_ip, user_ip_remote, stage) {
 				checkAuth(req, resp, ()=>
 					doEvent("allowedrequest", req.url.host, ()=>{
 						//Use responseMaker to generate the response, see do-response.js
-						responseMaker.createResponse(req, resp, hmmm=>{
-							//Log if it was leared from
-							if (hmmm) {
-								console.log(`${req.jpid}\tResponse was based on a previous response.`) ;
-							} else {
-								console.log(`${req.jpid}\tThe response has been learned from to improve handle time next time round.`) ;
-							}
-						}) ;
+						responseMaker.createResponse(req, resp, ()=>{}) ;
 					},
 					req, resp)
 				),
