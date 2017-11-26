@@ -163,8 +163,8 @@ if (cluster.isMaster) {
 				
 				//Add it to the loggs.
 				logs.push(toDo[1]) ;
-				if (logs.length > 2097152) {
-					logs.splice(0, logs.length - 2097152) ;
+				if (logs.length > config.logBuffer) {
+					logs.splice(0, logs.length - config.logBuffer) ;
 				}
 				
 			}

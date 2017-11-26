@@ -37,6 +37,7 @@ const http = require("http") ;
 const defaultConfig = {
 	
 	"dataPort": 500,
+	"logBuffer": 2097152,
 	"controlers":["::1","127.0.0.1","::ffff:127.0.0.1"],
 	
 	"httpServers": [
