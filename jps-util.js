@@ -257,6 +257,20 @@ function getLogTime(d=new Date()) {
 	return `${d.getUTCHours()}-${d.getUTCMinutes()}-${d.getUTCSeconds()}.${d.getUTCMilliseconds()/1000}` ;
 }
 
+function startLog() {
+	const d = new Date() ;
+	return `#Version: 1.0${os.EOL}#Software: JOTPOT Server${os.EOL}#Start-Date: ${getLogDate(d)} ${getLogTime(d)}${os.EOL}#Fields: ${fields}` ;
+}
+
+function updateLog() {
+	const d = new Date() ;
+	return `#Date: ${getLogDate(d)} ${getLogTime(d)}` ;
+}
+
+function log(req, status, location, cached, learned) {
+	console.serverlog(writeLog(req, status, location, cached, learned)) ;
+}
+
 const fields = [
 	"r-id",
 	"c-ip",
@@ -287,22 +301,6 @@ const fields = [
 	"sc-comment",
 	"sc-location"
 ].join(" ") ;
-
-function startLog() {
-	const d = new Date() ;
-	return `#Version: 1.0${os.EOL}#Software: JOTPOT Server${os.EOL}#Start-Date: ${getLogDate(d)} ${getLogTime(d)}${os.EOL}#Fields: ${fields}` ;
-}
-
-function updateLog() {
-	const d = new Date() ;
-	return `#Date: ${getLogDate(d)} ${getLogTime(d)}` ;
-}
-
-function log(req, status, location, cached, learned) {
-	console.log(writeLog(req, status, location, cached, learned)) ;
-	//console.info(writeLog(req, status, location, cached, learned)) ;
-	//console.serverlog(writeLog(req, status, location, cached, learned)) ;
-}
 
 function writeLog(req, status, location, cached, learned) {
 	const d = new Date() ;

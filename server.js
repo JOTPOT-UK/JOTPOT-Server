@@ -27,13 +27,30 @@
 
 "use strict";
 
-//Console is now YAY!!!
-console.log = console.warn = (...args) => {
-	process.send(["log",args.join(" ")]) ;
-} ;
-
 //Set global requireJPS
 global.requireJPS = mod => require(path.join(__dirname, mod)) ;
+
+//process.send(["log",args.join(" ")]) ;
+const os = require("os") ;
+const consoleModule = requireJPS("console") ;
+console = new consoleModule.serverConsole( // eslint-disable-line no-global-assign
+	s => {
+		process.stderr.write(s + os.EOL) ;
+		process.send(["log", s.join(" ")]) ;
+	},
+	s => {
+		process.stdout.write(s + os.EOL) ;
+	},
+	s => {
+		process.send(["log", s.join(" ")]) ;
+	},
+	s => {
+		process.send(["log", s.join(" ")]) ;
+	},
+	s => {
+		process.send(["serverlog", s.join(" ")]) ;
+	}
+) ;
 
 //Node Modules
 const http = require("http") ;
