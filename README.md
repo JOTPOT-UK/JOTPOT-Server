@@ -1,0 +1,3 @@
+The master branch now has the work in progress code for a completely new version.
+The original version can be viewed in the 27A branch (or for older versions in their branches).
+The new version is written in Go, and will provide a few things. The first, are multiple packages which expose everything the main application is built upon - this will include a HTTP/1.1, HTTP/2, WebSockets and probably a few other protocol parsers. Connection handlers, to call the parsers. And an API for implementing extensions, which will allow extensions (possibly written in other languages) to change the add features to the server. There will then be a runtime, which automatically loads extensions, and acts as a file server - with as much configuration as possible.
