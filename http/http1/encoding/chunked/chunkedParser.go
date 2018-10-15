@@ -2,6 +2,7 @@ package chunked
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -9,8 +10,6 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
-
-	"github.com/JOTPOT-UK/JOTPOT-Server/utils"
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/util"
 )
@@ -177,7 +176,7 @@ func (r *Reader) readBytesLeft() error {
 	if err != nil {
 		return err
 	}
-	i := utils.IndexOfByte(line, ';')
+	i := bytes.IndexByte(line, ';')
 	if i == -1 {
 		size = line
 	} else {
@@ -191,6 +190,7 @@ func (r *Reader) readBytesLeft() error {
 	return err
 }
 
+//ConsumeCRLF reads 2 bytes from the source, and returns ErrMalformedChunks if they are not "\r\n".
 func (r *Reader) ConsumeCRLF() (err error) {
 	err = r.read2(r.buf[:2])
 	if err != nil {

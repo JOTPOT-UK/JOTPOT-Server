@@ -1,15 +1,22 @@
 package server
 
 import (
+	"bufio"
 	"errors"
+	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/http/http1/encoding"
 )
 
 //State is used to identify the state of the server.
 type State byte
+
+type ClosedHandler func(net.Conn)
+type ProtocolHandler func(*Server, net.Conn)
+type ProtocolNegotiator func(net.Conn, string) (string, error)
 
 const (
 	//StateClosed is the state of the server when it is closed - ie it will not accept incoming requests, and there are no open requests.
@@ -30,6 +37,9 @@ var ErrServerClosing = errors.New("server closing")
 //ErrServerOpen is returned when the operation cannot be completed because the server is open
 var ErrServerOpen = errors.New("server open")
 
+//DefaultReaderBufSize will be used as Server.ReaderBufSize if it is 0
+var DefaultReaderBufSize = 1024
+
 //Server is an instance of an indipendently configured server.
 type Server struct {
 	state       State
@@ -39,28 +49,104 @@ type Server struct {
 	connections     uint64
 	connectionsLock sync.Mutex
 
+	ProtocolNegotiators []ProtocolNegotiator
+	DefaultProtocol     string
+	Protocols           map[string]ProtocolHandler
+
 	Handlers HandlerList
+	//ClosedHandler will be called on a connection that is accepted while the Server is closed.
+	// It is expected to close the connection before it returns.
+	//If it is nil, the connection is just closed.
+	ClosedHandler ClosedHandler
 
 	TransferEncodings encoding.List
 	ContentEncodings  encoding.List
 	ReaderBufSize     int
-
-	ClosedHandler func(con *net.Conn)
 }
 
-func (s *Server) incConnections() {
-	s.connectionsLock.Lock()
-	defer s.connectionsLock.Unlock()
-	s.connections++
+//NewBufioReader returns a new *bufio.Reader reading from the source r, using the ReaderBufSize property, or, if that is 0, DefaultReaderBufSize variable.
+func (s *Server) NewBufioReader(r io.Reader) *bufio.Reader {
+	size := s.ReaderBufSize
+	if size == 0 {
+		size = DefaultReaderBufSize
+	}
+	return bufio.NewReaderSize(r, size)
 }
 
-func (s *Server) decConnections() {
-	s.connectionsLock.Lock()
-	defer s.connectionsLock.Unlock()
-	s.connections--
-	//If there are no connections, change the state to closed if it is closing...
-	if s.connections == 0 {
-		s.changeStateIf(StateClosing, StateClosed)
+//HandleConnection ... Basically, give the connection to this for the server to handle it!
+func (s *Server) HandleConnection(con net.Conn) {
+	//TODO: Deadlines
+
+	s.stateLock.RLock()
+	if s.state != StateOpen {
+		s.stateLock.RUnlock()
+		//If the server isn't open, either the ClosedHandler should be called, or the connection should be closed.
+		if s.ClosedHandler == nil {
+			con.Close()
+		} else {
+			s.ClosedHandler(con)
+		}
+	} else {
+		//We have another connection!
+		s.connectionsLock.Lock()
+		s.connections++
+		s.connectionsLock.Unlock()
+		//Unlock the state afterwards, to make sure that it doesn't change to closed just before we inc connections
+		s.stateLock.RUnlock()
+
+		//Determine the negotiated protocol
+		var proto string
+		var err error
+		for i := range s.ProtocolNegotiators {
+			proto, err = s.ProtocolNegotiators[i](con, proto)
+			if err != nil {
+				con.Close()
+				goto decConnections
+			}
+		}
+		if proto == "" {
+			proto = s.DefaultProtocol
+		}
+		//And call the handler
+		s.Protocols[proto](s, con)
+
+	decConnections:
+		//Connection is handled, so dec connections, and close if yeah...
+		s.connectionsLock.Lock()
+		s.connections--
+		s.connectionsLock.Unlock()
+		if s.connections == 0 {
+			s.changeStateIf(StateClosing, StateClosed)
+		}
+	}
+}
+
+//ListenOn listens on l, with server s, and for every connection, Handler is called in a new goroutine.
+func (s *Server) ListenOn(l net.Listener) error {
+	var con net.Conn
+	var err error
+	var ne net.Error
+	var ok, delayed bool
+	//Start with a 2ms timeout if there is a temporary error
+	retryDelay := 2 * time.Millisecond
+	for {
+		con, err = l.Accept()
+		if err != nil {
+			//If there is a temporary error, exponensially back off retrying...
+			if ne, ok = err.(net.Error); ok && ne.Temporary() {
+				delayed = true
+				time.Sleep(retryDelay)
+				if retryDelay < 128 {
+					retryDelay *= 2
+				}
+				continue
+			}
+			return err
+		} else if delayed {
+			delayed = false
+			retryDelay = 2 * time.Millisecond
+		}
+		go s.HandleConnection(con)
 	}
 }
 

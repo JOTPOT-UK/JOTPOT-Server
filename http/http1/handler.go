@@ -10,7 +10,7 @@ import (
 
 //Handle takes a server and a connection to that server, and handles it as a HTTP/1.x request.
 func Handle(s *server.Server, con net.Conn) {
-	reader := bufio.NewReader(con)
+	reader := bufio.NewReaderSize(con, s.ReaderBufSize)
 	var err error
 	var peek []byte
 	for {

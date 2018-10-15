@@ -29,6 +29,16 @@ type IncomingRequest struct {
 	body      io.ReadCloser
 }
 
+//From returns the remote address of the connection the request came from
+func (r *IncomingRequest) From() net.Addr {
+	return r.con.RemoteAddr()
+}
+
+//To returns the local address of the connection the request came from
+func (r *IncomingRequest) To() net.Addr {
+	return r.con.LocalAddr()
+}
+
 //NewIncomingRequest creates a new IncomingRequest struct, with the given server, connection, and reader
 func NewIncomingRequest(s *Server, con net.Conn, reader *bufio.Reader) *IncomingRequest {
 	return &IncomingRequest{
@@ -57,7 +67,7 @@ func (r incomingRequestRawReadCloser) Close() error {
 // (implemented by the incomingRawReadCloser type)
 func (r *IncomingRequest) RawReadCloser() io.ReadCloser {
 	if r.rawReader == nil {
-		r.rawReader = bufio.NewReaderSize(r.con, r.Server.ReaderBufSize)
+		r.rawReader = r.Server.NewBufioReader(r.con)
 	}
 	return incomingRequestRawReadCloser{r}
 }
@@ -70,7 +80,7 @@ func (r *IncomingRequest) GotRawReader() bool {
 //GetRawReader returns a bufio.Reader that reads from the connection - it only creates one once, and the boolean result is false if it has used a prexisting one.
 func (r *IncomingRequest) GetRawReader() (*bufio.Reader, bool) {
 	if r.rawReader == nil {
-		r.rawReader = bufio.NewReaderSize(r.con, r.Server.ReaderBufSize)
+		r.rawReader = r.Server.NewBufioReader(r.con)
 		return r.rawReader, true
 	}
 	return r.rawReader, false
@@ -79,7 +89,7 @@ func (r *IncomingRequest) GetRawReader() (*bufio.Reader, bool) {
 //RawReader is equivilent to GetRawReader, except that the second return parameter is not given.
 func (r *IncomingRequest) RawReader() *bufio.Reader {
 	if r.rawReader == nil {
-		r.rawReader = bufio.NewReaderSize(r.con, r.Server.ReaderBufSize)
+		r.rawReader = r.Server.NewBufioReader(r.con)
 	}
 	return r.rawReader
 }
