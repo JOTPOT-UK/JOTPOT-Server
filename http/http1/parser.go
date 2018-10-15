@@ -3,14 +3,15 @@ package http1
 import (
 	"bufio"
 	"io"
-	"jotpot/net/http"
-	"jotpot/net/http/header"
-	"jotpot/net/jps"
-	"jotpot/net/jps/jpserror"
 	"net/textproto"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/http"
+	"github.com/JOTPOT-UK/JOTPOT-Server/http/header"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/jpserror"
 )
 
 func SendError(err jpserror.HTTPError, writer io.Writer) {

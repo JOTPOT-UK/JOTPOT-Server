@@ -2,9 +2,10 @@ package server
 
 import (
 	"errors"
-	"jotpot/net/http/http1/encoding"
 	"net"
 	"sync"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/http/http1/encoding"
 )
 
 //State is used to identify the state of the server.

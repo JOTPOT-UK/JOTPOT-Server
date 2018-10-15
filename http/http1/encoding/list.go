@@ -1,9 +1,10 @@
 package encoding
 
 import (
-	"jotpot/net/jps/pipe"
-	"jotpot/net/util"
 	"strings"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
+	"github.com/JOTPOT-UK/JOTPOT-Server/util"
 )
 
 //List contains a set of Encodings

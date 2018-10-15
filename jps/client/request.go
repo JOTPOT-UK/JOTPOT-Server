@@ -2,9 +2,10 @@ package client
 
 import (
 	"io"
-	"jotpot/net/jps"
-	"jotpot/net/jps/pipe"
 	"net"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
 )
 
 type OutgoingRequest struct {

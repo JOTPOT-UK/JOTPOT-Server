@@ -1,7 +1,7 @@
 package encoding
 
 import (
-	"jotpot/net/jps/pipe"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
 )
 
 //Encoding represents an encoding - It has a writer and a reader generator,

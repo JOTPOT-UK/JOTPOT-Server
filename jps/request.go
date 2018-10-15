@@ -1,9 +1,10 @@
 package jps
 
 import (
-	"jotpot/net/http"
-	"jotpot/net/http/header"
 	"net/url"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/http"
+	"github.com/JOTPOT-UK/JOTPOT-Server/http/header"
 )
 
 type Request struct {

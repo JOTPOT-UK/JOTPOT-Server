@@ -3,14 +3,15 @@ package server
 import (
 	"bufio"
 	"io"
-	"jotpot/net/jps"
-	"jotpot/net/jps/jpserror"
-	"jotpot/net/jps/pipe"
-	"jotpot/net/jps/pipe/limiter"
-	"jotpot/net/util"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/jpserror"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe/limiter"
+	"github.com/JOTPOT-UK/JOTPOT-Server/util"
 )
 
 //IncomingRequest represents an incoming request to a server

@@ -1,6 +1,6 @@
 package client
 
-import "jotpot/net/http/http1/encoding"
+import "github.com/JOTPOT-UK/JOTPOT-Server/http/http1/encoding"
 
 type Client struct {
 	Encodings encoding.List

@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"jotpot-os/utils"
-	"jotpot/net/util"
 	"net"
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/utils"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/util"
 )
 
 //IsTemp returns true if the error us a temporary network error

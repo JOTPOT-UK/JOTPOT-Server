@@ -5,8 +5,9 @@ import (
 	"compress/lzw"
 	"compress/zlib"
 	"io"
-	"jotpot/net/http/http1/encoding/chunked"
-	"jotpot/net/jps/pipe"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/http/http1/encoding/chunked"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
 )
 
 //ChunkedEncoding is the Encoding for HTTP chunked encoding.

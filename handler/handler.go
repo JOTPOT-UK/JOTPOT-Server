@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"net"
 
-	"jotpot/net/http/http1"
-	"jotpot/net/jps/server"
+	"github.com/JOTPOT-UK/JOTPOT-Server/http/http1"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/server"
 )
 
 //Handle takes a connection.

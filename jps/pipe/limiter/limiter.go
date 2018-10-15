@@ -2,7 +2,8 @@ package limiter
 
 import (
 	"io"
-	"jotpot/net/jps/pipe"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
 )
 
 func GenerateLimiterGenerator(n int64) pipe.ReaderPipeGenerator {

@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"jotpot/net/jps/server"
 	"net"
 	"time"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/server"
 )
 
 //ListenOn listens on l, with server s, and for every connection, Handler is called in a new goroutine.

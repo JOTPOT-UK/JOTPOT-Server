@@ -3,8 +3,9 @@ package http1
 import (
 	"bufio"
 	"fmt"
-	"jotpot/net/jps/server"
 	"net"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/server"
 )
 
 //Handle takes a server and a connection to that server, and handles it as a HTTP/1.x request.
