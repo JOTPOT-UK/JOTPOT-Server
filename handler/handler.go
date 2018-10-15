@@ -8,6 +8,9 @@ import (
 	"jotpot/net/jps/server"
 )
 
+//Handle takes a connection.
+// If it is a TCP connection, it performs the handshake.
+// After that, it calls the correct handler (ie http1.Handle, http2.Handler etc...)
 func Handle(s *server.Server, con net.Conn) {
 	defer con.Close()
 	var err error
@@ -19,6 +22,7 @@ func Handle(s *server.Server, con net.Conn) {
 		if tlsState.NegotiatedProtocol != "" && tlsState.NegotiatedProtocol != "http/1.0" && tlsState.NegotiatedProtocol != "http/1.1" {
 			if tlsState.NegotiatedProtocol == "h2" {
 				//HandleHTTP2(con)
+				panic("No HTTP/2 support!")
 			}
 			return
 		}

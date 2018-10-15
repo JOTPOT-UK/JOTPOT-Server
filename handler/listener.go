@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+//ListenOn listens on l, with server s, and for every connection, Handler is called in a new goroutine.
 func ListenOn(s *server.Server, l net.Listener) error {
 	var con net.Conn
 	var err error

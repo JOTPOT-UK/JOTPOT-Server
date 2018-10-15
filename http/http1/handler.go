@@ -3,29 +3,22 @@ package http1
 import (
 	"bufio"
 	"fmt"
-	"jotpot/net/jps"
 	"jotpot/net/jps/server"
 	"net"
 )
 
-func numLeadingCRorLF(v []byte) (n int) {
-	for i := range v {
-		if v[i] != '\r' && v[i] != '\n' {
-			return
-		}
-		n++
-	}
-	return
-}
-
+//Handle takes a server and a connection to that server, and handles it as a HTTP/1.x request.
 func Handle(s *server.Server, con net.Conn) {
 	reader := bufio.NewReader(con)
-	var httpErr *jps.HTTPError
 	var err error
 	var peek []byte
-	//var h2Upgrade bool
 	for {
-		for {
+		//Section 3.5 of RFC7230 says that:
+		// a server that is expecting to receive
+		// and parse a request-line SHOULD ignore at least one empty line (CRLF)
+		// received prior to the request-line
+		//We will ignore up to 5, as it would take a REALLY buggy client to go over that!
+		for i := byte(0); i < 5; i++ {
 			peek, err = reader.Peek(2)
 			if peek[0] == '\r' && peek[1] == '\n' {
 				reader.Discard(2)
@@ -33,20 +26,18 @@ func Handle(s *server.Server, con net.Conn) {
 				break
 			}
 		}
+		//Creare a new incoming request
 		req := server.NewIncomingRequest(s, con, reader)
+		req.Request, _, err = Parse(reader)
 		if err != nil {
-			req.Request, _, httpErr, err = Parse(reader)
-		}
-		if httpErr != nil || err != nil {
 			fmt.Println("Err:")
-			fmt.Println(httpErr)
 			fmt.Println(err)
 			return
 		} else {
 			s.Handlers.Call(req)
 		}
 		if req.Request.Close {
-			body, _, _, _ := req.GetBody()
+			body, _, _ := req.GetBody()
 			body.Close()
 			return
 		}

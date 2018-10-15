@@ -1,9 +1,11 @@
 package chunked
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
+	"jotpot-os/utils"
 	"jotpot/net/util"
 	"net"
 	"strconv"
@@ -120,226 +122,71 @@ func (r *Reader) fill(buf []byte) (err error) {
 	}
 }
 
-func (r *Reader) readNextExtensionMaybe(buf []byte, exts [][2][]byte) ([][2][]byte, error) {
-	buf = buf[:2]
-	err := r.read2(buf)
-	if err != nil {
-		return nil, err
-	}
-	//buf will contain 1 of:
-	// ;x
-	// \r\n
-	if buf[0] == ';' {
-		return r.readNextExtension(true, buf[1], buf, exts)
-	}
-	if buf[0] != '\r' || buf[1] != '\n' {
-		return exts, ErrMalformedChunks
-	}
-	return exts, nil
-}
-
-func (r *Reader) readNextExtension(useStartWith bool, startWith byte, buf []byte, exts [][2][]byte) ([][2][]byte, error) {
-	//Create a buffer to store the extnesion in, and start it with startWith maybe?
-	ext := make([]byte, 0, 16)
-	if useStartWith {
-		ext = append(ext, startWith)
-	}
-	//If we suddenly hit the end, then it will be "\r\n", so we can't risk reading more than 2 bytes.
-	buf = buf[:2]
-	var err error
-
-	//Read the name
-	err = r.read2(buf)
-	if err != nil {
-		return exts, err
-	}
-	//buf will contain 1 of:
-	// 1) x=
-	// 2) x\r
-	// 3) x;
-	// 4) xx
-	if buf[1] == '=' {
-		return append(exts, [2][]byte{
-			append(ext, buf[0]), //Append the character
-			/*READ*/ nil,
-		}), nil
-	} else if buf[1] == '\r' {
-		//Read and check the \n
-		err = r.read1(buf[1:2])
+func (r *Reader) readLine() (line []byte, err error) {
+	//First, there is a good chance that we are actually a bufio.Reader... So that would make this more efficient!
+	bufReader, ok := r.source.(*bufio.Reader)
+	if ok {
+		fmt.Println("BUFIO!!!")
+		//TODO: What about a temp error?
+		line, err = bufReader.ReadBytes('\r')
 		if err != nil {
-			return exts, err
+			return
 		}
-		if buf[1] != '\n' {
-			return exts, ErrMalformedChunks
+		line[len(line)-1], err = bufReader.ReadByte()
+		if err != nil {
+			return
 		}
-		return append(exts, [2][]byte{
-			append(ext, buf[0]), //Append the character
-			nil,                 //No data
-		}), nil
-	} else if buf[1] == ';' {
-		return r.readNextExtension(
-			false, 0, buf,
-			append(exts, [2][]byte{
-				append(ext, buf[0]), //Append the character
-				nil,                 //No data
-			}),
-		)
-	} else {
-		for {
-			ext = append(ext, buf...)
-			err = r.read2(buf)
-			if err != nil {
-				return exts, err
+		if line[len(line)-1] != '\n' {
+			err = ErrMalformedChunks
+		}
+		return line[:len(line)-1], err
+	}
+
+	buf := r.buf[:2]
+	line = make([]byte, 0, 4)
+	for {
+		err = r.read2(buf)
+		if err != nil {
+			return
+		}
+		if buf[0] == '\r' {
+			if buf[1] != '\n' {
+				return line, ErrMalformedChunks
 			}
-			//buf will now contain 1 of:
-			// 1) =d
-			// 2) ;x
-			// 3) \r\n
-			// 4) x=
-			// 5) x;
-			// 6) x\r
-			// 7) xx
-			if buf[0] == '=' {
-
-			} else if buf[0] == ';' {
-				return r.readNextExtension(
-					true, buf[1], buf,
-					append(exts, [2][]byte{
-						ext,
-						nil, //No data
-					}),
-				)
-			} else if buf[0] == '\r' && buf[1] == '\n' {
-				return append(exts, [2][]byte{
-					ext, //Append the character
-					nil, //No data
-				}), nil
-			} else if buf[1] == '=' {
-
-			} else if buf[1] == ';' {
-				return r.readNextExtension(
-					false, 0, buf,
-					append(exts, [2][]byte{
-						append(ext, buf[0]),
-						nil,
-					}),
-				)
-			} else if buf[1] == '\r' {
-
-			}
-		}
-	}
-}
-
-func (r *Reader) readBytesLeft() (err error) {
-	//For commenting, bytes that are part of the length will be refered to as n,
-	// and bytes that are part of the extension will be referd to as x.
-	buf := r.buf[2:5]
-	var ext [2][]byte
-	//Read 3 bytes...
-	err = r.fill(buf)
-	if err != nil {
-		return
-	}
-	//The buf with be one of:
-	// 1) n\r\n
-	// 2) n;x
-	// 3) nn\r
-	// 4) nn;
-	// 5) nn
-	if buf[1] == '\r' {
-		//Case 1
-		if buf[2] != '\n' {
-			return ErrMalformedChunks
-		}
-		buf = buf[:1]
-	} else if buf[1] == ';' {
-		//Case 2
-		ext, err = r.readExtension(true, buf[2])
-		if err != nil {
 			return
-		}
-		buf = buf[:1]
-	} else if buf[2] == '\r' {
-		//Case 3
-		//Read and check \n
-		err = r.read1(buf[2:3])
-		if err != nil {
-			return
-		}
-		if buf[2] != '\n' {
-			return ErrMalformedChunks
-		}
-		buf = buf[:2]
-	} else if buf[2] == ';' {
-		//Case 4
-		ext, err = r.readExtension(false, 0)
-		if err != nil {
-			return
-		}
-		buf = buf[:2]
-	} else {
-		//Case 5, so, read more... Until we are at an end...
-		for {
-			buf2 := r.buf[:2]
-			err = r.read2(buf2)
+		} else if buf[1] == '\r' {
+			err = r.read1(buf[1:2])
 			if err != nil {
 				return
 			}
-			//buf2 will contain 1 of:
-			// 1) \r\n
-			// 2) ;x
-			// 3) n\r
-			// 4) n;
-			// 5) nn
-			if buf2[0] == '\r' {
-				//Case 1
-				if buf2[1] != '\n' {
-					return ErrMalformedChunks
-				}
-				break
-			} else if buf2[0] == ';' {
-				//Case 2
-				ext, err = r.readExtension(true, buf2[1])
-				if err != nil {
-					return
-				}
-				break
-			} else if buf2[1] == '\r' {
-				//Case 3
-				//Append the character
-				buf = append(buf, buf2[0])
-				//Read and check the \n
-				err = r.read1(buf2[1:2])
-				if err != nil {
-					return
-				}
-				if buf2[1] != '\n' {
-					return ErrMalformedChunks
-				}
-				break
-			} else if buf2[1] == ';' {
-				//Case 4
-				//Append the character
-				buf = append(buf, buf2[0])
-
-				ext, err = r.readExtension(false, 0)
-				if err != nil {
-					return
-				}
-				break
-			} else {
-				//Case 5 - Just append and carry on
-				buf = append(buf, buf2...)
+			if buf[1] != '\n' {
+				return line, ErrMalformedChunks
 			}
+			return append(line, buf[0]), nil
+		} else {
+			line = append(line, buf...)
 		}
+	}
+}
+
+func (r *Reader) readBytesLeft() error {
+	var size []byte
+	line, err := r.readLine()
+	if err != nil {
+		return err
+	}
+	i := utils.IndexOfByte(line, ';')
+	if i == -1 {
+		size = line
+	} else {
+		size = line[:i]
+		fmt.Println("exts: ", line[i+1:])
 	}
 	var temp uint64
 	//Since we know that the buffer won't change, we can convert it using unsafe, as this won't copy it...
-	temp, err = strconv.ParseUint(*(*string)(unsafe.Pointer(&buf)), 16, 31)
+	temp, err = strconv.ParseUint(*(*string)(unsafe.Pointer(&size)), 16, 31)
 	r.bytesLeft = int(temp)
-	fmt.Println("ext:", ext)
-	return
+	return err
 }
 
 func (r *Reader) ConsumeCRLF() (err error) {
@@ -369,11 +216,13 @@ func (r *Reader) Read(buf []byte) (n int, err error) {
 		//If there is a length of 0, then its the end!
 		if r.bytesLeft == 0 {
 			r.bytesLeft = -1
+			//TODO: Trailers
 			//Consume the CRLF after the 0 sized chunk
 			err = r.ConsumeCRLF()
 			//And if there wasn't an error doing that, then the error is EOF
 			if err == nil {
 				err = io.EOF
+				fmt.Println("End!!!")
 			}
 			return 0, err
 		}
