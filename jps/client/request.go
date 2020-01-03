@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/jps"
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/jpserror"
 	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
 )
 
@@ -24,7 +25,7 @@ func (r *OutgoingRequest) GetBody() (io.Writer, bool, error) {
 	if r.body == nil {
 		codes, ok := r.Server.Encodings.GetWriterPipeGenerators(r.Request.Header.GetValuesRawKey("Transfer-Encoding"))
 		if !ok {
-			return nil, false, jps.ErrUnknownTransferEncoding
+			return nil, false, jpserror.ErrUnsupportedTransferEncoding
 		}
 		var err error
 		r.body = pipe.PipeTo(r.Connection, codes, r.Pipes)

@@ -1,16 +1,27 @@
 package jps
 
-import (
-	"net/url"
+import "net/url"
 
-	"github.com/JOTPOT-UK/JOTPOT-Server/http"
-	"github.com/JOTPOT-UK/JOTPOT-Server/http/header"
-)
+//Request represents a generic request.
+type Request interface {
+	URL() *url.URL
+	Method() Method
+	SetMethod(Method) error
+	//Range is the requested range of the response.
+	//The first
+	//Eg if the request is for a file of length 500 and Request.Range()=(5, 100)
+	Ranges() ([]Range, error)
+	SetRanges([]Range) error
+}
 
-type Request struct {
-	Method      string
-	URL         *url.URL
-	HTTPVersion http.HTTPVersion
-	Header      header.Header
-	Close       bool
+type IncomingRequest struct {
+	Request
+	ConnectionDetails
+	Body IncomingBody
+}
+
+type OutgoingRequest struct {
+	Request
+	ConnectionDetails
+	Body OutgoingBody
 }

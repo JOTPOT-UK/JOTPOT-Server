@@ -1,0 +1,123 @@
+package jps
+
+import (
+	"bufio"
+	"io"
+	"net"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
+)
+
+type UnderlyingResponse interface {
+	Protocol() Protocol
+	From() net.Addr
+	To() net.Addr
+	Via() []Hop
+	WriteCloser(io.Writer) io.WriteCloser
+}
+
+//Incoming represents an incoming request to a server
+type Outgoing struct {
+	//Server is the Server which recieved the Outgoing
+	Server *Server
+	Pipes  []*pipe.ReaderPipeGenerator
+
+	response UnderlyingResponse
+
+	closed     bool
+	buf        *bufio.Reader
+	bufferBody bool
+	rawBody    io.WriteCloser
+	pipedBody  io.ReadCloser
+}
+
+func (r *Incoming) Protocol() Protocol {
+	return r.request.Protocol()
+}
+
+//From returns the remote address of the connection the request came from
+func (r *Incoming) From() net.Addr {
+	return r.request.From()
+}
+
+//To returns the local address of the connection the request came from
+func (r *Incoming) To() net.Addr {
+	return r.request.To()
+}
+
+func (r *Incoming) Via() []Hop {
+	return r.request.Via()
+}
+
+func (r *Incoming) getRawBody() io.ReadCloser {
+	if r.rawBody == nil {
+		if r.closed {
+			panic("incoming: body closed")
+		}
+		r.rawBody = r.request.ReadCloser()
+	}
+	return r.rawBody
+}
+
+func (r *Incoming) getPipedBody() io.ReadCloser {
+	if r.pipedBody == nil {
+		r.pipedBody = pipe.From(r.getRawBody(), r.Pipes)
+	}
+	return r.pipedBody
+}
+
+func (r *Incoming) getBufioReader() *bufio.Reader {
+	if r.buf != nil {
+		r.buf = r.Server.NewBufioReader(r.getPipedBody())
+	}
+	return r.buf
+}
+
+func (r *Incoming) getReader() io.Reader {
+	if r.IsBuffered() {
+		return r.getBufioReader()
+	}
+	return r.getPipedBody()
+}
+
+func (r *Incoming) IsBuffered() bool {
+	return r.bufferBody
+}
+
+func (r *Incoming) SetBuffered(buffer bool) bool {
+	if r.buf != nil {
+		return true
+	}
+	r.bufferBody = buffer
+	return buffer
+}
+
+func (r *Incoming) Read(dst []byte) (int, error) {
+	return r.getReader().Read(dst)
+}
+
+func (r *Incoming) GetBufioReader() *bufio.Reader {
+	if r.buf == nil {
+		r.bufferBody = true
+		return r.getBufioReader()
+	}
+	return r.buf
+}
+
+func (r *Incoming) Close() error {
+	//Recycle the buffer if it has been created
+	if r.buf != nil {
+		r.Server.RecycleBufioReader(r.buf)
+		r.buf = nil
+	}
+	err := nil
+	if r.pipedBody != nil {
+		err = r.pipedBody.Close()
+		r.pipedBody = nil
+		r.rawBody = nil
+	} else if r.rawBody != nil {
+		err = r.rawBody.Close()
+		r.rawBody = nil
+	}
+	return err
+}

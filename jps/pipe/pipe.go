@@ -2,6 +2,8 @@ package pipe
 
 import (
 	"io"
+
+	"github.com/JOTPOT-UK/JOTPOT-Server/util"
 )
 
 type ReaderID uint
@@ -11,7 +13,7 @@ type ReaderPipeGenerator struct {
 	id        ReaderID
 }
 type WriterPipeGenerator struct {
-	Generator func(io.Writer) io.WriteCloser
+	Generator func(io.Writer) (io.WriteCloser, error)
 	id        WriterID
 }
 
@@ -76,6 +78,7 @@ func (r *ReaderPipe) Close() (err error) {
 	for {
 		err = r.readers[i].Close()
 		i++
+		//TODO: -1 to not close connection?
 		if i == len(r.readers) || err != nil {
 			return
 		}
@@ -86,7 +89,7 @@ type WriterPipe struct {
 	writers []io.WriteCloser
 }
 
-func PipeTo(w io.WriteCloser, pipes ...[]*WriterPipeGenerator) *WriterPipe {
+func To(w io.WriteCloser, pipes ...[]*WriterPipeGenerator) (*WriterPipe, error) {
 	c := 1
 	for pipesI := range pipes {
 		c += len(pipes[pipesI])
@@ -94,14 +97,18 @@ func PipeTo(w io.WriteCloser, pipes ...[]*WriterPipeGenerator) *WriterPipe {
 	out := &WriterPipe{make([]io.WriteCloser, c, c)}
 	c--
 	out.writers[c] = w
+	var err error
 	for pipesI := range pipes {
 		for _, p := range pipes[pipesI] {
-			w = p.Generator(w)
+			w, err = p.Generator(w)
+			if err != nil {
+				return nil, err
+			}
 			c--
 			out.writers[c] = w
 		}
 	}
-	return out
+	return out, nil
 }
 
 func (w *WriterPipe) Write(buf []byte) (int, error) {
@@ -120,4 +127,16 @@ func (w *WriterPipe) Close() (err error) {
 			return
 		}
 	}
+}
+
+func (w *WriterPipe) Flush() (err error) {
+	for i := range w.writers {
+		if flusher, ok := w.writers[i].(util.WriteFlushCloser); ok {
+			err = flusher.Flush()
+			if err != nil {
+				return
+			}
+		}
+	}
+	return
 }

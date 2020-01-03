@@ -29,6 +29,10 @@ type IncomingRequest struct {
 	body      io.ReadCloser
 }
 
+func (r *IncomingRequest) Connection() net.Conn {
+	return r.con
+}
+
 //From returns the remote address of the connection the request came from
 func (r *IncomingRequest) From() net.Addr {
 	return r.con.RemoteAddr()

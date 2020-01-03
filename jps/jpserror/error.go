@@ -1,37 +1,52 @@
 package jpserror
 
-import (
-	"strconv"
-)
-
-var ErrInternalServerError = &HTTPError{Code: 500, Message: "Internal server error"}
-var ErrUnsupportedTransferEncoding = &HTTPError{Code: 501, Message: "Unsupported Transfer-Encoding"}
-var ErrUnsupportedContentEncoding = &HTTPError{Code: 415, Message: "Unsupported Content-Encoding"}
-var ErrContentLengthAndTransferEncoding = &HTTPError{Code: 400, Message: "It is forbidden to have both a Content-Length and a Transfer-Encoding header"}
-var ErrMalformedContentLength = &HTTPError{Code: 400, Message: "Malformed Content-Length"}
-var ErrTooManyContentLength = &HTTPError{Code: 400, Message: "Too many Content-Length values"}
-var ErrMustOnlyChunkOnce = &HTTPError{Code: 400, Message: "Chunked encoding must only be applied once"}
-var ErrMustChunkLast = &HTTPError{Code: 400, Message: "The final Transfer-Encoding must be chunked"}
-var ErrMalformedHTTPRequest = &HTTPError{Code: 400, Message: "Malformed HTTP request"}
-var ErrMalformedHTTPVersion = &HTTPError{Code: 400, Message: "Malformed HTTP version"}
-var ErrMalformedURI = &HTTPError{Code: 400, Message: "Malformed URI"}
-var ErrMalformedHeaders = &HTTPError{Code: 400, Message: "Malformed headers"}
-var ErrMustBe1HostHeader = &HTTPError{Code: 400, Message: "There must be 1 Host header"}
-var ErrCannotChunkAnAlreadyChunkedBody = &HTTPError{Code: 400, Message: "Cannot chunk an already chunked body"}
-
-//HTTPError represents an error, but with a custom code and message.
-type HTTPError struct {
-	//Err is the error which caused this error
-	Err error
-	//Code is the code which the server should respond with
-	Code int
-	//Message is the message which an error page should display
-	Message string
+type UserSafeError interface {
+	UserSafeStr() string
+	Unwrap() error
 }
 
-func (err *HTTPError) Error() string {
-	if err.Err == nil {
-		return strconv.FormatInt(int64(err.Code), 10) + ": " + err.Message
+func GetUserSafeError(err error, defaultSafeStr string) UserSafeError {
+	if u, ok := err.(UserSafeError); ok {
+		return u
 	}
-	return err.Err.Error()
+	return Error{
+		SafeStr: defaultSafeStr,
+		err:     err,
+	}
+}
+
+/*
+func PrintError(w io.Writer, err error) error {
+	_, e := io.WriteString(w, err.Error())
+	if e != nil {
+		return e
+	}
+	err = errors.Unwrap(err)
+	if err != nil {
+		_, e = io.WriteString(w, "Unwrapped:")
+		if e != nil {
+			return e
+		}
+		return PrintError(w, err)
+	}
+	return nil
+}*/
+
+//Error represents an error, wrapped with a string which is safe to show to a user.
+//This can be used to return an error with a useful message for the user but also with the origional error which could be logged further up but may contain information that the user should not see.
+type Error struct {
+	SafeStr string
+	err     error
+}
+
+func (e Error) Error() string {
+	return e.SafeStr + ": " + e.err.Error()
+}
+
+func (e Error) UserSafeStr() string {
+	return e.SafeStr
+}
+
+func (e Error) Unwrap() error {
+	return e.err
 }

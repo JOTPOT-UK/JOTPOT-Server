@@ -127,7 +127,6 @@ func (r *Reader) readLine() (line []byte, err error) {
 	//First, there is a good chance that we are actually a bufio.Reader... So that would make this more efficient!
 	bufReader, ok := r.source.(*bufio.Reader)
 	if ok {
-		fmt.Println("BUFIO!!!")
 		//TODO: What about a temp error?
 		line, err = bufReader.ReadBytes('\r')
 		if err != nil {
@@ -203,7 +202,6 @@ func (r *Reader) ConsumeCRLF() (err error) {
 }
 
 func (r *Reader) Read(buf []byte) (n int, err error) {
-	fmt.Println("Reading")
 	//If it's negative, then we should return EOF
 	if r.bytesLeft < 0 {
 		return 0, io.EOF
@@ -224,15 +222,12 @@ func (r *Reader) Read(buf []byte) (n int, err error) {
 			//And if there wasn't an error doing that, then the error is EOF
 			if err == nil {
 				err = io.EOF
-				fmt.Println("End!!!")
 			}
 			return 0, err
 		}
 	}
-	fmt.Println(r.bytesLeft, "bytes left")
 	//Read up to how many bytes are in this chunk, and substract how many we read.
 	n, err = r.readSource(buf[:util.MinInt(r.bytesLeft, len(buf))])
-	fmt.Println("Read", n, "bytes")
 	//EOF and then return if there was an error
 	if err != nil {
 		r.bytesLeft = -1

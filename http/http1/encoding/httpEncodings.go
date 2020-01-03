@@ -22,8 +22,8 @@ func NewLzwReader(r io.Reader) (io.ReadCloser, error) {
 }
 
 //NewLzwWriter calls lzw.NewWriter with order as x and litWidth as y.
-func NewLzwWriter(r io.Writer) io.WriteCloser {
-	return lzw.NewWriter(r, 0, 0)
+func NewLzwWriter(r io.Writer) (io.WriteCloser, error) {
+	return lzw.NewWriter(r, 0, 0), nil
 }
 
 //CompressEncoding is the HTTP "compress" encoding
@@ -44,8 +44,8 @@ var XCompressEncoding = Encoding{
 var DeflateEncoding = Encoding{
 	Name:   "deflate",
 	Reader: pipe.ReaderPipeGenerator{Generator: zlib.NewReader},
-	Writer: pipe.WriterPipeGenerator{Generator: func(w io.Writer) io.WriteCloser {
-		return zlib.NewWriter(w)
+	Writer: pipe.WriterPipeGenerator{Generator: func(w io.Writer) (io.WriteCloser, error) {
+		return zlib.NewWriter(w), nil
 	}},
 }
 
@@ -63,12 +63,16 @@ func NewGzipWriter(w io.Writer) io.WriteCloser {
 var GzipEncoding = Encoding{
 	Name:   "gzip",
 	Reader: pipe.ReaderPipeGenerator{Generator: NewGzipReader},
-	Writer: pipe.WriterPipeGenerator{Generator: NewGzipWriter},
+	Writer: pipe.WriterPipeGenerator{Generator: func(w io.Writer) (io.WriteCloser, error) {
+		return NewGzipWriter(w), nil
+	}},
 }
 
 //XGzipEncoding is identicle to GzipEncoding, apart from the name
 var XGzipEncoding = Encoding{
 	Name:   "x-gzip",
 	Reader: pipe.ReaderPipeGenerator{Generator: NewGzipReader},
-	Writer: pipe.WriterPipeGenerator{Generator: NewGzipWriter},
+	Writer: pipe.WriterPipeGenerator{Generator: func(w io.Writer) (io.WriteCloser, error) {
+		return NewGzipWriter(w), nil
+	}},
 }
