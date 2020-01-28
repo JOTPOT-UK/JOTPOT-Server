@@ -3,8 +3,8 @@ package http1
 import (
 	"bufio"
 	"errors"
-	"io"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"sync"
@@ -152,6 +152,9 @@ func (s *Session) Frame() (*jps.ServerFrame, error) {
 	bodyReader := NewBodyReader(
 		s, s.config,
 		httpReq.Header, httpReq,
+		func /*hasBody*/ () bool {
+			return true
+		},
 		util.ReaderClosePassOn{s.reader, s.stream},
 	)
 	httpResp := http.Response{
@@ -163,6 +166,9 @@ func (s *Session) Frame() (*jps.ServerFrame, error) {
 	bodyWriter := NewBodyWriter(
 		s, s.config,
 		httpResp.Header, httpReq,
+		func /*hasBody*/ () bool {
+			return true
+		},
 		util.NoopFlusher{s.stream},
 		func /*headerGenerator*/ () []byte {
 			if httpResp.Header.Has("Connection", []string{"close"}) {

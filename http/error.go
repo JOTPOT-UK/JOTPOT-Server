@@ -64,6 +64,12 @@ func MakeErrRangeNotSatisfiable(err error) error {
 	return Error{Code: 416, Message: "Range Not Satisfiable", Err: err}
 }
 
+func MakeErrMalformedCacheControlHeader(err error) error {
+	return Error{Code: 400, Message: "Malformed Cache-Control header", Err: err}
+}
+var ErrExpectingArgumentAfterEquals = errors.New("expecting argument after equals")
+var ErrMalformedCacheControlHeaderExpectingArgumentAfterEquals = MakeErrMalformedCacheControlHeader(ErrExpectingArgumentAfterEquals)
+
 type Error struct {
 	Code    uint16
 	Message string

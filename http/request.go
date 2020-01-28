@@ -84,6 +84,10 @@ func (r *Request) SetRanges(ranges []jps.Range) error {
 	return err
 }
 
+func (r *Request) Conditions() ([]jps.Condition, error) {
+	return Conditions(r.Header, r.MethodStr == "GET" || r.MethodStr == "HEAD"), nil
+}
+
 //FormatRange formats the given range in to a HTTP bytes-range-spec.
 // A range of 2 non-negative values gets formatted to `start "-" end`
 // A starting at a non-negative value and ending at -1 (EOF) gets formatted to `start "-"`

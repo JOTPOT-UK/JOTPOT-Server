@@ -12,6 +12,10 @@ type Request interface {
 	//Eg if the request is for a file of length 500 and Request.Range()=(5, 100)
 	Ranges() ([]Range, error)
 	SetRanges([]Range) error
+	//Conditions returns a list of conditions for the request.
+	//See the documentation on Condition for how they should be handled.
+	//It is sometimes okay to ignore conditions and behave as if there were none, however this will lead to unesisary data transmition and, in quite a few cases, the conditions MUST be followed.
+	Conditions() ([]Condition, error)
 }
 
 type IncomingRequest struct {

@@ -16,7 +16,7 @@ func FormatMediaType(mt *mediatype.Type) ([]byte, error) {
 	i++
 	i += copy(out[i:], mt.Subtype)
 	for _, p := range mt.Params {
-		value, err := FormatTokenOrQuotedString([]byte(p.Value)) //TODO: Do we have to convert to []byte?
+		value, err := httpchars.FormatTokenOrQuotedString([]byte(p.Value)) //TODO: Do we have to convert to []byte?
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +60,7 @@ func ParseMediaType(str string) (*mediatype.Type, error) {
 		}
 		str = str[i+1:]
 		if str[0] == '"' {
-			p.Value, i, err = ParseQuotedStringNoStartingQuote([]byte(str[1:]))
+			p.Value, i, err = httpchars.ParseQuotedStringNoStartingQuote([]byte(str[1:]))
 			if err != nil {
 				return mt, err
 			}

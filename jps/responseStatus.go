@@ -90,6 +90,7 @@ var (
 	ResponseStatusSeeOther          = ResponseStatus(ResponseCodeRedirectMask | 3)
 	ResponseStatusUseProxy          = ResponseStatus(ResponseCodeRedirectMask | 5)
 	ResponseStatusTemporaryRedirect = ResponseStatus(ResponseCodeRedirectMask | 7)
+	ResponseStatusNotModified       = ResponseStatus(ResponseCodeRedirectMask | 14)
 	//ResponseStatusBadRequest
 	//HTTP: 400 Bad Request, SFTP: SSH_FX_BAD_MESSAGE (5)
 	ResponseStatusBadMessage = ResponseStatus(ResponseCodeClientErrorMask | 1)
@@ -111,6 +112,7 @@ var (
 	ResponseStatusPayloadTooLarge      = ResponseStatus(ResponseCodeClientErrorMask | 13)
 	ResponseStatusURITooLong           = ResponseStatus(ResponseCodeClientErrorMask | 14)
 	ResponseStatusUnsupportedMediaType = ResponseStatus(ResponseCodeClientErrorMask | 15)
+	ResponseStatusPreconditionFailed   = ResponseStatus(ResponseCodeClientErrorMask | 16)
 	//ResponseStatusInvalidHandle
 	//SFTP: SSH_FX_INVALID_HANDLE (9)
 	ResponseStatusInvalidHandle = ResponseStatus(ResponseCodeClientErrorMask | 19)

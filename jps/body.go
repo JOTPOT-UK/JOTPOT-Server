@@ -39,10 +39,13 @@ type MetadataGetter interface {
 	TypeString() (string, error)
 	Encodings() ([]string, error)
 	Languages() ([]string, error)
+	//TODO: CTime
+	//TODO: ATime
+	//TODO: Archive time?
 	MTime() (time.Time, error)
 	ETag() (string, bool, error)
-	//TODO: FileType() FileType
-	//TODO: Permissions?
+	//TODO: Owner
+	//TODO: Permissions (POSIX, Access-control list, Mandatory access control)
 }
 
 type MetadataSetter interface {

@@ -15,3 +15,8 @@ type WriteFlushCloser interface {
 	io.WriteCloser
 	Flusher
 }
+
+type CloseFlusher interface {
+	io.Closer
+	Flusher
+}

@@ -3,6 +3,7 @@ package jps
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
@@ -179,19 +180,28 @@ func (r *Writer) Close() error {
 		r.Session().BufioSource().RecycleWriter(r.buf)
 		r.buf = nil
 	}
-	var err2 error
+	_, err2 := r.getWriter()
+	var err3 error
+	var err4 error
 	if r.pipedBody != nil {
-		err = r.pipedBody.Close()
+		err3 = r.pipedBody.Close()
 		r.pipedBody = nil
 		r.rawBody = nil
 	} else if r.rawBody != nil {
-		err = r.rawBody.Close()
+		err4 = r.rawBody.Close()
 		r.rawBody = nil
 	}
-	if err == nil {
+	if err != nil {
+		return err
+	}
+	if err2 != nil {
 		return err2
 	}
-	return err
+	if err3 != nil {
+		return err3
+	}
+	fmt.Println("Closed!")
+	return err4
 }
 
 func (r *Writer) Flush() error {

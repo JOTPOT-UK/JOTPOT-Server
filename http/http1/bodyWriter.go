@@ -16,12 +16,26 @@ import (
 )
 
 var ErrBodyLengthExceded = errors.New("body length exceded")
+var ErrNoBody = errors.New("no body")
 
 type writerWrapper struct {
 	WriteFlusher util.WriteFlusher
 	Closer       func() error
 	HeaderCB     func() []byte
 	HeadWritten  bool
+}
+
+func (ww *writerWrapper) writeHeader() error {
+	head := ww.HeaderCB()
+	n, err := ww.WriteFlusher.Write(head)
+	if err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+	if n != len(head) {
+		return fmt.Errorf("failed to write header: %w", io.ErrShortWrite)
+	}
+	ww.HeadWritten = true
+	return nil
 }
 
 func (ww *writerWrapper) Write(src []byte) (int, error) {
@@ -39,19 +53,6 @@ func (ww *writerWrapper) Write(src []byte) (int, error) {
 		return n, err
 	}
 	return ww.WriteFlusher.Write(src)
-}
-
-func (ww *writerWrapper) writeHeader() error {
-	head := ww.HeaderCB()
-	n, err := ww.WriteFlusher.Write(head)
-	if err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
-	}
-	if n != len(head) {
-		return fmt.Errorf("failed to write header: %w", io.ErrShortWrite)
-	}
-	ww.HeadWritten = true
-	return nil
 }
 
 func (ww *writerWrapper) Flush() error {
@@ -74,6 +75,14 @@ func (ww *writerWrapper) Close() error {
 		}
 	}
 	return ww.Closer()
+}
+
+type nilBody struct {
+	util.CloseFlusher
+}
+
+func (_ nilBody) Write(_ []byte) (int, error) {
+	return 0, ErrNoBody
 }
 
 type LimitWriteFlushCloser struct {
@@ -144,6 +153,7 @@ type BodyWriter struct {
 	config      *http.Config
 	header      *header.Header
 	req         *http.Request
+	hasBody     func() bool
 	finalWriter writerWrapper
 	writer      jps.WriteFlushCloser
 }
@@ -153,15 +163,17 @@ func NewBodyWriter(
 	config *http.Config,
 	header *header.Header,
 	req *http.Request,
+	hasBody func() bool,
 	rawWriter jps.WriteFlushCloser,
 	headerGenerator func() []byte,
 	close func() error,
 ) BodyWriter {
 	return BodyWriter{
-		ses:    ses,
-		config: config,
-		header: header,
-		req:    req,
+		ses:     ses,
+		config:  config,
+		header:  header,
+		req:     req,
+		hasBody: hasBody,
 		finalWriter: writerWrapper{
 			WriteFlusher: rawWriter,
 			Closer:       close,
@@ -215,35 +227,39 @@ func (w *BodyWriter) SetBodyLength(length int64) error {
 
 func (w *BodyWriter) Body() (jps.WriteFlushCloser, error) {
 	if w.writer == nil {
-		//TIMER:start := time.Now()
-		l, err := w.BodyLength()
-		if err != nil {
-			return nil, err
-		}
-		//TIMER:jps.HBLengthTimes = append(jps.HBLengthTimes, time.Since(start))
-		//TIMER:start = time.Now()
-		if l == -1 {
-			codes := w.header.GetValuesRawKey("Transfer-Encoding")
-			lm1 := len(codes) - 1
-			for i := 0; i < lm1; i++ {
-				if codes[i] == "chunked" {
-					return nil, http.ErrMustChunkLast
+		if w.hasBody() {
+			//TIMER:start := time.Now()
+			l, err := w.BodyLength()
+			if err != nil {
+				return nil, err
+			}
+			//TIMER:jps.HBLengthTimes = append(jps.HBLengthTimes, time.Since(start))
+			//TIMER:start = time.Now()
+			if l == -1 {
+				codes := w.header.GetValuesRawKey("Transfer-Encoding")
+				lm1 := len(codes) - 1
+				for i := 0; i < lm1; i++ {
+					if codes[i] == "chunked" {
+						return nil, http.ErrMustChunkLast
+					}
+				}
+				//TODO: Close connection if chunked is not last
+				pipes, ok := w.config.TransferEncodings.GetWriterPipeGenerators(codes)
+				if !ok {
+					return nil, http.ErrUnsupportedTransferEncoding
+				}
+				if w.writer, err = pipe.To(&w.finalWriter, pipes); err != nil {
+					return w.writer, err
+				}
+			} else {
+				//TIMER:jps.HBHeadWriteTimes = append(jps.HBHeadWriteTimes, time.Since(start))
+				w.writer = LimitWriteFlushCloser{
+					l: l,
+					w: &w.finalWriter,
 				}
 			}
-			//TODO: Close connection if chunked is not last
-			pipes, ok := w.config.TransferEncodings.GetWriterPipeGenerators(codes)
-			if !ok {
-				return nil, http.ErrUnsupportedTransferEncoding
-			}
-			if w.writer, err = pipe.To(&w.finalWriter, pipes); err != nil {
-				return w.writer, err
-			}
 		} else {
-			//TIMER:jps.HBHeadWriteTimes = append(jps.HBHeadWriteTimes, time.Since(start))
-			w.writer = LimitWriteFlushCloser{
-				l: l,
-				w: &w.finalWriter,
-			}
+			w.writer = nilBody{&w.finalWriter}
 		}
 	}
 	return w.writer, nil

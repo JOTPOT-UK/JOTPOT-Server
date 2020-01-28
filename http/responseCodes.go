@@ -134,7 +134,9 @@ func init() {
 			{jps.ResponseStatusNonAuthoritative, jps.CodeWithString{203, "None Authoritative"}},
 			{jps.ResponseStatusNoContent, jps.CodeWithString{204, "No Content"}},
 			{jps.ResponseStatusResetContent, jps.CodeWithString{205, "Reset Content"}},
+			{jps.ResponseStatusNotModified, jps.CodeWithString{316, "Not Modified"}},
 			{jps.ResponseStatusNotFound, jps.CodeWithString{404, "Not Found"}},
+			{jps.ResponseStatusPreconditionFailed, jps.CodeWithString{412, "Precondition Failed"}},
 		},
 	)
 }

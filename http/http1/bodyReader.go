@@ -18,6 +18,7 @@ type BodyReader struct {
 	config    *http.Config
 	header    *header.Header
 	req       *http.Request
+	hasBody   func() bool
 	rawReader io.ReadCloser
 	reader    io.ReadCloser
 	length    int64
@@ -28,6 +29,7 @@ func NewBodyReader(
 	config *http.Config,
 	header *header.Header,
 	req *http.Request,
+	hasBody func() bool,
 	rawReader io.ReadCloser,
 ) BodyReader {
 	return BodyReader{
@@ -35,6 +37,7 @@ func NewBodyReader(
 		config:    config,
 		header:    header,
 		req:       req,
+		hasBody:   hasBody,
 		rawReader: rawReader,
 		length:    -2,
 	}
@@ -45,7 +48,7 @@ func (r *BodyReader) Session() jps.Session {
 }
 
 func (r *BodyReader) getBody() error {
-	if r.req != nil && r.req.MethodStr == "HEAD" {
+	if !r.hasBody() || (r.req != nil && r.req.MethodStr == "HEAD") { //TODO: Only use hasBody()
 		r.length = 0
 		r.reader = util.EOFReadCloser{}
 		return nil
