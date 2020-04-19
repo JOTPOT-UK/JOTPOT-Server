@@ -2,23 +2,49 @@ package jps
 
 import "time"
 
-type CacheMode uint8
+//ResourceCacheMode represents the cache mode of a resource - aka under what conditions a file can
+//be cached.
+type ResourceCacheMode uint8
+
+//RequestCacheMode represents the cache mode of a request - for example disallowing it to be cached
+//or requiring that only a cached resource is returned.
+type RequestCacheMode uint8
 
 const (
 	//CacheModeUnspecified is a mode which leaves the cache settings unspecified.
 	//Some protocols may not support this, in which case, CacheModeMustRevalidate is used.
-	CacheModeUnspecified CacheMode = iota
-	//CacheModeNoCache
-	CacheModeNoCache
-	CacheModeMustRevalidate
-	CacheModeNoStore
-	CacheModeNoTransform
+	ResourceCacheModeUnspecified ResourceCacheMode = iota
+	ResourceCacheModeCanCache
+	//CacheModeMustRevalidate specifies that a cached resource must not be used without
+	//validation from the server once it has become stale.
+	//HTTP Cache-Control: proxy-revalidate // public
+	//HTTP Cache-Control: must-revalidate // private
+	ResourceCacheModeMustRevalidate
+	//CacheModeNoCache specifies that a cached resource must not be used without validation
+	//from the server.
+	//HTTP Cache-Control: no-cache // public
+	//HTTP Cache-Control: no-cache // private
+	ResourceCacheModeNoCache
+	//CacheModeNoStore indicates that the resource MUST NOT be stored except for it's final use
+	//and that after it's use it should be removed.
+	//HTTP Cache-Control: no-store // private
+	//HTTP Cache-Control: private // public
+	ResourceCacheModeNoStore
+)
 
-	/*
-		NoStore
-		AlwaysRevalidate
-		MustRevalidate
-	*/
+const (
+	RequestCacheModeUnspecified RequestCacheMode = iota
+	//RequestModeNoCache
+	RequestCacheModeNoCache
+	RequestCacheModeNoStore
+	//RequestCacheModeOnlyIfCached is a mode in which the server may not respond if the
+	//requested resource is not cached.
+	//A server recieving a request with this mode may ignore it, however if it chooses not to
+	//and a cached resource is not available it should respond with ResponseStatusNotCached
+	//(which is mapped to 504 GatewayTimeout for HTTP spec compliance so a client sending a
+	//request in this mode ought to treat a ResponseStatusGatewayTimeout as a
+	//ResponseStatusNotCached.)
+	RequestCacheModeOnlyIfCached
 )
 
 /*
@@ -118,65 +144,71 @@ const (
    member cache MAY forward such a request within that group of caches.
 */
 
-type CacheType uint8
-
-const (
-	CacheTypePublic CacheType = 2 << iota
-	CacheTypePrivate
-	CacheTypeAll = CacheTypePublic | CacheTypePrivate
-)
-
-func (t CacheType) AppliesToPublic() bool {
-	return t&CacheTypePublic != 0
-}
-
-func (t CacheType) AppliesToPrivate() bool {
-	return t&CacheTypePublic != 0
-}
-
 //ResponseCacheSettingsGetter specifies the settings that are required for a cache.
-type ResponseCacheSettingsGetter interface {
+type ResourceCacheSettingsGetter interface {
 	//CacheSupported returns true if the underlying protocol supports specifying cache properties, or false otherwise.
 	CacheSupported() bool
 
-	CacheMode() (CacheMode, error)
-	CachePublic() (bool, error)
-	CacheMaxAge() (int64, error)
-	CacheExpires() (time.Time, error)
+	//Note that a private cache mode may be considered the maximum of private cache mode, public.
+	PublicCacheMode() (ResourceCacheMode, error)
+	PrivateCacheMode() (ResourceCacheMode, error)
+	PublicCacheMaxAge() (time.Duration, error)
+	PrivateCacheMaxAge() (time.Duration, error)
+	PublicCacheExpires() (time.Time, bool, error)
+	PrivateCacheExpires() (time.Time, bool, error)
 	CacheTransformAllowed() (bool, error)
 }
 
-type ResponseCacheSettingsSetter interface {
-	SetCacheMode(CacheMode) error
+type ResourceCacheSettingsSetter interface {
+	SetPublicCacheMode(ResourceCacheMode) error
+	SetPrivateCacheMode(ResourceCacheMode) error
 	SetCachePublic(bool) error
-	SetCacheMaxAge(int64) error
-	SetCacheExpires(time.Time) error
+	SetCacheMaxAge(time.Duration) error
+	SetPublicCacheMaxAge(time.Duration) error
+	SetPrivateCacheExpires(time.Time) error
 	SetCacheTransformAllowed(bool) error
 }
 
-type ResponseCacheSettings interface {
-	ResponseCacheSettingsGetter
-	ResponseCacheSettingsSetter
+type ResourceCacheSettings interface {
+	ResourceCacheSettingsGetter
+	ResourceCacheSettingsSetter
 }
 
 type RequestCacheSettingsGetter interface {
-	//CacheSupported returns true if the underlying protocol supports specifying cache properties, or false otherwise.
-	CacheSupported() bool
+	//CacheMode returns the RequestCacheMode of the request.
+	CacheMode() (RequestCacheMode, error)
 
-	MaxAge() (int64, error)
-	MaxStale() (int64, error)
-	MinFresh() (int64, error)
+	//CacheMaxAge is the maximum age, in seconds, of an acceptable response.
+	CacheMaxAge() (time.Duration, error)
+	//CacheMaxStale indicates if stale response may be sent.
+	//If 0, a stale response should not be given;
+	//if positive then the response can be up to the given value of seconds older then when it
+	// became stale.
+	//if negative, then a stale response of any age is acceptable.
+	CacheMaxStale() (time.Duration, error)
+	//CacheMinFresh specifies the amount of time that a response should be fresh for after being
+	//returned.
+	CacheMinFresh() (time.Duration, error)
 	CacheTransformAllowed() (bool, error)
 }
 
 type RequestCacheSettingsSetter interface {
-	SetMaxAge(int64) error
-	SetMaxStale(int64) error
-	SetMinFresh(int64) error
+	SetCacheMode(RequestCacheMode) error
+	SetCacheMaxAge(time.Duration) error
+	SetCacheMaxStale(time.Duration) error
+	SetCacheMinFresh(time.Duration) error
 	SetCacheTransformAllowed(bool) error
 }
 
 type RequestCacheSettings interface {
 	RequestCacheSettingsGetter
 	RequestCacheSettingsSetter
+}
+
+type ResponseCacheGetter interface {
+	WasCached() (bool, error)
+	CachedAge() (time.Duration, error)
+	IsStale() (bool, error)
+	RevalidationFailed() (bool, error)
+	WasTransformed() (bool, error)
 }

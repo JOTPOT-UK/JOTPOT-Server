@@ -288,11 +288,11 @@ func (h *Header) Has(key string, values []string) bool {
 	for i := range have {
 		for j := range values {
 			if wants[j] == false && have[i] == values[j] {
-				wants[j] = true
 				left--
 				if left == 0 {
 					return true
 				}
+				wants[j] = true
 				break
 			}
 		}

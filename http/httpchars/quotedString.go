@@ -9,15 +9,19 @@ var ErrNoEndingQuotesForQuotedString = errors.New("no ending quotes for quoted s
 var ErrMalformedQuotedString = errors.New("malformed quoted string")
 var ErrInvalidCharacter = errors.New("invalid character")
 
-func ParseQuotedString(qstr string) (string, int, error) {
+func ParseQuotedString(qstr string) ([]byte, int, error) {
 	if len(qstr) == 0 || qstr[0] != '"' {
-		return "", 0, ErrNoStartingQuotesForQuotedString
+		return nil, 0, ErrNoStartingQuotesForQuotedString
 	}
-	return ParseQuotedStringNoStartingQuote([]byte(qstr[1:])) //TODO: []byte or string?
+	return ParseQuotedStringNoStartingQuote(qstr[1:])
 }
 
-func ParseQuotedStringNoStartingQuote(qstr []byte) (string, int, error) {
-	str := make([]byte, 0, len(qstr))
+//ParseQuotedStringNoStartingQuote parses a quoted string from the character after the opening quote.
+//It returns the parsed string, the index after the end of the quoted string (so after the final ")
+//or the index of the character that caused an error
+//and a possible error - which will either be nil or ErrMalformedQuotedString.
+func ParseQuotedStringNoStartingQuote(qstr string) ([]byte, int, error) {
+	str := make([]byte, 0, len(qstr)+1)
 	for i := 0; i < len(qstr); i++ {
 		c := qstr[i]
 		if !IsQDText(c) {
@@ -25,54 +29,65 @@ func ParseQuotedStringNoStartingQuote(qstr []byte) (string, int, error) {
 				i++
 				c = qstr[i]
 				if !IsQuotedPairChar(c) {
-					return string(str), i, ErrMalformedQuotedString
+					return str, i, ErrMalformedQuotedString
 				}
 			} else if c == '"' {
-				return string(str), i, nil
+				return str, i + 1, nil
 			} else {
-				return string(str), i, ErrMalformedQuotedString
+				return str, i, ErrMalformedQuotedString
 			}
 		}
 		str = append(str, c)
 	}
-	return string(str), len(qstr), ErrNoEndingQuotesForQuotedString
+	return str, len(qstr), ErrNoEndingQuotesForQuotedString
 }
 
-func FormatTokenOrQuotedString(str []byte) ([]byte, error) {
+func ParseFullQuotedString(qstr string) ([]byte, error) {
+	if len(qstr) == 0 || qstr[0] != '"' {
+		return nil, ErrNoStartingQuotesForQuotedString
+	}
+	return ParseFullQuotedStringNoStartingQuote(qstr[1:])
+}
+
+func ParseFullQuotedStringNoStartingQuote(qstr string) ([]byte, error) {
+	str, end, err := ParseQuotedStringNoStartingQuote(qstr)
+	if end != len(qstr) {
+		err = ErrMalformedQuotedString
+	}
+	return str, err
+}
+
+func FormatTokenOrQuotedString(str string) ([]byte, error) {
 	isQuoted := false
-	out := make([]byte, 0, len(str))
-	for _, c := range str {
+	out := make([]byte, 1, len(str)+4)
+	//The first character will be quotes if it's quoted.
+
+	var err error
+	for i := range str {
+		c := str[i]
 		if IsTokenChar(c) {
 			out = append(out, c)
 		} else if IsQDText(c) {
-			if isQuoted {
-				out = append(out, c)
-			} else {
-				ns := make([]byte, len(out)+2, len(str)+2)
-				ns[0] = '"'
-				n := copy(ns[1:], out) + 1
-				ns[n] = c
-				out = ns
+			out = append(out, c)
+			if !isQuoted {
 				isQuoted = true
 			}
 		} else if IsQuotedPairChar(c) {
-			if isQuoted {
-				out = append(out, '\\', c)
-			} else {
-				ns := make([]byte, len(out)+3, len(str)+4)
-				ns[0] = '"'
-				n := copy(ns[1:], out) + 1
-				ns[n] = '\\'
-				ns[n+1] = c
-				out = ns
+			out = append(out, '\\', c)
+			if !isQuoted {
 				isQuoted = true
 			}
 		} else {
-			return out, ErrInvalidCharacter
+			err = ErrInvalidCharacter
+			break
 		}
 	}
+
 	if isQuoted {
+		out[0] = '"'
 		out = append(out, '"')
+		return out, err
 	}
-	return out, nil
+	//Since we're not quoted, we don't want to include the first starting character.
+	return out[1:], err
 }

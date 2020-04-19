@@ -137,4 +137,6 @@ var (
 	ResponseStatusServiceUnavailable  = ResponseStatus(ResponseCodeServerErrorMask | 4)
 	ResponseStatusGatewayTimeout      = ResponseStatus(ResponseCodeServerErrorMask | 5)
 	ResponseStatusVersionNotSupported = ResponseStatus(ResponseCodeServerErrorMask | 6)
+	//NOTE: Mapped to ResponseStatusGatewayTimeout in HTTP
+	ResponseStatusNotCached = ResponseStatus(ResponseCodeServerErrorMask | 15) // NOT HTTP!
 )

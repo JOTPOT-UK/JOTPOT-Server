@@ -10,7 +10,7 @@ type Response interface {
 	//The return value is the ResponseStatus that was used (either the same as the one passed, or a more generic ones, see the last sentance).
 	SetStatus(ResponseStatus) error
 
-	CacheSettings() CacheSettings
+	CacheSettings() (ResourceCacheSettings, error)
 }
 
 //IncomingResponse has a Response interface, along with an IncomingBody to read the response body from and a ClientSession.

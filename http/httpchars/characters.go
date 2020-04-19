@@ -9,15 +9,15 @@ func IsDigit(b byte) bool {
 }
 
 func IsAlpha(b byte) bool {
-	return ('A' <= b && b <= 'Z') || ('a' <= b && b <= 'z')
+	return ('a' <= b && b <= 'z') || ('A' <= b && b <= 'Z')
 }
 
 func IsVChar(b byte) bool {
-	return 0x21 <= b && b <= 0x7E
+	return 0x21 <= b && b <= 0x7E // TODO
 }
 
 func IsOBSText(b byte) bool {
-	return 0x80 <= b && b <= 0xFF
+	return 0x80 <= b // && b <= 0xFF
 }
 
 func IsFieldChar(b byte) bool {
@@ -34,18 +34,19 @@ func IsQuotedPairChar(b byte) bool {
 
 		Therefore, for efficiency, we will check those 2 characters first.
 	*/
-	return b == '"' || b == '\\' || b == ' ' || b == '\t' || IsVChar(b) || IsOBSText(b)
+	return IsVChar(b) || b == '"' || b == '\\' || b == ' ' || b == '\t' || IsOBSText(b)
 }
 
 func IsQDText(b byte) bool {
-	return (0x21 <= b && b <= 0x7E && b != '\\' && b != '"') ||
-		b == ' ' || b == '\t' ||
+	return (0x5D <= b && b <= 0x7E) ||
+		(0x23 <= b && b <= 0x5B) ||
+		b == ' ' || b == '!' || b == '\t' ||
 		IsOBSText(b)
 }
 
 func IsTokenChar(b byte) bool {
 	//35 is #
-	return IsDigit(b) || IsAlpha(b) || (35 <= b && b <= '\'') || b == '!' || b == '*' || b == '+' || b == '-' || b == '.' || b == '^' || b == '_' || b == '`' || b == '|' || b == '~'
+	return IsAlpha(b) || IsDigit(b) || b == '-' || b == '*' || (35 <= b && b <= '\'') || b == '!' || b == '+' || b == '.' || b == '^' || b == '_' || b == '`' || b == '|' || b == '~'
 }
 
 func IsTokenRune(r rune) bool {
@@ -56,6 +57,9 @@ func IsTokenRune(r rune) bool {
 }
 
 func IsValidToken(bytes []byte) bool {
+	if len(bytes) == 0 {
+		return false
+	}
 	for _, b := range bytes {
 		if !IsTokenChar(b) {
 			return false
@@ -78,8 +82,8 @@ func IsValidTokenString(s string) bool {
 }
 
 func RemoveWhitespacePrefix(v string) string {
-	var i int
-	for IsWhitespace(v[i]) {
+	i := 0
+	for i < len(v) && IsWhitespace(v[i]) {
 		i++
 	}
 	return v[i:]
@@ -87,7 +91,7 @@ func RemoveWhitespacePrefix(v string) string {
 
 func RemoveWhitespacePostfix(v string) string {
 	i := len(v) - 1
-	for IsWhitespace(v[i]) {
+	for i >= 0 && IsWhitespace(v[i]) {
 		i--
 	}
 	return v[:i+1]

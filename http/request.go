@@ -13,15 +13,61 @@ import (
 )
 
 type Request struct {
-	MethodStr string
-	URLp      *url.URL
-	Version   Version
-	Header    *header.Header
+	MethodStr       string
+	URLp            *url.URL
+	Version         Version
+	Header          *header.Header
+	hasCacheControl bool
+	cacheControl    RequestCacheControl
 }
 
 //URL returns the requested URL. This may be modified.
 func (r *Request) URL() *url.URL {
 	return r.URLp
+}
+
+func (r *Request) ParseCacheControl() error {
+	if cc := r.Header.GetValues("cache-control"); len(cc) > 0 {
+		var err error
+		r.cacheControl, err = ParseRequestCacheControlHeaders(cc, r.Header.GetValues("pragma"))
+		if err != nil {
+			return err
+		}
+	} else {
+		r.cacheControl = defaultRequestCacheControl
+	}
+	r.hasCacheControl = true
+	return nil
+}
+
+func (r *Request) CacheControl() (RequestCacheControl, error) {
+	var err error
+	if !r.hasCacheControl {
+		err = r.ParseCacheControl()
+	}
+	return r.cacheControl, err
+}
+
+func (r *Request) FormatCacheControl() error {
+	if r.hasCacheControl {
+		cc, prag, err := r.cacheControl.Headers()
+		r.Header.SetValues("cache-control", cc)
+		switch prag {
+		case PragmaNoCacheYes:
+			if !r.Header.Has("pragma", []string{"no-cache"}) {
+				r.Header.Add("pragma", "no-cache")
+			}
+		case PragmaNoCacheNo:
+			//TODO: Don't just delete it...
+			r.Header.Del("pragma")
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *Request) DiscardCacheControl() {
+	r.hasCacheControl = false
 }
 
 //HTTPMethod returns the HTTP method string of the request, for example "GET" or "POST".
@@ -53,6 +99,7 @@ func (r *Request) SetMethod(method jps.Method) error {
 }
 
 func (r *Request) HTTPHeader() *header.Header {
+	//TODO: Format cache-control here?
 	return r.Header
 }
 
