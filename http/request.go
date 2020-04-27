@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/jps"
 
@@ -40,12 +41,12 @@ func (r *Request) ParseCacheControl() error {
 	return nil
 }
 
-func (r *Request) CacheControl() (RequestCacheControl, error) {
+func (r *Request) CacheControl() (*RequestCacheControl, error) {
 	var err error
 	if !r.hasCacheControl {
 		err = r.ParseCacheControl()
 	}
-	return r.cacheControl, err
+	return &r.cacheControl, err
 }
 
 func (r *Request) FormatCacheControl() error {
@@ -64,6 +65,11 @@ func (r *Request) FormatCacheControl() error {
 		return err
 	}
 	return nil
+}
+
+func (r *Request) CacheSettings() (jps.RequestCacheSettings, error) {
+	cc, err := r.CacheControl()
+	return cc, err
 }
 
 func (r *Request) DiscardCacheControl() {
@@ -280,10 +286,95 @@ func ParseRangeHeader(v string) ([]jps.Range, error) {
 }
 
 type Response struct {
-	StatusCode uint16
-	StatusText string
-	Version    Version
-	Header     *header.Header
+	StatusCode      uint16
+	StatusText      string
+	Version         Version
+	Header          *header.Header
+	hasCacheControl bool
+	cacheControl    ResourceCacheControl
+}
+
+func (r *Response) ParseCacheControl() error {
+	if cc := r.Header.GetValues("cache-control"); len(cc) > 0 {
+		var err error
+		r.cacheControl, err = ParseResourceCacheControlHeaders(cc, r.Header.Get("expires"))
+		if err != nil {
+			return err
+		}
+	} else {
+		r.cacheControl = ResourceCacheControl{
+			CanTransform: true,
+		}
+	}
+	r.hasCacheControl = true
+	return nil
+}
+
+func (r *Response) CacheControl() (*ResourceCacheControl, error) {
+	var err error
+	if !r.hasCacheControl {
+		err = r.ParseCacheControl()
+	}
+	return &r.cacheControl, err
+}
+
+func (r *Response) FormatCacheControl() error {
+	if r.hasCacheControl {
+		cc, expires, err := r.cacheControl.Headers()
+		r.Header.SetValues("cache-control", cc)
+		if expires != "" {
+			r.Header.Set("expires", expires)
+		} else {
+			r.Header.Del("expires")
+		}
+		return err
+	}
+	return nil
+}
+
+func (r *Response) CacheSettings() (jps.ResourceCacheSettings, error) {
+	cc, err := r.CacheControl()
+	return cc, err
+}
+
+func (r *Response) WasCached() (bool, error) {
+	return len(r.Header.GetValues("Age")) != 0, nil
+}
+
+func (r *Response) SetWasCached(b bool) error {
+	if b {
+		//TODO: Redo with new header interface
+		if c, _ := r.WasCached(); !c {
+			r.SetCachedAge(0)
+		}
+	} else {
+		r.Header.Del("Age")
+	}
+}
+
+func (r *Response) CachedAge() (time.Duration, error) {
+	ages := r.Header.GetValues("Age")
+	var secs time.Duration = 0
+	for ageStr := range ages {
+		t, err := strconv.ParseUint(string(ageStr), 10, 63)
+		ts := time.Duration(t)
+		if err != nil {
+			return secs * time.Second, err
+		}
+		if ts > secs {
+			secs = ts
+		}
+	}
+	return secs * time.Second, nil
+}
+
+func (r *Response) SetCachedAge(t time.Duration) error {
+	r.Header.Set("Age", strconv.FormatInt(int64(t/time.Second), 10))
+	return nil
+}
+
+func (r *Response) DiscardCacheControl() {
+	r.hasCacheControl = false
 }
 
 func (r *Response) HTTPStatus() (uint16, string) {
@@ -386,11 +477,6 @@ func outgoingFrom(config *Config, headers *header.Header, con net.Conn) net.Addr
 //When the Range method is called for the first time, if the "Accept-Ranges" response header has not been set, it is set to bytes.
 type RequestRangeWrapper struct {
 	*Request
-	//RangeCalled is set to true once Range has been called.
-	//If true, a call to Range will not add the Accept-Ranges header.
-	// (The Accpept-Ranges header still only set if it has not already been set, regardless of this value.)
-	//TODO: Maybe use, maybe remove.
-	RangeMarked bool
 	//RespHeaders is a pointer to the response headers.
 	RespHeaders *header.Header
 }

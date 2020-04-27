@@ -180,6 +180,7 @@ func (s *Session) Frame() (*jps.ServerFrame, error) {
 			} else {
 				httpResp.Header.Set("Connection", "keep-alive")
 			}
+			httpResp.FormatCacheControl()
 			return FormatResponse(&httpResp)
 		}, func /*close*/ () error {
 			//TODO: Allow multiple closes?

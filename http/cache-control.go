@@ -158,12 +158,10 @@ func (et *ExpiryTime) Expires() (time.Time, bool) {
 
 //ExpiresString returns Expires(), formatted in http-date format.
 func (et *ExpiryTime) ExpiresString() string {
-	t, ok := et.Expires()
-	if ok {
+	if t, ok := et.Expires(); ok {
 		return FormatTime(t)
-	} else {
-		return ""
 	}
+	return ""
 }
 
 func (et *ExpiryTime) MaxAgeAndExpires() (time.Duration, time.Time) {
@@ -185,9 +183,8 @@ func (et *ExpiryTime) MaxAgeAndExpiresString() (time.Duration, string) {
 	maxAge, expires := et.MaxAgeAndExpires()
 	if maxAge < 0 {
 		return maxAge, ""
-	} else {
-		return maxAge, FormatTime(expires)
 	}
+	return maxAge, FormatTime(expires)
 }
 
 //ResourceCacheControl provides the ResourceCacheSettings interface for HTTP Responses.
@@ -199,7 +196,7 @@ type ResourceCacheControl struct {
 	Extras []CacheControlDirective
 }
 
-func (_ *ResourceCacheControl) CacheSupported() bool { return true }
+func (*ResourceCacheControl) CacheSupported() bool { return true }
 
 func (rcc *ResourceCacheControl) CacheTransformAllowed() (bool, error) {
 	return rcc.CanTransform, nil
@@ -285,9 +282,9 @@ func (rcc *ResourceCacheControl) headers1() ([]CacheControlDirective, string) {
 			privateMaxAge := rcc.PrivateExpiry.MaxAge()
 			if privateMaxAge >= 0 {
 				return ccds{private, maxAge(privateMaxAge)}, pastTimeStr
-			} else {
-				return ccds{private}, pastTimeStr
 			}
+			return ccds{private}, pastTimeStr
+
 		case jps.ResourceCacheModeMustRevalidate:
 			privateMaxAge := rcc.PrivateExpiry.MaxAge()
 			if privateMaxAge > 0 {
@@ -325,16 +322,14 @@ func (rcc *ResourceCacheControl) headers1() ([]CacheControlDirective, string) {
 			privateMaxAge := rcc.PrivateExpiry.MaxAge()
 			if privateMaxAge == publicMaxAge {
 				return ccds{proxyRevalidate, maxAge(publicMaxAge)}, expires
-			} else {
-				return ccds{proxyRevalidate, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 			}
+			return ccds{proxyRevalidate, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 		case jps.ResourceCacheModeMustRevalidate, jps.ResourceCacheModeUnspecified:
 			privateMaxAge := rcc.PrivateExpiry.MaxAge()
 			if privateMaxAge == publicMaxAge {
 				return ccds{mustRevalidate, maxAge(privateMaxAge)}, expires
-			} else {
-				return ccds{mustRevalidate, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 			}
+			return ccds{mustRevalidate, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 		case jps.ResourceCacheModeNoCache:
 			if publicMaxAge > 0 {
 				return ccds{mustRevalidate, maxAge0, sMaxAge(publicMaxAge)}, pastTimeStr
@@ -351,16 +346,14 @@ func (rcc *ResourceCacheControl) headers1() ([]CacheControlDirective, string) {
 			privateMaxAge := rcc.PrivateExpiry.MaxAge()
 			if privateMaxAge == publicMaxAge {
 				return ccds{public, maxAge(privateMaxAge)}, expires
-			} else {
-				return ccds{public, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 			}
+			return ccds{public, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 		case jps.ResourceCacheModeMustRevalidate:
 			privateMaxAge := rcc.PrivateExpiry.MaxAge()
 			if privateMaxAge == publicMaxAge {
 				return ccds{mustRevalidate, maxAge(privateMaxAge)}, expires
-			} else {
-				return ccds{mustRevalidate, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 			}
+			return ccds{mustRevalidate, maxAge(privateMaxAge), sMaxAge(publicMaxAge)}, expires
 		case jps.ResourceCacheModeNoCache:
 			return ccds{mustRevalidate, maxAge0, sMaxAge(publicMaxAge)}, pastTimeStr
 		case jps.ResourceCacheModeNoStore:
@@ -370,6 +363,14 @@ func (rcc *ResourceCacheControl) headers1() ([]CacheControlDirective, string) {
 	return nil, ""
 }
 
+func (rcc *ResourceCacheControl) PublicCacheMode() (jps.ResourceCacheMode, error) {
+	return rcc.PublicMode, nil
+}
+
+func (rcc *ResourceCacheControl) PrivateCacheMode() (jps.ResourceCacheMode, error) {
+	return rcc.PrivateMode, nil
+}
+
 func (rcc *ResourceCacheControl) SetPublicCacheMode(m jps.ResourceCacheMode) error {
 	rcc.PublicMode = m
 	return nil
@@ -377,6 +378,12 @@ func (rcc *ResourceCacheControl) SetPublicCacheMode(m jps.ResourceCacheMode) err
 
 func (rcc *ResourceCacheControl) SetPrivateCacheMode(m jps.ResourceCacheMode) error {
 	rcc.PrivateMode = m
+	return nil
+}
+
+func (rcc *ResourceCacheControl) SetCacheMode(m jps.ResourceCacheMode) error {
+	rcc.PrivateMode = m
+	rcc.PublicMode = m
 	return nil
 }
 
@@ -420,12 +427,18 @@ func (rcc *ResourceCacheControl) SetPrivateCacheExpires(t time.Time) error {
 	return nil
 }
 
+func (rcc *ResourceCacheControl) SetCacheExpires(t time.Time) error {
+	rcc.PrivateExpiry.SetExpires(t)
+	rcc.PublicExpiry.SetExpires(t)
+	return nil
+}
+
 func (rcc *ResourceCacheControl) PublicCacheExpires() (time.Time, bool, error) {
 	t, b := rcc.PublicExpiry.Expires()
 	return t, b, nil
 }
 
-func (rcc *ResourceCacheControl) PrivateCacheExires() (time.Time, bool, error) {
+func (rcc *ResourceCacheControl) PrivateCacheExpires() (time.Time, bool, error) {
 	t, b := rcc.PrivateExpiry.Expires()
 	return t, b, nil
 }
@@ -634,7 +647,7 @@ func (rcc *RequestCacheControl) SetCacheMaxStale(d time.Duration) error {
 	return nil
 }
 
-func (rcc *RequestCacheControl) CacheTransformAllowd() (bool, error) {
+func (rcc *RequestCacheControl) CacheTransformAllowed() (bool, error) {
 	return rcc.CanTransform, nil
 }
 func (rcc *RequestCacheControl) SetCacheTransformAllowed(b bool) error {

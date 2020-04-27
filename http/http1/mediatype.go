@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/JOTPOT-UK/JOTPOT-Server/http/http1/httpchars"
+	"github.com/JOTPOT-UK/JOTPOT-Server/http/httpchars"
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/mediatype"
 )
@@ -16,7 +16,7 @@ func FormatMediaType(mt *mediatype.Type) ([]byte, error) {
 	i++
 	i += copy(out[i:], mt.Subtype)
 	for _, p := range mt.Params {
-		value, err := httpchars.FormatTokenOrQuotedString([]byte(p.Value)) //TODO: Do we have to convert to []byte?
+		value, err := httpchars.FormatTokenOrQuotedString(p.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +60,9 @@ func ParseMediaType(str string) (*mediatype.Type, error) {
 		}
 		str = str[i+1:]
 		if str[0] == '"' {
-			p.Value, i, err = httpchars.ParseQuotedStringNoStartingQuote([]byte(str[1:]))
+			var value []byte
+			value, i, err = httpchars.ParseQuotedStringNoStartingQuote(str[1:])
+			p.Value = string(value)
 			if err != nil {
 				return mt, err
 			}

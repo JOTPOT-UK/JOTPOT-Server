@@ -33,6 +33,7 @@ const (
 	StageAlias = ServerFrameHandlerStage(97)
 	//StageRedirect should be used to redirect any requests to different a URL.
 	StageRedirect = ServerFrameHandlerStage(145)
+	StageSettings = ServerFrameHandlerStage(190)
 	//StageHandler should be used to implement handlers to create a response from the request!
 	StageHandler = ServerFrameHandlerStage(193)
 	//StageNotHandled should be used to catch requests that have not been handled.

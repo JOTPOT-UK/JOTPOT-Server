@@ -18,7 +18,7 @@ func ListenOn(addr *net.TCPAddr) (TCPListener, error) {
 	return TCPListener{l}, err
 }
 
-func (l *TCPListener) AcceptSession(vars jpvariable.Variables, bufiosource jps.BufioSource) (jps.StreamSession, error) {
+func (l TCPListener) AcceptSession(vars jpvariable.Variables, bufiosource jps.BufioSource) (jps.StreamSession, error) {
 	conn, err := l.listener.AcceptTCP()
 	if err != nil {
 		return nil, err

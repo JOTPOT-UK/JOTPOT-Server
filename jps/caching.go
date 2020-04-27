@@ -162,10 +162,13 @@ type ResourceCacheSettingsGetter interface {
 type ResourceCacheSettingsSetter interface {
 	SetPublicCacheMode(ResourceCacheMode) error
 	SetPrivateCacheMode(ResourceCacheMode) error
-	SetCachePublic(bool) error
-	SetCacheMaxAge(time.Duration) error
+	SetCacheMode(ResourceCacheMode) error
 	SetPublicCacheMaxAge(time.Duration) error
+	SetPrivateCacheMaxAge(time.Duration) error
+	SetCacheMaxAge(time.Duration) error
+	SetPublicCacheExpires(time.Time) error
 	SetPrivateCacheExpires(time.Time) error
+	SetCacheExpires(time.Time) error
 	SetCacheTransformAllowed(bool) error
 }
 
@@ -205,10 +208,23 @@ type RequestCacheSettings interface {
 	RequestCacheSettingsSetter
 }
 
-type ResponseCacheGetter interface {
+type CacheStatusGetter interface {
 	WasCached() (bool, error)
 	CachedAge() (time.Duration, error)
 	IsStale() (bool, error)
 	RevalidationFailed() (bool, error)
 	WasTransformed() (bool, error)
+}
+
+type CacheStatusSetter interface {
+	SetWasCached(bool) error
+	SetCachedAge(time.Duration) error
+	SetIsStale(bool) error
+	SetRevalidationFailed(bool) error
+	SetWasTransformed(bool) error
+}
+
+type CacheStatus interface {
+	CacheStatusGetter
+	CacheStatusSetter
 }

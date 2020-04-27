@@ -3,7 +3,6 @@ package jps
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/jps/pipe"
@@ -200,7 +199,7 @@ func (r *Writer) Close() error {
 	if err3 != nil {
 		return err3
 	}
-	fmt.Println("Closed!")
+	//fmt.Println("Closed!") TODO
 	return err4
 }
 

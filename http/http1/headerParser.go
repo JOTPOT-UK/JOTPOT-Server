@@ -7,7 +7,7 @@ import (
 
 	"github.com/JOTPOT-UK/JOTPOT-Server/http"
 	"github.com/JOTPOT-UK/JOTPOT-Server/http/header"
-	"github.com/JOTPOT-UK/JOTPOT-Server/http/http1/httpchars"
+	"github.com/JOTPOT-UK/JOTPOT-Server/http/httpchars"
 )
 
 var ErrNoHeaderKey = errors.New("no or invalid header key")

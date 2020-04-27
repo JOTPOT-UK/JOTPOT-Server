@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+//TODO: Remove duplicate Format/ParseDate
 func ParseTime(text string) (time.Time, error) {
 	return gohttp.ParseTime(text)
 }

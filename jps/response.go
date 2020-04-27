@@ -11,6 +11,7 @@ type Response interface {
 	SetStatus(ResponseStatus) error
 
 	CacheSettings() (ResourceCacheSettings, error)
+	CacheStatus() (CacheStatus, error)
 }
 
 //IncomingResponse has a Response interface, along with an IncomingBody to read the response body from and a ClientSession.
